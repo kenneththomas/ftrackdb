@@ -18,10 +18,10 @@ def home():
     conn = create_connection()
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT * FROM Results')
+        cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 50')
         results = cur.fetchall()
 
-        #athletes list
+        # athletes list
         cur.execute('SELECT DISTINCT Athlete FROM Results')
         athletes = cur.fetchall()
 
@@ -32,7 +32,7 @@ def athlete_profile(name):
     conn = create_connection()
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT * FROM Results WHERE Athlete = ?', (name,))
+        cur.execute('SELECT * FROM Results WHERE Athlete = ? ORDER BY Date DESC', (name,))
         results = cur.fetchall()
 
     return render_template('profile.html', results=results)
