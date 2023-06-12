@@ -43,7 +43,7 @@ def insert_result():
         conn = create_connection()
         with conn:
             cur = conn.cursor()
-            cur.execute('INSERT INTO Results (Date, Athlete, Meet, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
+            cur.execute('INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
                         (request.form.get('date'), request.form.get('athlete'), request.form.get('meet'),
                         request.form.get('event'), request.form.get('result'), request.form.get('team')))
             conn.commit()
@@ -65,6 +65,56 @@ def delete_result():
         results = cur.fetchall()
 
     return render_template('delete.html', results=results)
+
+@app.route('/leaderboard')
+def leaderboard():
+    conn = create_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT Event, Athlete, Result, Team FROM Results ORDER BY Event, Result ASC')
+        results = cur.fetchall()
+
+    leaderboard_results = []
+    current_event = None
+    event_results = []
+
+    for result in results:
+        event = result[0]
+        if current_event is None or event != current_event:
+            if current_event is not None:
+                event_results.sort(key=lambda x: x[2])  # Sort event results by time
+                leaderboard_results.extend(event_results)
+            current_event = event
+            event_results = []
+
+        event_results.append(result)
+
+    if current_event is not None:
+        event_results.sort(key=lambda x: x[2])  # Sort the last event results by time
+        leaderboard_results.extend(event_results)
+
+    return render_template('leaderboard.html', results=leaderboard_results)
+
+@app.route('/team/<team_name>')
+def team_results(team_name):
+    conn = create_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result FROM Results WHERE Team = ? ORDER BY Date DESC', (team_name,))
+        team_results = cur.fetchall()
+
+    return render_template('team.html', team_name=team_name, results=team_results)
+
+@app.route('/meet/<meet_name>')
+def meet_results(meet_name):
+    conn = create_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Meet_Name = ? ORDER BY Event, Result ASC', (meet_name,))
+        meet_results = cur.fetchall()
+
+    return render_template('meet.html', meet_name=meet_name, results=meet_results)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

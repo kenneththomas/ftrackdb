@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaderboard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Leaderboard</h1>
+    {% if results %}
+        {% set current_event = results[0][0] %}
+        <table>
+            <tr>
+                <th>Event</th>
+                <th>Athlete</th>
+                <th>Result</th>
+                <th>Team</th>
+            </tr>
+            {% for result in results %}
+                {% if current_event != result[0] %}
+                    </table>
+                    <br>
+                    <table>
+                    <tr>
+                        <th>Event</th>
+                        <th>Athlete</th>
+                        <th>Result</th>
+                        <th>Team</th>
+                    </tr>
+                    {% set current_event = result[0] %}
+                {% endif %}
+                <tr>
+                    <td>{{ result[0] }}</td>
+                    <td>{{ result[1] }}</td>
+                    <td>{{ result[2] }}</td>
+                    <td>{{ result[3] }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No results available.</p>
+    {% endif %}
+</body>
+</html>

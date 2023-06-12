@@ -2,26 +2,7 @@
 <html>
 <head>
     <title>Track and Field Results</title>
-    <style>
-    /*...existing styles...*/
-
-    /*Add a simple style for the table*/
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    th, td {
-        border: 1px solid #ddd;
-        padding: 8px;
-    }
-    tr:nth-child(even) {
-        background-color: #f2f2f2;
-    }
-    th {
-        background-color: #4caf50;
-        color: white;
-    }
-    </style>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
@@ -41,10 +22,14 @@
             <tr>
                 <td>{{ result[1] }}</td>
                 <td><a href="{{ url_for('athlete_profile', name=result[2]) }}">{{ result[2] }}</a></td>
-                <td>{{ result[3] }}</td>
+                <td>
+                    <a href="{{ url_for('meet_results', meet_name=result[3]) }}">{{ result[3] }}</a>
+                </td>
                 <td>{{ result[4] }}</td>
                 <td>{{ result[5] }}</td>
-                <td>{{ result[6] }}</td>
+                <td>
+                    <a href="{{ url_for('team_results', team_name=result[6]) }}">{{ result[6] }}</a>
+                </td>
             </tr>
             {% endfor %}
         </table>
@@ -56,6 +41,7 @@
             {% endfor %}
         </ul>
     </div>
+    <a href="{{ url_for('leaderboard') }}">Leaderboard</a>
     <a href="{{ url_for('insert_result') }}">Insert New Result</a>
     <a href="{{ url_for('delete_result') }}">Delete Result</a>
 </body>
