@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Track and Field Results</title>
+</head>
+<body>
+    <h1>Track and Field Results</h1>
+
+    <ul>
+        {% for result in results %}
+        <li>{{ result }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Athletes</h2>
+    <ul>
+        {% for athlete in athletes %}
+            <li><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></li>
+        {% endfor %}
+    </ul>
+
+</body>
+</html>

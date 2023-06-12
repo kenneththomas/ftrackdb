@@ -1,0 +1,4 @@
+track.db
+results_csv.csv
+*.ods
+*lock*
