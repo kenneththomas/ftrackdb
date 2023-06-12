@@ -2,22 +2,61 @@
 <html>
 <head>
     <title>Track and Field Results</title>
+    <style>
+    /*...existing styles...*/
+
+    /*Add a simple style for the table*/
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+    th {
+        background-color: #4caf50;
+        color: white;
+    }
+    </style>
 </head>
 <body>
-    <h1>Track and Field Results</h1>
+    <div class="container">
+        <h1>Welcome to the Track and Field Results Website!</h1>
 
-    <ul>
-        {% for result in results %}
-        <li>{{ result }}</li>
-        {% endfor %}
-    </ul>
+        <h2>Latest Results</h2>
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Athlete</th>
+                <th>Meet</th>
+                <th>Event</th>
+                <th>Result</th>
+                <th>Team</th>
+            </tr>
+            {% for result in results %}
+            <tr>
+                <td>{{ result[1] }}</td>
+                <td><a href="{{ url_for('athlete_profile', name=result[2]) }}">{{ result[2] }}</a></td>
+                <td>{{ result[3] }}</td>
+                <td>{{ result[4] }}</td>
+                <td>{{ result[5] }}</td>
+                <td>{{ result[6] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
 
-    <h2>Athletes</h2>
-    <ul>
-        {% for athlete in athletes %}
-            <li><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></li>
-        {% endfor %}
-    </ul>
-
+        <h2>Athletes</h2>
+        <ul>
+            {% for athlete in athletes %}
+                <li><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <a href="{{ url_for('insert_result') }}">Insert New Result</a>
+    <a href="{{ url_for('delete_result') }}">Delete Result</a>
 </body>
 </html>
