@@ -18,7 +18,7 @@ with open('results_csv.csv', 'r') as f:
         meet = row[2]
         event = row[3]
         result = row[4]
-        team = row[5]
+        team = row[5].replace('/', ' ') # slashes in team name breaks webpage creation
         
         print('processing:', date, athlete, meet, event, result, team)
 

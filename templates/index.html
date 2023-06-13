@@ -34,15 +34,16 @@
             {% endfor %}
         </table>
 
-        <h2>Athletes</h2>
+        <!--h2>Athletes</h2>
         <ul>
             {% for athlete in athletes %}
                 <li><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></li>
             {% endfor %}
-        </ul>
+        </ul--->
+        <a href="{{ url_for('leaderboard') }}">Leaderboard</a>
+        <a href="{{ url_for('insert_result') }}">Insert New Result</a>
+        <a href="{{ url_for('delete_result') }}">Delete Result</a>        
     </div>
-    <a href="{{ url_for('leaderboard') }}">Leaderboard</a>
-    <a href="{{ url_for('insert_result') }}">Insert New Result</a>
-    <a href="{{ url_for('delete_result') }}">Delete Result</a>
+
 </body>
 </html>
