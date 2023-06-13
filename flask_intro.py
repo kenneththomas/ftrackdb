@@ -32,10 +32,21 @@ def athlete_profile(name):
     conn = create_connection()
     with conn:
         cur = conn.cursor()
+        # Select all results for the athlete
         cur.execute('SELECT * FROM Results WHERE Athlete = ? ORDER BY Date DESC', (name,))
         results = cur.fetchall()
+        
+        # Select PRs for each event
+        cur.execute("""
+            SELECT Event, MIN(Result) 
+            FROM Results 
+            WHERE Athlete = ? 
+            GROUP BY Event
+            """, (name,))
+        prs = cur.fetchall()
+        prs = {event: result for event, result in prs}  # Convert to dict for easier usage in the template
 
-    return render_template('profile.html', results=results)
+    return render_template('profile.html', name=name, results=results, prs=prs)
 
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():

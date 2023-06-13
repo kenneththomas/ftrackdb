@@ -7,6 +7,20 @@
 <body>
     <div class="container">
         <h1>Athlete Profile</h1>
+        <h2>Personal Records</h2>
+        <table>
+            <tr>
+                <th>Event</th>
+                <th>Result</th>
+            </tr>
+            {% for event, result in prs.items() %}
+            <tr>
+                <td>{{ event }}</td>
+                <td>{{ result }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <h2>Results</h2>                
         <table>
             <tr>
                 <th>Date</th>
