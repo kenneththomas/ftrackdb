@@ -3,6 +3,7 @@
 <head>
     <title>Track and Field Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 </head>
 <body>
     <div class="container">
@@ -40,9 +41,9 @@
                 <li><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></li>
             {% endfor %}
         </ul--->
-        <a href="{{ url_for('leaderboard') }}">Leaderboard</a>
-        <a href="{{ url_for('insert_result') }}">Insert New Result</a>
-        <a href="{{ url_for('delete_result') }}">Delete Result</a>        
+        <a class="btn btn-primary" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+        <a class="btn btn-success" href="{{ url_for('insert_result') }}">Insert New Result</a>
+        <a class="btn btn-danger" href="{{ url_for('delete_result') }}">Delete Result</a>      
     </div>
 
 </body>
