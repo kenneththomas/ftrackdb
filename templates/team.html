@@ -5,28 +5,32 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>{{ team_name }} Results</h1>
-    {% if results %}
-        <table>
-            <tr>
-                <th>Date</th>
-                <th>Athlete</th>
-                <th>Meet</th>
-                <th>Event</th>
-                <th>Result</th>
-            </tr>
-            {% for result in results %}
+    <div class="container">
+        <h1>{{ team_name }} Results</h1>
+        {% if results %}
+            <table>
                 <tr>
-                    <td>{{ result[0] }}</td>
-                    <td>{{ result[1] }}</td>
-                    <td>{{ result[2] }}</td>
-                    <td>{{ result[3] }}</td>
-                    <td>{{ result[4] }}</td>
+                    <th>Date</th>
+                    <th>Athlete</th>
+                    <th>Meet</th>
+                    <th>Event</th>
+                    <th>Result</th>
                 </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No results available for {{ team_name }}.</p>
-    {% endif %}
+                {% for result in results %}
+                    <tr>
+                        <td>{{ result[0] }}</td>
+                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td>
+                            <a href="{{ url_for('meet_results', meet_name=result[2]) }}">{{ result[2] }}</a>
+                        </td>
+                        <td>{{ result[3] }}</td>
+                        <td>{{ result[4] }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No results available for {{ team_name }}.</p>
+        {% endif %}
+    </div>
 </body>
 </html>
