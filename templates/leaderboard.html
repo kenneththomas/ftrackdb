@@ -8,33 +8,25 @@
     <div class="container">
         <h1>Leaderboard</h1>
         {% if results %}
-            {% set current_event = results[0][0] %}
             <table>
-                <tr>
-                    <th>Event</th>
-                    <th>Athlete</th>
-                    <th>Result</th>
-                    <th>Team</th>
-                </tr>
-                {% for result in results %}
-                    {% if current_event != result[0] %}
-                        </table>
-                        <br>
-                        <table>
-                        <tr>
-                            <th>Event</th>
-                            <th>Athlete</th>
-                            <th>Result</th>
-                            <th>Team</th>
-                        </tr>
-                        {% set current_event = result[0] %}
-                    {% endif %}
+                {% for event, event_results in results.items() %}
                     <tr>
-                        <td>{{ result[0] }}</td>
-                        <td>{{ result[1] }}</td>
-                        <td>{{ result[2] }}</td>
-                        <td>{{ result[3] }}</td>
+                        <th colspan="4" style="background-color: #1f1e3f;">{{ event }}</th>
                     </tr>
+                    <tr>
+                        <th>Event</th>
+                        <th>Athlete</th>
+                        <th>Result</th>
+                        <th>Team</th>
+                    </tr>                    
+                    {% for result in event_results %}
+                        <tr>
+                            <td>{{ result[0] }}</td>
+                            <td>{{ result[1] }}</td>
+                            <td>{{ result[2] }}</td>
+                            <td>{{ result[3] }}</td>
+                        </tr>
+                    {% endfor %}
                 {% endfor %}
             </table>
         {% else %}
