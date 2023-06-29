@@ -18,7 +18,7 @@ def home():
     conn = create_connection()
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 50')
+        cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 25')
         results = cur.fetchall()
 
         # athletes list
