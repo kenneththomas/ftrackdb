@@ -8,11 +8,9 @@
     <div class="container">
         <h1>Leaderboard</h1>
         {% if results %}
-            <table>
-                {% for event, event_results in results.items() %}
-                    <tr>
-                        <th colspan="4" style="background-color: #1f1e3f;">{{ event }}</th>
-                    </tr>
+            {% for event, event_results in results.items() %}
+                <h2>{{ event }}</h2>
+                <table>
                     <tr>
                         <th>Event</th>
                         <th>Athlete</th>
@@ -27,8 +25,8 @@
                             <td><a href="{{ url_for('team_results', team_name=result[3]) }}">{{ result[3] }}</a></td>
                         </tr>
                     {% endfor %}
-                {% endfor %}
-            </table>
+                </table>
+            {% endfor %}
         {% else %}
             <p>No results available.</p>
         {% endif %}

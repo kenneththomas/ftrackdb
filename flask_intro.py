@@ -6,7 +6,7 @@ app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
 
 def create_connection():
-    conn = None;
+    conn = None
     try:
         conn = sqlite3.connect(app.config['DATABASE'])
     except Error as e:
