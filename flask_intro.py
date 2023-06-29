@@ -113,8 +113,11 @@ def team_results(team_name):
         cur = conn.cursor()
         cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result FROM Results WHERE Team = ? ORDER BY Date DESC', (team_name,))
         team_results = cur.fetchall()
+        # get all athletes associated with the team
+        cur.execute('SELECT DISTINCT Athlete FROM Results WHERE Team = ?', (team_name,))
+        team_athletes = cur.fetchall()
 
-    return render_template('team.html', team_name=team_name, results=team_results)
+    return render_template('team.html', team_name=team_name, results=team_results, athletes=team_athletes)
 
 @app.route('/meet/<meet_name>')
 def meet_results(meet_name):

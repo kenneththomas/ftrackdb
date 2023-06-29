@@ -6,6 +6,23 @@
 </head>
 <body>
     <div class="container">
+        {% if athletes %}
+            <h1>{{ team_name }} Roster</h1>
+            <table id="team_athletes">
+                <tr>
+                    <th>Roster</th>
+                </tr>
+                {% for athlete in athletes %}
+                    <tr>
+                        <td><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No athletes available for {{ team_name }}.</p>
+        {% endif %}
+    </div>
+    <div class="container">
         <h1>{{ team_name }} Results</h1>
         {% if results %}
             <table>
