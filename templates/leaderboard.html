@@ -22,9 +22,9 @@
                     {% for result in event_results %}
                         <tr>
                             <td>{{ result[0] }}</td>
-                            <td>{{ result[1] }}</td>
+                            <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
                             <td>{{ result[2] }}</td>
-                            <td>{{ result[3] }}</td>
+                            <td><a href="{{ url_for('team_results', team_name=result[3]) }}">{{ result[3] }}</a></td>
                         </tr>
                     {% endfor %}
                 {% endfor %}

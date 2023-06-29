@@ -1,6 +1,7 @@
 import sqlite3
 import csv
 from datetime import datetime
+import db_normalization
 
 # Connect to SQLite database
 conn = sqlite3.connect('track.db')
@@ -12,14 +13,33 @@ with open('results_csv.csv', 'r') as f:
     next(reader)  # Skip the header row
 
     for row in reader:
-        # convert the date from MM/DD/YYYY to YYYY-MM-DD
-        date = datetime.strptime(row[0], '%m/%d/%Y').strftime('%Y-%m-%d')
+        # Convert date to YYYY-MM-DD format
+        if len(row[0]) == 10:
+            date = datetime.strptime(row[0], '%m/%d/%Y').strftime('%Y-%m-%d')
+        elif len(row[0]) == 8:
+            date = datetime.strptime(row[0], '%m/%d/%y').strftime('%Y-%m-%d')
+
+        #if the length of the team name is 0, replace it with the team name of the athlete
+        if len(row[5]) == 0:
+            c.execute('SELECT Team FROM Results WHERE Athlete = ?', (row[1],))
+            team = c.fetchone()
+            print(f'No team name for {row[1]} found. Using {team} instead.')
+            if team is None:
+                team = 'Unknown'
+            else:
+                row[5] = team[0]
+
+        #if result starts with a 0, strip it
+        if row[4][0] == '0':
+            row[4] = row[4][1:]
+        
         athlete = row[1]
         meet = row[2]
         event = row[3]
         result = row[4]
         team = row[5].replace('/', ' ') # slashes in team name breaks webpage creation
-        
+
+
         print('processing:', date, athlete, meet, event, result, team)
 
         # Check for duplicates
@@ -40,3 +60,6 @@ with open('results_csv.csv', 'r') as f:
 # Commit the changes and close the connection
 conn.commit()
 conn.close()
+
+# Normalize the database
+db_normalization.normalization()
