@@ -104,6 +104,19 @@ def leaderboard():
         event_results.sort(key=lambda x: x[2])  # Sort the last event results by time
         leaderboard_results[current_event] = event_results
 
+    #discard duplicate athletes
+    for event in leaderboard_results:
+        athletes = []
+        for result in leaderboard_results[event]:
+            if result[1] in athletes:
+                leaderboard_results[event].remove(result)
+            else:
+                athletes.append(result[1])
+
+    #only use top 20 results
+    for event in leaderboard_results:
+        leaderboard_results[event] = leaderboard_results[event][:20]
+
     return render_template('leaderboard.html', results=leaderboard_results)
 
 @app.route('/team/<team_name>')
