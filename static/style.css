@@ -63,6 +63,15 @@ th[colspan="4"] {
     letter-spacing: 1px;
 }
 
+.home-button {
+    display: inline-block;
+    padding: 10px 20px;
+    color: white;
+    background-color: rgb(30, 30, 146);
+    text-decoration: none;
+    border-radius: 5px;
+}
+
 
 /*-- gold silver bronze
 tr:nth-of-type(2) {
