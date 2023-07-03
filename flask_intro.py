@@ -109,12 +109,9 @@ def leaderboard():
 
     #discard duplicate athletes
     for event in leaderboard_results:
-        athletes = []
-        for result in leaderboard_results[event]:
-            if result[1] in athletes:
-                leaderboard_results[event].remove(result)
-            else:
-                athletes.append(result[1])
+        athletes = set()
+        leaderboard_results[event] = [result for result in leaderboard_results[event]
+                                      if not (result[1] in athletes or athletes.add(result[1]))]
 
     #only use top 20 results
     for event in leaderboard_results:
