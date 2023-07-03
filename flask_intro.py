@@ -93,7 +93,10 @@ def leaderboard():
         event = result[0]
         if current_event is None or event != current_event:
             if current_event is not None:
-                event_results.sort(key=lambda x: x[2])  # Sort event results by time
+                if current_event != '100m':
+                    event_results.sort(key=lambda x: x[2])  # Sort event results by time
+                else:
+                    event_results.sort(key=lambda x: float(x[2]))  # Sort event results by time
                 leaderboard_results[current_event] = event_results
             current_event = event
             event_results = []
