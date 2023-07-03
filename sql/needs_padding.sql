@@ -1,0 +1,1 @@
+SELECT * FROM Results WHERE instr(Result, '.') = 0 OR (length(Result) - instr(Result, '.')) < 2

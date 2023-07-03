@@ -93,7 +93,10 @@ def leaderboard():
         event = result[0]
         if current_event is None or event != current_event:
             if current_event is not None:
-                event_results.sort(key=lambda x: x[2])  # Sort event results by time
+                if current_event != '100m':
+                    event_results.sort(key=lambda x: x[2])  # Sort event results by time
+                else:
+                    event_results.sort(key=lambda x: float(x[2]))  # Sort event results by time
                 leaderboard_results[current_event] = event_results
             current_event = event
             event_results = []
@@ -103,6 +106,16 @@ def leaderboard():
     if current_event is not None:
         event_results.sort(key=lambda x: x[2])  # Sort the last event results by time
         leaderboard_results[current_event] = event_results
+
+    #discard duplicate athletes
+    for event in leaderboard_results:
+        athletes = set()
+        leaderboard_results[event] = [result for result in leaderboard_results[event]
+                                      if not (result[1] in athletes or athletes.add(result[1]))]
+
+    #only use top 20 results
+    for event in leaderboard_results:
+        leaderboard_results[event] = leaderboard_results[event][:20]
 
     return render_template('leaderboard.html', results=leaderboard_results)
 
