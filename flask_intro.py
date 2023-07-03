@@ -6,7 +6,7 @@ app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
 
 def create_connection():
-    conn = None;
+    conn = None
     try:
         conn = sqlite3.connect(app.config['DATABASE'])
     except Error as e:
@@ -18,7 +18,7 @@ def home():
     conn = create_connection()
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 50')
+        cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 25')
         results = cur.fetchall()
 
         # athletes list
@@ -113,8 +113,11 @@ def team_results(team_name):
         cur = conn.cursor()
         cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result FROM Results WHERE Team = ? ORDER BY Date DESC', (team_name,))
         team_results = cur.fetchall()
+        # get all athletes associated with the team
+        cur.execute('SELECT DISTINCT Athlete FROM Results WHERE Team = ?', (team_name,))
+        team_athletes = cur.fetchall()
 
-    return render_template('team.html', team_name=team_name, results=team_results)
+    return render_template('team.html', team_name=team_name, results=team_results, athletes=team_athletes)
 
 @app.route('/meet/<meet_name>')
 def meet_results(meet_name):

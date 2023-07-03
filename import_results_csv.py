@@ -18,6 +18,9 @@ with open('results_csv.csv', 'r') as f:
             date = datetime.strptime(row[0], '%m/%d/%Y').strftime('%Y-%m-%d')
         elif len(row[0]) == 8:
             date = datetime.strptime(row[0], '%m/%d/%y').strftime('%Y-%m-%d')
+        # else set date to today
+        else:
+            date = datetime.today().strftime('%Y-%m-%d')
 
         #if the length of the team name is 0, replace it with the team name of the athlete
         if len(row[5]) == 0:
