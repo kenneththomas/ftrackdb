@@ -142,6 +142,20 @@ def meet_results(meet_name):
 
     return render_template('meet.html', meet_name=meet_name, results=meet_results)
 
+#athlete search
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    if request.method == 'POST':
+        conn = create_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', ('%' + request.form.get('athlete') + '%',))
+            results = cur.fetchall()
+
+        return render_template('search.html', results=results)
+
+    return render_template('search.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
