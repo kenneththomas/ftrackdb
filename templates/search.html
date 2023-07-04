@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Results</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Search Results</h1>
+        <form method="post" action="{{ url_for('search') }}">
+            <label for="athlete">Search by athlete name:</label>
+            <input type="text" name="athlete" id="athlete">
+            <input type="submit" value="Search">
+        </form>
+        {% if results %}
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Athlete</th>
+                    <th>Event</th>
+                    <th>Result</th>
+                    <th>Team</th>
+                </tr>
+                {% for result in results %}
+                    <tr>
+                        <td>{{ result[0] }}</td>
+                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td>{{ result[2] }}</td>
+                        <td>{{ result[3] }}</td>
+                        <td><a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No results found.</p>
+        {% endif %}
+        <br>
+        <a href="{{ url_for('home') }}" class="home-button">Home</a>
+    </div>
+</body>
+</html>
