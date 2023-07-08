@@ -6,16 +6,21 @@
 </head>
 <body>
     <div class="container">
+ 
         <h1>{{ meet_name }} Results</h1>
         {% if results %}
-            <table>
-                <tr>
-                    <th>Date</th>
-                    <th>Athlete</th>
-                    <th>Event</th>
-                    <th>Result</th>
-                    <th>Team</th>
-                </tr>
+        <input type="text" id="filterInput" placeholder="Filter">    
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Athlete</th>
+                        <th>Event</th>
+                        <th>Result</th>
+                        <th>Team</th>
+                    </tr>
+                </thead>
+                <tbody>
                 {% for result in results %}
                     <tr>
                         <td>{{ result[0] }}</td>
@@ -27,6 +32,7 @@
                         </td>
                     </tr>
                 {% endfor %}
+                </tbody>
             </table>
         {% else %}
             <p>No results available for {{ meet_name }}.</p>
@@ -34,5 +40,6 @@
         <br>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>
+    <script src="{{ url_for('static', filename='filter.js') }}"></script>
 </body>
 </html>

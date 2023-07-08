@@ -21,11 +21,7 @@ def home():
         cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 25')
         results = cur.fetchall()
 
-        # athletes list
-        cur.execute('SELECT DISTINCT Athlete FROM Results')
-        athletes = cur.fetchall()
-
-    return render_template('index.html', results=results, athletes=athletes)
+    return render_template('index.html', results=results)
 
 @app.route('/athlete/<name>')
 def athlete_profile(name):
