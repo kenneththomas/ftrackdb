@@ -39,7 +39,7 @@ tr:nth-child(even) {
     background-color: #f2f2f2;
 }
 th {
-    background-color: #4caf50;
+    background-color: #14c2b3;
     color: white;
 }
 
@@ -57,7 +57,7 @@ tr:hover {
 }
 
 th[colspan="4"] {
-    background-color: #4caf50;
+    background-color: #14c2b3;
     color: white;
     text-transform: uppercase;
     letter-spacing: 1px;

@@ -35,12 +35,6 @@
             {% endfor %}
         </table>
 
-        <!--h2>Athletes</h2>
-        <ul>
-            {% for athlete in athletes %}
-                <li><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></li>
-            {% endfor %}
-        </ul--->
         <a class="btn btn-primary" href="{{ url_for('leaderboard') }}">Leaderboard</a>
         <a class="btn btn-success" href="{{ url_for('insert_result') }}">Insert New Result</a>
         <a class="btn btn-danger" href="{{ url_for('delete_result') }}">Delete Result</a>
