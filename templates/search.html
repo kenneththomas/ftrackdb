@@ -14,13 +14,15 @@
         </form>
         {% if results %}
             <table>
-                <tr>
-                    <th>Date</th>
-                    <th>Athlete</th>
-                    <th>Event</th>
-                    <th>Result</th>
-                    <th>Team</th>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Athlete</th>
+                        <th>Event</th>
+                        <th>Result</th>
+                        <th>Team</th>
+                    </tr>
+                </thead>
                 {% for result in results %}
                     <tr>
                         <td>{{ result[0] }}</td>
