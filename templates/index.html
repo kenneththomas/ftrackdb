@@ -38,8 +38,9 @@
         <a class="btn btn-primary" href="{{ url_for('leaderboard') }}">Leaderboard</a>
         <a class="btn btn-success" href="{{ url_for('insert_result') }}">Insert New Result</a>
         <a class="btn btn-danger" href="{{ url_for('delete_result') }}">Delete Result</a>
-        <a class="btn btn-primary" href="{{ url_for('search') }}">Search</a>          
+        <a class="btn btn-primary" href="{{ url_for('search') }}">Search</a>     
+        <button id="btnChangeColor">Bari Mode (experimental)</button>     
     </div>
-
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
 </body>
 </html>

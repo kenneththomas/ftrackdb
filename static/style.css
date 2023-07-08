@@ -84,3 +84,8 @@ tr:nth-of-type(4) {
     background-color: #CD7F32;
 }
 ==*/
+
+.bari-mode {
+    background-color: #000000;
+    color: #1dbb7e;
+}
