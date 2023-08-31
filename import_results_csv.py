@@ -17,7 +17,12 @@ with open('results_csv.csv', 'r') as f:
         if len(row[0]) == 10:
             date = datetime.strptime(row[0], '%m/%d/%Y').strftime('%Y-%m-%d')
         elif len(row[0]) == 8:
-            date = datetime.strptime(row[0], '%m/%d/%y').strftime('%Y-%m-%d')
+            print(row[0])
+            date = datetime.strptime(row[0], '%m/%d/%Y').strftime('%Y-%m-%d')
+        #elif 2/25/2022
+        elif len(row[0]) == 9:
+            print(row[0])
+            date = datetime.strptime(row[0], '%m/%d/%Y').strftime('%Y-%m-%d')
         # else set date to today
         else:
             date = datetime.today().strftime('%Y-%m-%d')
