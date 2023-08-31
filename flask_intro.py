@@ -41,6 +41,14 @@ def athlete_profile(name):
             """, (name,))
         prs = cur.fetchall()
         prs = {event: result for event, result in prs}  # Convert to dict for easier usage in the template
+        #preferred order of events
+        preforder = ['60m','100m','100mH','110mH','200m','300m','400m','400mH',
+                    '500m','600yd','600m','800m','1000m','1500m','Mile',
+                    '3000m','3200m','5000m','10000m',
+                    'High Jump','Long Jump','Triple Jump',
+                    'Shot Put','Discus','Pole Vault','Javelin']
+        #sort prs by preferred order
+        prs = {event: prs[event] for event in preforder if event in prs}
 
     return render_template('profile.html', name=name, results=results, prs=prs)
 
