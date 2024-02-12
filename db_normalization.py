@@ -35,6 +35,20 @@ def normalization():
         for result in results:
             print(f'deleting {result}')
             c.execute('DELETE FROM Results WHERE Result_ID = ?', (result[0],))
+
+    #find duplicate results and delete them
+    print('finding duplicate results')
+    c.execute('SELECT * FROM Results')
+    results = c.fetchall()
+    for result in results:
+        athlete = result[1]
+        meet = result[2]
+        event = result[3]
+        team = result[5]
+        c.execute('SELECT * FROM Results WHERE Athlete = ? AND Meet_Name = ? AND Event = ? AND Team = ?', (athlete, meet, event, team))
+        if len(c.fetchall()) > 1:
+            print(f'deleting {result}')
+            #c.execute('DELETE FROM Results WHERE Result_ID = ?', (result[0],))
         
     # Commit the changes and close the connection
     conn.commit()

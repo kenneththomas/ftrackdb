@@ -50,11 +50,12 @@ with open('results_csv.csv', 'r') as f:
 
         print('processing:', date, athlete, meet, event, result, team)
 
-        # Check for duplicates
+        # check for duplicates, do not consider the date or result
+
         c.execute('''
             SELECT * FROM Results
-            WHERE Date = ? AND Athlete = ? AND Meet_Name = ? AND Event = ? AND Result = ? AND Team = ?
-        ''', (date, athlete, meet, event, result, team))
+            WHERE Athlete = ? AND Meet_Name = ? AND Event = ? AND Team = ?
+        ''', (athlete, meet, event, team))
 
         if c.fetchone() is None:
             # If record does not exist in the database, insert it
@@ -64,6 +65,7 @@ with open('results_csv.csv', 'r') as f:
             ''', (date, athlete, meet, event, result, team))
         else:
             print('Record already exists:', date, athlete, meet, event, result, team)
+
 
 # Commit the changes and close the connection
 conn.commit()
