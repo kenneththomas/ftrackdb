@@ -5,8 +5,7 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Insert New Result</h1>
-    
+    <p>Insert New Result<p>
     <form action="{{ url_for('insert_result') }}" method="post">
         <label for="date">Date:</label><br>
         <input type="date" id="date" name="date" required><br>
@@ -23,6 +22,5 @@
         <input type="submit" value="Submit">
     </form>
     <br>
-    <a href="{{ url_for('home') }}" class="home-button">Home</a>
 </body>
 </html>
