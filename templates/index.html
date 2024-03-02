@@ -7,7 +7,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to the Track and Field Results Website!</h1>
+        <!-- make resources/wavelight.png the website favicon -->
+        <link rel="icon" href="{{ url_for('static', filename='resources/wavelight.png') }}" type="image/x-icon">
+
+        <img src="{{ url_for('static', filename='resources/wavelight.png') }}" alt="wavelight" style="width: 100%; length: 30%;"/>
 
         <h2>Latest Results</h2>
         <table>
