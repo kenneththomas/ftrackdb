@@ -3,6 +3,8 @@ body {
     margin: 0;
     padding: 0;
     background-color: #f0f0f0;
+    background: url('/static/resources/wavelight.png') no-repeat center center fixed; 
+    background-size: cover;
 }
 .container {
     width: 50%;
@@ -10,6 +12,15 @@ body {
     padding: 20px;
     background-color: #fff; /* added a white background for the container */
     box-shadow: 0 0 10px rgba(0,0,0,0.1); /* added a subtle shadow */
+}
+.index-container {
+    width: 50%;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff; /* added a white background for the container */
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* added a subtle shadow */
+    transition: opacity 1s ease-in-out;
+    opacity: 0; /* Start invisible */
 }
 h1, h2 {
     color: #333;

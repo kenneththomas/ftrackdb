@@ -9,3 +9,9 @@ btnChangeColor.addEventListener("click", function() {
   // Toggle the 'bari-mode' class on the body element
   body.classList.toggle("bari-mode");
 });
+
+document.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() {
+    document.querySelector(".index-container").style.opacity = 1;
+  }, 100); 
+});
