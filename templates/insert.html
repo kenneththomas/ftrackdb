@@ -5,22 +5,25 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <p>Insert New Result<p>
-    <form action="{{ url_for('insert_result') }}" method="post">
-        <label for="date">Date:</label><br>
-        <input type="date" id="date" name="date" required><br>
-        <label for="athlete">Athlete:</label><br>
-        <input type="text" id="athlete" name="athlete" required><br>
-        <label for="meet">Meet:</label><br>
-        <input type="text" id="meet" name="meet" required><br>
-        <label for="event">Event:</label><br>
-        <input type="text" id="event" name="event" required><br>
-        <label for="result">Result:</label><br>
-        <input type="text" id="result" name="result" required><br>
-        <label for="team">Team:</label><br>
-        <input type="text" id="team" name="team" required><br>
-        <input type="submit" value="Submit">
-    </form>
-    <br>
+    {% include 'navbar.html' %}
+    <div class="container">
+        <p>Insert New Result<p>
+        <form action="{{ url_for('insert_result') }}" method="post">
+            <label for="date">Date:</label><br>
+            <input type="date" id="date" name="date" required><br>
+            <label for="athlete">Athlete:</label><br>
+            <input type="text" id="athlete" name="athlete" required><br>
+            <label for="meet">Meet:</label><br>
+            <input type="text" id="meet" name="meet" required><br>
+            <label for="event">Event:</label><br>
+            <input type="text" id="event" name="event" required><br>
+            <label for="result">Result:</label><br>
+            <input type="text" id="result" name="result" required><br>
+            <label for="team">Team:</label><br>
+            <input type="text" id="team" name="team" required><br>
+            <input type="submit" value="Submit">
+        </form>
+        <br>
+    </div>
 </body>
 </html>
