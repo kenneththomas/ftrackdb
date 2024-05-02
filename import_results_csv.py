@@ -37,9 +37,12 @@ with open('results_csv.csv', 'r') as f:
             else:
                 row[5] = team[0]
 
-        #if result starts with a 0, strip it
-        if row[4][0] == '0':
-            row[4] = row[4][1:]
+        # csv deleted rows from excel sometimes leave bad empty lines. this will skip them
+        try:
+            if row[4][0] == '0':
+                row[4] = row[4][1:]
+        except:
+            continue
         
         athlete = row[1]
         meet = row[2]
