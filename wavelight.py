@@ -51,7 +51,18 @@ def athlete_profile(name):
         #sort prs by preferred order
         prs = {event: prs[event] for event in preforder if event in prs}
 
-    return render_template('profile.html', name=name, results=results, prs=prs)
+        # Get the athlete's most recent team
+        cur.execute('''
+            SELECT Team 
+            FROM Results 
+            WHERE Athlete = ? 
+            ORDER BY Date DESC 
+            LIMIT 1
+        ''', (name,))
+        team_result = cur.fetchone()
+        team = team_result[0] if team_result else "Unknown"
+
+    return render_template('profile.html', name=name, results=results, prs=prs, team=team)
 
 @app.route('/lookup_team/<athlete_name>')
 def lookup_team(athlete_name):

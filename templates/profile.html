@@ -1,56 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Athlete Profile</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ name }} - Athlete Profile</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
 </head>
 <body>
     {% include 'navbar.html' %}
     <div class="container">
-        <h1>{{ name }}</h1>
-        <h2>Personal Records</h2>
-        <table id="prs">
-            <tr>
-                <th>Event</th>
-                <th>Result</th>
-            </tr>
-            {% for event, result in prs.items() %}
-            <tr>
-                <td>{{ event }}</td>
-                <td>{{ result }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        <h2>Results</h2>   
-        <input type="text" id="filterInput" placeholder="Filter">             
-        <table class="results-table">
-            <thead>
-            <tr>
-                <th>Date</th>
-                <th>Meet</th>
-                <th>Event</th>
-                <th>Result</th>
-                <th>Team</th>
-            </tr>
-            </thead>
-            <tbody>
-                {% for result in results %}
-                <tr>
-                    <td>{{ result[1] }}</td>
-                    <td>
-                        <a href="{{ url_for('meet_results', meet_name=result[3]) }}">{{ result[3] }}</a>
-                    </td>
-                    <td>{{ result[4] }}</td>
-                    <td>{{ result[5] }}</td>
-                    <td>
-                        <a href="{{ url_for('team_results', team_name=result[6]) }}">{{ result[6] }}</a>
-                    </td>
-                </tr>
+        <header class="profile-header">
+            <h1>{{ name }}</h1>
+            <p class="athlete-team">Team: {{ team }}</p>
+        </header>
+        
+        <section class="personal-records">
+            <h2>Personal Records</h2>
+            <div class="pr-grid">
+                {% for event, result in prs.items() %}
+                <div class="pr-item">
+                    <span class="pr-event">{{ event }}</span>
+                    <span class="pr-result">{{ result }}</span>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
-        <br>
-        <a href="{{ url_for('home') }}" class="home-button">Home</a>
+            </div>
+        </section>
+        
+        <section class="results">
+            <h2>Results</h2>   
+            <input type="text" id="filterInput" placeholder="Filter results...">             
+            <table class="results-table">
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Meet</th>
+                    <th>Event</th>
+                    <th>Result</th>
+                    <th>Team</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result[1] }}</td>
+                        <td>
+                            <a href="{{ url_for('meet_results', meet_name=result[3]) }}">{{ result[3] }}</a>
+                        </td>
+                        <td>{{ result[4] }}</td>
+                        <td>{{ result[5] }}</td>
+                        <td>
+                            <a href="{{ url_for('team_results', team_name=result[6]) }}">{{ result[6] }}</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        
+        <a href="{{ url_for('home') }}" class="home-button">Back to Home</a>
     </div>
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
 </body>
+</html>
