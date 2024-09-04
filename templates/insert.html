@@ -1,29 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Insert Result</title>
+    <title>Insert Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        function addResultForm() {
+            const container = document.getElementById('results-container');
+            const lastForm = container.lastElementChild;
+            const newForm = lastForm.cloneNode(true);
+            
+            // Clone date, meet, and event
+            const dateValue = lastForm.querySelector('input[name="date[]"]').value;
+            const meetValue = lastForm.querySelector('input[name="meet[]"]').value;
+            const eventValue = lastForm.querySelector('input[name="event[]"]').value;
+            
+            newForm.querySelector('input[name="date[]"]').value = dateValue;
+            newForm.querySelector('input[name="meet[]"]').value = meetValue;
+            newForm.querySelector('input[name="event[]"]').value = eventValue;
+            
+            // Clear other fields
+            newForm.querySelector('input[name="athlete[]"]').value = '';
+            newForm.querySelector('input[name="result[]"]').value = '';
+            newForm.querySelector('input[name="team[]"]').value = '';
+            
+            container.appendChild(newForm);
+        }
+
+        function lookupTeam(athleteInput) {
+            const athleteName = athleteInput.value;
+            const teamInput = athleteInput.parentNode.querySelector('input[name="team[]"]');
+            
+            fetch(`/lookup_team/${encodeURIComponent(athleteName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.team) {
+                        teamInput.value = data.team;
+                    }
+                });
+        }
+    </script>
 </head>
 <body>
     {% include 'navbar.html' %}
     <div class="container">
-        <p>Insert New Result<p>
-        <form action="{{ url_for('insert_result') }}" method="post">
-            <label for="date">Date:</label><br>
-            <input type="date" id="date" name="date" required><br>
-            <label for="athlete">Athlete:</label><br>
-            <input type="text" id="athlete" name="athlete" required><br>
-            <label for="meet">Meet:</label><br>
-            <input type="text" id="meet" name="meet" required><br>
-            <label for="event">Event:</label><br>
-            <input type="text" id="event" name="event" required><br>
-            <label for="result">Result:</label><br>
-            <input type="text" id="result" name="result" required><br>
-            <label for="team">Team:</label><br>
-            <input type="text" id="team" name="team" required><br>
-            <input type="submit" value="Submit">
+        <h2>Insert New Results</h2>
+        <form action="{{ url_for('insert_result') }}" method="post" id="results-form">
+            <div id="results-container">
+                <div class="result-form">
+                    <label for="date">Date:</label><br>
+                    <input type="date" name="date[]" required><br>
+                    <label for="athlete">Athlete:</label><br>
+                    <input type="text" name="athlete[]" required onblur="lookupTeam(this)"><br>
+                    <label for="meet">Meet:</label><br>
+                    <input type="text" name="meet[]" required><br>
+                    <label for="event">Event:</label><br>
+                    <input type="text" name="event[]" required><br>
+                    <label for="result">Result:</label><br>
+                    <input type="text" name="result[]" required><br>
+                    <label for="team">Team:</label><br>
+                    <input type="text" name="team[]" required><br>
+                    <hr>
+                </div>
+            </div>
+            <button type="button" onclick="addResultForm()">Add Another Result</button>
+            <input type="submit" value="Submit All">
         </form>
-        <br>
     </div>
 </body>
 </html>

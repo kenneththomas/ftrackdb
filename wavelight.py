@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import sqlite3
 from sqlite3 import Error
 
@@ -53,15 +53,41 @@ def athlete_profile(name):
 
     return render_template('profile.html', name=name, results=results, prs=prs)
 
+@app.route('/lookup_team/<athlete_name>')
+def lookup_team(athlete_name):
+    conn = create_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute(''' 
+            SELECT Team 
+            FROM Results 
+            WHERE Athlete = ? 
+            ORDER BY Date DESC 
+            LIMIT 1
+        ''', (athlete_name,))
+        result = cur.fetchone()
+    
+    if result:
+        return jsonify({'team': result[0]})
+    else:
+        return jsonify({'team': None})
+
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
     if request.method == 'POST':
         conn = create_connection()
         with conn:
             cur = conn.cursor()
-            cur.execute('INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
-                        (request.form.get('date'), request.form.get('athlete'), request.form.get('meet'),
-                        request.form.get('event'), request.form.get('result'), request.form.get('team')))
+            dates = request.form.getlist('date[]')
+            athletes = request.form.getlist('athlete[]')
+            meets = request.form.getlist('meet[]')
+            events = request.form.getlist('event[]')
+            results = request.form.getlist('result[]')
+            teams = request.form.getlist('team[]')
+            
+            for i in range(len(dates)):
+                cur.execute('INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
+                            (dates[i], athletes[i], meets[i], events[i], results[i], teams[i]))
             conn.commit()
 
         return redirect(url_for('home'))
@@ -163,4 +189,4 @@ def search():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5006) 
+    app.run(host='0.0.0.0', debug=True, port=5006)
