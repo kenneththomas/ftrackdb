@@ -44,7 +44,8 @@ def athlete_profile(name):
         #preferred order of events
         preforder = ['60m','100m','100mH','110mH','200m','300m','400m','400m RS', '400mH',
                     '500m','600yd','600m','800m','1000m','1500m','Mile',
-                    '3000m','3200m','5000m','10000m',
+                    '3000m','3200m','5000m',
+                    '5K XC','5K Road','10000m','Half Marathon','Marathon',
                     'High Jump','Long Jump','Triple Jump',
                     'Shot Put','Discus','Pole Vault','Javelin',
                     '4x400m']
