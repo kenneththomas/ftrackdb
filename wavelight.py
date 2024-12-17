@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 import sqlite3
 from sqlite3 import Error
 
 app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
+app.secret_key = 'your_secret_key_here'
 
 def create_connection():
     conn = None
@@ -18,9 +19,14 @@ def home():
     conn = create_connection()
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT * FROM Results ORDER BY Date DESC LIMIT 25')
+        cur.execute('''
+            SELECT strftime('%Y-%m-%d', Date) as formatted_date, 
+                   Athlete, Meet_Name, Event, Result, Team 
+            FROM Results 
+            ORDER BY Date DESC 
+            LIMIT 25
+        ''')
         results = cur.fetchall()
-
     return render_template('index.html', results=results)
 
 @app.route('/athlete/<name>')
@@ -28,8 +34,13 @@ def athlete_profile(name):
     conn = create_connection()
     with conn:
         cur = conn.cursor()
-        # Select all results for the athlete
-        cur.execute('SELECT * FROM Results WHERE Athlete = ? ORDER BY Date DESC', (name,))
+        cur.execute('''
+            SELECT strftime('%Y-%m-%d', Date) as formatted_date,
+                   Meet_Name, Event, Result, Team
+            FROM Results 
+            WHERE Athlete = ? 
+            ORDER BY Date DESC
+        ''', (name,))
         results = cur.fetchall()
         
         # Select PRs for each event
@@ -64,7 +75,12 @@ def athlete_profile(name):
         team = result[0] if result else "Unknown"
         athlete_class = result[1] if result and result[1] else "Unknown"
 
-    return render_template('profile.html', name=name, results=results, prs=prs, team=team, athlete_class=athlete_class)
+    return render_template('profile.html', 
+                         name=name, 
+                         results=results, 
+                         prs=prs, 
+                         team=team, 
+                         athlete_class=athlete_class)
 
 @app.route('/lookup_team/<athlete_name>')
 def lookup_team(athlete_name):
@@ -88,22 +104,28 @@ def lookup_team(athlete_name):
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
     if request.method == 'POST':
-        conn = create_connection()
-        with conn:
-            cur = conn.cursor()
-            dates = request.form.getlist('date[]')
-            athletes = request.form.getlist('athlete[]')
-            meets = request.form.getlist('meet[]')
-            events = request.form.getlist('event[]')
-            results = request.form.getlist('result[]')
-            teams = request.form.getlist('team[]')
-            
-            for i in range(len(dates)):
-                cur.execute('INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
-                            (dates[i], athletes[i], meets[i], events[i], results[i], teams[i]))
-            conn.commit()
+        try:
+            conn = create_connection()
+            with conn:
+                cur = conn.cursor()
+                dates = request.form.getlist('date[]')
+                athletes = request.form.getlist('athlete[]')
+                meets = request.form.getlist('meet[]')
+                events = request.form.getlist('event[]')
+                results = request.form.getlist('result[]')
+                teams = request.form.getlist('team[]')
+                
+                for i in range(len(dates)):
+                    cur.execute('INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
+                                (dates[i], athletes[i], meets[i], events[i], results[i], teams[i]))
+                conn.commit()
 
-        return redirect(url_for('home'))
+            # Add success message
+            flash('Results successfully added!', 'success')
+            return redirect(url_for('home'))
+        except Exception as e:
+            flash(f'Error adding results: {str(e)}', 'error')
+            return redirect(url_for('insert_result'))
 
     return render_template('insert.html')
 
@@ -116,7 +138,7 @@ def delete_result():
             cur.execute('DELETE FROM Results WHERE Result_ID = ?', (request.form.get('result_id'),))
             conn.commit()
 
-        cur.execute('SELECT * FROM Results ORDER BY Result_ID DESC LIMIT 20')
+        cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result, Team FROM Results ORDER BY Result_ID DESC LIMIT 20')
         results = cur.fetchall()
 
     return render_template('delete.html', results=results)

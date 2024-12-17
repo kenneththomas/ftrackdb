@@ -44,14 +44,14 @@
                 <tbody>
                     {% for result in results %}
                     <tr>
-                        <td>{{ result[1] }}</td>
+                        <td>{{ result[0] }}</td>
                         <td>
-                            <a href="{{ url_for('meet_results', meet_name=result[3]) }}">{{ result[3] }}</a>
+                            <a href="{{ url_for('meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
-                        <td>{{ result[4] }}</td>
-                        <td>{{ result[5] }}</td>
+                        <td>{{ result[2] }}</td>
+                        <td>{{ result[3] }}</td>
                         <td>
-                            <a href="{{ url_for('team_results', team_name=result[6]) }}">{{ result[6] }}</a>
+                            <a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
                     </tr>
                     {% endfor %}
