@@ -7,9 +7,9 @@
 <body>
     <div class="container">
         <h1>Search Results</h1>
-        <form method="post" action="{{ url_for('search') }}">
-            <label for="athlete">Search by athlete name:</label>
-            <input type="text" name="athlete" id="athlete">
+        <form method="POST">
+            {{ form.csrf_token }}
+            {{ form.athlete }}
             <input type="submit" value="Search">
         </form>
         {% if results %}

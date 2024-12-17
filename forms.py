@@ -12,5 +12,5 @@ class ResultForm(FlaskForm):
     submit = SubmitField('Submit')
 
 class SearchForm(FlaskForm):
-    athlete = StringField('Athlete Name', validators=[DataRequired()])
+    athlete = StringField('Athlete', validators=[DataRequired()])
     submit = SubmitField('Search') 

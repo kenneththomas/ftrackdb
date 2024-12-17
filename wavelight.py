@@ -210,16 +210,17 @@ def meet_results(meet_name):
 #athlete search
 @app.route('/search', methods=['GET', 'POST'])
 def search():
-    if request.method == 'POST':
+    form = SearchForm()
+    if form.validate_on_submit():
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', ('%' + request.form.get('athlete') + '%',))
+            cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', 
+                       ('%' + form.athlete.data + '%',))
             results = cur.fetchall()
+        return render_template('search.html', form=form, results=results)
 
-        return render_template('search.html', results=results)
-
-    return render_template('search.html')
+    return render_template('search.html', form=form)
 
 @app.route('/delete_result/<int:result_id>', methods=['POST'])
 def delete_athlete_result(result_id):
