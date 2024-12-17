@@ -3,6 +3,7 @@
 <head>
     <title>Insert Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='insert.css') }}">
     <script>
         function addResultForm() {
             const container = document.getElementById('results-container');
@@ -67,19 +68,30 @@
             
             <div id="results-container">
                 <div class="result-form">
-                    <label for="date">Date:</label><br>
-                    <input type="date" name="date[]" required><br>
-                    <label for="athlete">Athlete:</label><br>
-                    <input type="text" name="athlete[]" required onblur="lookupTeam(this)"><br>
-                    <label for="meet">Meet:</label><br>
-                    <input type="text" name="meet[]" required><br>
-                    <label for="event">Event:</label><br>
-                    <input type="text" name="event[]" required><br>
-                    <label for="result">Result:</label><br>
-                    <input type="text" name="result[]" required><br>
-                    <label for="team">Team:</label><br>
-                    <input type="text" name="team[]" required><br>
-                    <hr>
+                    <div class="form-group">
+                        <label for="date">Date:</label>
+                        <input type="date" name="date[]" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="athlete">Athlete:</label>
+                        <input type="text" name="athlete[]" required onblur="lookupTeam(this)">
+                    </div>
+                    <div class="form-group">
+                        <label for="meet">Meet:</label>
+                        <input type="text" name="meet[]" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="event">Event:</label>
+                        <input type="text" name="event[]" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="result">Result:</label>
+                        <input type="text" name="result[]" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="team">Team:</label>
+                        <input type="text" name="team[]" required>
+                    </div>
                 </div>
             </div>
             <button type="button" onclick="addResultForm()">Add Another Result</button>
