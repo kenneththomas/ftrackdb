@@ -42,6 +42,11 @@ def athlete_profile(name):
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
     form = ResultForm()
+    if request.method == 'GET':
+        # Add today's date to the template context
+        from datetime import date
+        today = date.today().strftime('%Y-%m-%d')
+        return render_template('insert.html', form=form, today=today)
     if request.method == 'POST':
         try:
             print("Form submitted")  # Debug print
