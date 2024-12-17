@@ -54,16 +54,17 @@ def athlete_profile(name):
 
         # Get the athlete's most recent team
         cur.execute('''
-            SELECT Team 
+            SELECT Team, Class 
             FROM Results 
             WHERE Athlete = ? 
             ORDER BY Date DESC 
             LIMIT 1
         ''', (name,))
-        team_result = cur.fetchone()
-        team = team_result[0] if team_result else "Unknown"
+        result = cur.fetchone()
+        team = result[0] if result else "Unknown"
+        athlete_class = result[1] if result and result[1] else "Unknown"
 
-    return render_template('profile.html', name=name, results=results, prs=prs, team=team)
+    return render_template('profile.html', name=name, results=results, prs=prs, team=team, athlete_class=athlete_class)
 
 @app.route('/lookup_team/<athlete_name>')
 def lookup_team(athlete_name):
