@@ -29,7 +29,9 @@
 
         function lookupTeam(athleteInput) {
             const athleteName = athleteInput.value;
-            const teamInput = athleteInput.parentNode.querySelector('input[name="team[]"]');
+            // Find the parent result-form div and then find the team input within it
+            const resultForm = athleteInput.closest('.result-form');
+            const teamInput = resultForm.querySelector('input[name="team[]"]');
             
             fetch(`/lookup_team/${encodeURIComponent(athleteName)}`)
                 .then(response => response.json())
