@@ -24,11 +24,13 @@ def athlete_profile(name):
                 'Half Marathon', 'Marathon', 'High Jump', 'Long Jump',
                 'Triple Jump', 'Shot Put', 'Discus', 'Pole Vault', 'Javelin', '4x400m']
     
-    # sort prs by preferred order
-    prs = {event: prs[event] for event in preforder if event in prs}
+    # sort prs by preferred order (handle empty prs)
+    if prs:
+        prs = {event: prs[event] for event in preforder if event in prs}
     
-    team = athlete_info['Team'] if athlete_info else "Unknown"
-    athlete_class = athlete_info['Class'] if athlete_info and athlete_info['Class'] else "Unknown"
+    # Get team and class with defaults
+    team = athlete_info.get('Team', 'Unknown')
+    athlete_class = athlete_info.get('Class', 'Unknown')
     
     return render_template('profile.html', 
                          name=name, 
@@ -40,12 +42,37 @@ def athlete_profile(name):
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
     form = ResultForm()
-    if form.validate_on_submit():
+    if request.method == 'POST':
         try:
-            Result.insert_result(form)
+            print("Form submitted")  # Debug print
+            # Get all the arrays from the form
+            dates = request.form.getlist('date[]')
+            athletes = request.form.getlist('athlete[]')
+            meets = request.form.getlist('meet[]')
+            events = request.form.getlist('event[]')
+            results = request.form.getlist('result[]')
+            teams = request.form.getlist('team[]')
+            
+            print(f"Received data: {len(dates)} results")  # Debug print
+            print(f"First result: {dates[0]}, {athletes[0]}, {meets[0]}")  # Debug print
+            
+            # Insert each result
+            for i in range(len(dates)):
+                data = {
+                    'date': dates[i],
+                    'athlete': athletes[i],
+                    'meet': meets[i],
+                    'event': events[i],
+                    'result': results[i],
+                    'team': teams[i]
+                }
+                print(f"Inserting result {i+1}: {data}")  # Debug print
+                Result.insert_result(data)
+            
             flash('Results successfully added!', 'success')
             return redirect(url_for('home'))
         except Exception as e:
+            print(f"Error: {str(e)}")  # Debug print
             flash(f'Error adding results: {str(e)}', 'error')
     return render_template('insert.html', form=form)
 
@@ -156,6 +183,18 @@ def search():
 
     return render_template('search.html')
 
+@app.route('/delete_result/<int:result_id>', methods=['POST'])
+def delete_athlete_result(result_id):
+    try:
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('DELETE FROM Results WHERE Result_ID = ?', (result_id,))
+            conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error deleting result {result_id}: {str(e)}")  # Debug logging
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5006)

@@ -8,21 +8,19 @@ body {
 }
 .container {
     width: 50%;
-    margin: 20px auto;
-    padding: 30px;
-    background-color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    border-radius: 8px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff; /* added a white background for the container */
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* added a subtle shadow */
 }
 .index-container {
     width: 70%;
-    margin: 20px auto;
-    padding: 30px;
-    background-color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    transition: all 0.3s ease-in-out;
-    opacity: 1;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff; /* added a white background for the container */
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* added a subtle shadow */
+    transition: opacity 1s ease-in-out;
+    opacity: 0; /* Start invisible */
 }
 h1, h2 {
     color: #333;
@@ -103,38 +101,21 @@ tr:nth-of-type(4) {
     color: #1dbb7e;
 }
 
-/* Add styles for form elements */
-input[type="text"],
-input[type="date"] {
-    width: 100%;
-    padding: 8px;
-    margin: 8px 0;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
-}
-
-input[type="submit"],
-button {
-    background-color: #14c2b3;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    margin: 10px 0;
-    transition: background-color 0.3s ease;
-}
-
-input[type="submit"]:hover,
-button:hover {
-    background-color: #0fa396;
-}
-
-/* Add spacing between form elements */
-.result-form {
+.alert {
+    padding: 15px;
     margin-bottom: 20px;
-    padding: 20px;
-    background-color: #f8f8f8;
+    border: 1px solid transparent;
     border-radius: 4px;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error, .alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
 }

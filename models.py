@@ -1,6 +1,6 @@
-from flask import current_app
 import sqlite3
 from sqlite3 import Error
+from flask import current_app
 
 class Database:
     @staticmethod
@@ -33,10 +33,9 @@ class Result:
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            # Get results
+            # Make sure to include Result_ID in the SELECT statement
             cur.execute('''
-                SELECT strftime('%Y-%m-%d', Date) as formatted_date,
-                       Meet_Name, Event, Result, Team
+                SELECT Date, Meet_Name, Event, Result, Team, Result_ID 
                 FROM Results 
                 WHERE Athlete = ? 
                 ORDER BY Date DESC
@@ -50,7 +49,7 @@ class Result:
                 WHERE Athlete = ? 
                 GROUP BY Event
                 """, (name,))
-            prs = dict(cur.fetchall())
+            prs = dict(cur.fetchall() or [])  # Return empty dict if no PRs
             
             # Get athlete info
             cur.execute('''
@@ -60,21 +59,9 @@ class Result:
                 ORDER BY Date DESC 
                 LIMIT 1
             ''', (name,))
-            athlete_info = cur.fetchone()
+            athlete_info = dict(zip(['Team', 'Class'], cur.fetchone() or ['Unknown', 'Unknown']))
             
             return results, prs, athlete_info
-
-    @staticmethod
-    def insert_result(form_data):
-        conn = Database.get_connection()
-        with conn:
-            cur = conn.cursor()
-            cur.execute(
-                'INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
-                (form_data.date.data, form_data.athlete.data, form_data.meet.data, 
-                 form_data.event.data, form_data.result.data, form_data.team.data)
-            )
-            conn.commit() 
 
     @staticmethod
     def get_meet_results(meet_name):
@@ -89,3 +76,24 @@ class Result:
                 ORDER BY Event, Result ASC
             ''', (meet_name,))
             return cur.fetchall()
+
+    @staticmethod
+    def insert_result(data):
+        conn = Database.get_connection()
+        if not conn:
+            raise Exception("Could not connect to database")
+        
+        try:
+            with conn:
+                cur = conn.cursor()
+                cur.execute(
+                    'INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
+                    (data['date'], data['athlete'], data['meet'], 
+                     data['event'], data['result'], data['team'])
+                )
+                conn.commit()
+        except Exception as e:
+            raise Exception(f"Failed to insert result: {str(e)}")
+        finally:
+            if conn:
+                conn.close()

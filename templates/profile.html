@@ -6,6 +6,7 @@
     <title>{{ name }} - Athlete Profile</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -39,6 +40,7 @@
                     <th>Event</th>
                     <th>Result</th>
                     <th>Team</th>
+                    <th>Actions</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -53,6 +55,10 @@
                         <td>
                             <a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
+                        <td>
+                            <!-- Debug: {{ result[5] }} -->
+                            <button class="delete-btn" data-result-id="{{ result[5] }}">Delete</button>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -62,5 +68,40 @@
         <a href="{{ url_for('home') }}" class="home-button">Back to Home</a>
     </div>
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
+    <script>
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const resultId = this.getAttribute('data-result-id');
+            console.log('Deleting result:', resultId);
+            
+            if (confirm('Are you sure you want to delete this result?')) {
+                const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                
+                fetch(`/delete_result/${resultId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf_token
+                    }
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        this.closest('tr').remove();
+                    } else {
+                        alert('Error deleting result');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting result');
+                });
+            }
+        });
+    });
+    </script>
 </body>
 </html>
