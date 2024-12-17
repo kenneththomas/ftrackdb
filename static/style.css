@@ -141,3 +141,8 @@ tr:nth-of-type(4) {
     text-align: center;
     margin-bottom: 30px;
 }
+
+table td:empty::before {
+    content: "—";
+    color: #ddd;
+}

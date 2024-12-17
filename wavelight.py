@@ -161,13 +161,46 @@ def team_results(team_name):
     conn = Database.get_connection()
     with conn:
         cur = conn.cursor()
+        # Get team results
         cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result FROM Results WHERE Team = ? ORDER BY Date DESC', (team_name,))
         team_results = cur.fetchall()
-        # get all athletes associated with the team
+        
+        # Get all athletes associated with the team
         cur.execute('SELECT DISTINCT Athlete FROM Results WHERE Team = ?', (team_name,))
         team_athletes = cur.fetchall()
+        
+        # Get personal bests for each athlete in each event
+        team_pbs = {}
+        events = ['100m', '200m', '400m', '800m', '1500m', '3000m', '5000m', '10000m']
+        
+        for athlete in team_athletes:
+            athlete_name = athlete[0]
+            team_pbs[athlete_name] = {}
+            
+            for event in events:
+                cur.execute('''
+                    SELECT Result 
+                    FROM Results 
+                    WHERE Team = ? 
+                    AND Athlete = ? 
+                    AND Event = ?
+                    ORDER BY 
+                        CASE 
+                            WHEN Event IN ('100m', '200m', '400m', '800m', '1500m', '3000m', '5000m', '10000m') 
+                            THEN CAST(REPLACE(Result, ':', '') AS DECIMAL) 
+                        END ASC
+                    LIMIT 1
+                ''', (team_name, athlete_name, event))
+                
+                result = cur.fetchone()
+                if result:
+                    team_pbs[athlete_name][event] = result[0]
 
-    return render_template('team.html', team_name=team_name, results=team_results, athletes=team_athletes)
+    return render_template('team.html', 
+                         team_name=team_name, 
+                         results=team_results, 
+                         athletes=team_athletes,
+                         team_pbs=team_pbs)
 
 @app.route('/meet/<meet_name>')
 def meet_results(meet_name):

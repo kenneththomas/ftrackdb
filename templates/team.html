@@ -6,23 +6,34 @@
 </head>
 <body>
     {% include 'navbar.html' %}
+
     <div class="container">
+        <h1>{{ team_name }} Personal Bests</h1>
         {% if athletes %}
-            <h1>{{ team_name }} Roster</h1>
-            <table id="team_athletes">
+            <table>
                 <tr>
-                    <th>Roster</th>
+                    <th>Athlete</th>
+                    <th>100m</th>
+                    <th>200m</th>
+                    <th>400m</th>
+                    <th>800m</th>
+                    <th>1500m</th>
+                    <th>3000m</th>
+                    <th>5000m</th>
+                    <th>10000m</th>
                 </tr>
                 {% for athlete in athletes %}
                     <tr>
                         <td><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
+                        {% for event in ['100m', '200m', '400m', '800m', '1500m', '3000m', '5000m', '10000m'] %}
+                            <td>{{ team_pbs.get(athlete[0], {}).get(event, '') }}</td>
+                        {% endfor %}
                     </tr>
                 {% endfor %}
             </table>
-        {% else %}
-            <p>No athletes available for {{ team_name }}.</p>
         {% endif %}
     </div>
+
     <div class="container">
         <h1>{{ team_name }} Results</h1>
         {% if results %}
