@@ -43,13 +43,11 @@ def athlete_profile(name):
 def insert_result():
     form = ResultForm()
     if request.method == 'GET':
-        # Add today's date to the template context
         from datetime import date
         today = date.today().strftime('%Y-%m-%d')
         return render_template('insert.html', form=form, today=today)
     if request.method == 'POST':
         try:
-            print("Form submitted")  # Debug print
             # Get all the arrays from the form
             dates = request.form.getlist('date[]')
             athletes = request.form.getlist('athlete[]')
@@ -57,9 +55,6 @@ def insert_result():
             events = request.form.getlist('event[]')
             results = request.form.getlist('result[]')
             teams = request.form.getlist('team[]')
-            
-            print(f"Received data: {len(dates)} results")  # Debug print
-            print(f"First result: {dates[0]}, {athletes[0]}, {meets[0]}")  # Debug print
             
             # Insert each result
             for i in range(len(dates)):
@@ -71,14 +66,22 @@ def insert_result():
                     'result': results[i],
                     'team': teams[i]
                 }
-                print(f"Inserting result {i+1}: {data}")  # Debug print
                 Result.insert_result(data)
             
+            # If the request wants JSON, return JSON response
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': True})
+            
+            # Otherwise, flash message and redirect
             flash('Results successfully added!', 'success')
             return redirect(url_for('home'))
+            
         except Exception as e:
             print(f"Error: {str(e)}")  # Debug print
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': str(e)}), 500
             flash(f'Error adding results: {str(e)}', 'error')
+            
     return render_template('insert.html', form=form)
 
 @app.route('/lookup_team/<athlete_name>')

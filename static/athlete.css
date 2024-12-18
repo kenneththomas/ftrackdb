@@ -104,3 +104,30 @@ body {
 .home-button:hover {
     background-color: #0056b3;
 }
+
+.quick-insert {
+    margin: 2rem 0;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 5px;
+}
+
+.quick-insert form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.quick-insert .submit-btn {
+    grid-column: 1 / -1;
+    padding: 0.5rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.quick-insert .submit-btn:hover {
+    background: #0056b3;
+}
