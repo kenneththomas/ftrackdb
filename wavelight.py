@@ -10,8 +10,9 @@ csrf = CSRFProtect(app)
 
 @app.route('/')
 def home():
+    form = SearchForm()
     results = Result.get_recent_results()
-    return render_template('index.html', results=results)
+    return render_template('index.html', results=results, form=form)
 
 @app.route('/athlete/<name>')
 def athlete_profile(name):
@@ -218,6 +219,7 @@ def search():
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
+            
             cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', 
                        ('%' + form.athlete.data + '%',))
             results = cur.fetchall()
