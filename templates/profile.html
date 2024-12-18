@@ -65,7 +65,8 @@
             </table>
         </section>
         
-        <section class="quick-insert">
+        <button id="showQuickInsert" class="show-quick-insert-btn">Add New Result</button>
+        <section class="quick-insert" style="display: none;">
             <h2>Add New Result</h2>
             <form id="quick-insert-form" class="result-form">
                 <input type="hidden" name="athlete[]" value="{{ name }}">
@@ -95,6 +96,17 @@
     </div>
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
     <script>
+    document.getElementById('showQuickInsert').addEventListener('click', function() {
+        const quickInsertSection = document.querySelector('.quick-insert');
+        if (quickInsertSection.style.display === 'none') {
+            quickInsertSection.style.display = 'block';
+            this.textContent = 'Hide Form';
+        } else {
+            quickInsertSection.style.display = 'none';
+            this.textContent = 'Add New Result';
+        }
+    });
+
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.addEventListener('click', function() {
             const resultId = this.getAttribute('data-result-id');
