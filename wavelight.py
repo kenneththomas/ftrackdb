@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_wtf import CSRFProtect
 from forms import ResultForm, SearchForm
-from models import Result, Database
+from models import Result, Database, Athlete
 
 app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
@@ -16,7 +16,7 @@ def home():
 
 @app.route('/athlete/<name>')
 def athlete_profile(name):
-    results, prs, athlete_info = Result.get_athlete_results(name)
+    results, prs, athlete_info, bio = Result.get_athlete_results(name)
     
     # preferred order of events
     preforder = ['60m', '100m', '100mH', '110mH', '200m', '300m', '400m', '400m RS', '400mH',
@@ -38,7 +38,8 @@ def athlete_profile(name):
                          results=results, 
                          prs=prs, 
                          team=team, 
-                         athlete_class=athlete_class)
+                         athlete_class=athlete_class,
+                         bio=bio)
 
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
@@ -238,6 +239,15 @@ def delete_athlete_result(result_id):
         return jsonify({'success': True})
     except Exception as e:
         print(f"Error deleting result {result_id}: {str(e)}")  # Debug logging
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/update_bio/<name>', methods=['POST'])
+def update_bio(name):
+    try:
+        bio = request.form.get('bio')
+        Athlete.update_bio(name, bio)
+        return jsonify({'success': True})
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':

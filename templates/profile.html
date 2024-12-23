@@ -7,6 +7,96 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+    .bio-section {
+        margin: 20px 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .bio-section h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #333;
+    }
+
+    #bio-display {
+        min-height: 100px;
+        padding: 15px;
+        background-color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        line-height: 1.6;
+    }
+
+    #bio-display:hover {
+        background-color: #f0f0f0;
+    }
+
+    #bio-display.empty-bio {
+        color: #666;
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #bio-textarea {
+        width: 100%;
+        min-height: 150px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 1rem;
+        line-height: 1.6;
+        resize: vertical;
+        transition: border-color 0.2s;
+    }
+
+    #bio-textarea:focus {
+        outline: none;
+        border-color: #14c2b3;
+        box-shadow: 0 0 0 2px rgba(20, 194, 179, 0.1);
+    }
+
+    .bio-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .bio-btn {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .bio-btn.save {
+        background-color: #14c2b3;
+        color: white;
+    }
+
+    .bio-btn.save:hover {
+        background-color: #10a99c;
+    }
+
+    .bio-btn.cancel {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .bio-btn.cancel:hover {
+        background-color: #5a6268;
+    }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -15,6 +105,21 @@
             <h1>{{ name }}</h1>
             <p class="athlete-team">Team: {{ team }}</p>
             <p class="athlete-class">Class: {{ athlete_class }}</p>
+            
+            <!-- Add bio section -->
+            <div class="bio-section">
+                <h3>About</h3>
+                <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
+                    {{ bio or "No bio available. Click to add one." }}
+                </div>
+                <div id="bio-edit" style="display: none;">
+                    <textarea id="bio-textarea" placeholder="Write something about this athlete...">{{ bio or "" }}</textarea>
+                    <div class="bio-buttons">
+                        <button id="save-bio" class="bio-btn save">Save</button>
+                        <button id="cancel-bio" class="bio-btn cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
         </header>
         
         <section class="personal-records">
@@ -167,6 +272,45 @@
 
     // Set today's date as default
     document.querySelector('input[name="date[]"]').valueAsDate = new Date();
+
+    document.getElementById('bio-display').addEventListener('click', function() {
+        document.getElementById('bio-display').style.display = 'none';
+        document.getElementById('bio-edit').style.display = 'block';
+    });
+
+    document.getElementById('cancel-bio').addEventListener('click', function() {
+        document.getElementById('bio-edit').style.display = 'none';
+        document.getElementById('bio-display').style.display = 'block';
+    });
+
+    document.getElementById('save-bio').addEventListener('click', function() {
+        const bio = document.getElementById('bio-textarea').value;
+        const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch(`/update_bio/{{ name }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrf_token
+            },
+            body: `bio=${encodeURIComponent(bio)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('bio-display').textContent = bio || "No bio available. Click to add one.";
+                document.getElementById('bio-display').classList.toggle('empty-bio', !bio);
+                document.getElementById('bio-edit').style.display = 'none';
+                document.getElementById('bio-display').style.display = 'block';
+            } else {
+                alert('Error saving bio');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving bio');
+        });
+    });
     </script>
 </body>
 </html>

@@ -9,9 +9,30 @@ class Database:
         try:
             conn = sqlite3.connect(current_app.config['DATABASE'])
             conn.row_factory = sqlite3.Row
+            # Initialize tables on connection
+            Database.initialize_tables(conn)
         except Error as e:
             print(e)
         return conn
+
+    @staticmethod
+    def initialize_tables(conn):
+        try:
+            cur = conn.cursor()
+            
+            # Create Athletes table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Athletes (
+                    athlete_name TEXT PRIMARY KEY,
+                    bio TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            conn.commit()
+        except Error as e:
+            print(f"Error initializing tables: {e}")
 
 class Result:
     @staticmethod
@@ -61,7 +82,12 @@ class Result:
             ''', (name,))
             athlete_info = dict(zip(['Team', 'Class'], cur.fetchone() or ['Unknown', 'Unknown']))
             
-            return results, prs, athlete_info
+            # Add bio lookup
+            cur.execute('SELECT bio FROM Athletes WHERE athlete_name = ?', (name,))
+            bio = cur.fetchone()
+            bio = bio[0] if bio else None
+            
+            return results, prs, athlete_info, bio
 
     @staticmethod
     def get_meet_results(meet_name):
@@ -97,3 +123,26 @@ class Result:
         finally:
             if conn:
                 conn.close()
+
+class Athlete:
+    @staticmethod
+    def get_bio(name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT bio FROM Athletes WHERE athlete_name = ?', (name,))
+            result = cur.fetchone()
+            return result[0] if result else None
+
+    @staticmethod
+    def update_bio(name, bio):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO Athletes (athlete_name, bio) 
+                VALUES (?, ?)
+                ON CONFLICT(athlete_name) 
+                DO UPDATE SET bio = ?, updated_at = CURRENT_TIMESTAMP
+            ''', (name, bio, bio))
+            conn.commit()
