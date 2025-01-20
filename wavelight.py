@@ -25,9 +25,37 @@ def athlete_profile(name):
                 'Half Marathon', 'Marathon', 'High Jump', 'Long Jump',
                 'Triple Jump', 'Shot Put', 'Discus', 'Pole Vault', 'Javelin', '4x400m']
     
+    # Get annual PRs (last 365 days)
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('''
+            WITH RankedResults AS (
+                SELECT 
+                    Event,
+                    Result,
+                    ROW_NUMBER() OVER (PARTITION BY Event ORDER BY 
+                        CASE 
+                            WHEN Event IN ('100m', '200m', '400m', '800m', '1500m', '3000m', '5000m', '10000m') 
+                            THEN CAST(REPLACE(Result, ':', '') AS DECIMAL)
+                            ELSE Result 
+                        END ASC) as rn
+                FROM Results 
+                WHERE Athlete = ? 
+                AND Date >= date('now', '-365 days')
+            )
+            SELECT Event, Result
+            FROM RankedResults
+            WHERE rn = 1
+            ORDER BY Event
+        ''', (name,))
+        annual_prs = dict(cur.fetchall())
+    
     # sort prs by preferred order (handle empty prs)
     if prs:
         prs = {event: prs[event] for event in preforder if event in prs}
+    if annual_prs:
+        annual_prs = {event: annual_prs[event] for event in preforder if event in annual_prs}
     
     # Get team and class with defaults
     team = athlete_info.get('Team', 'Unknown')
@@ -36,7 +64,8 @@ def athlete_profile(name):
     return render_template('profile.html', 
                          name=name, 
                          results=results, 
-                         prs=prs, 
+                         prs=prs,
+                         annual_prs=annual_prs,
                          team=team, 
                          athlete_class=athlete_class,
                          bio=bio)

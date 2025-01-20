@@ -126,9 +126,21 @@
         </header>
         
         <section class="personal-records">
-            <h2>Personal Records</h2>
+            <h2>All-Time Personal Records</h2>
             <div class="pr-grid">
                 {% for event, result in prs.items() %}
+                <div class="pr-item">
+                    <span class="pr-event">{{ event }}</span>
+                    <span class="pr-result">{{ result }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="personal-records">
+            <h2>Season Bests</h2>
+            <div class="pr-grid">
+                {% for event, result in annual_prs.items() %}
                 <div class="pr-item">
                     <span class="pr-event">{{ event }}</span>
                     <span class="pr-result">{{ result }}</span>
