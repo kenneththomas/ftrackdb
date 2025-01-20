@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ event }} Leaderboard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container">
+        <h1>{{ event }} Leaderboard</h1>
+        {% if results %}
+            <table>
+                <tr>
+                    <th>Event</th>
+                    <th>Athlete</th>
+                    <th>Result</th>
+                    <th>Team</th>
+                </tr>                    
+                {% for result in results %}
+                    <tr>
+                        <td>{{ result[0] }}</td>
+                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td>{{ result[2] }}</td>
+                        <td><a href="{{ url_for('team_results', team_name=result[3]) }}">{{ result[3] }}</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+            
+            <!-- Pagination -->
+            <div class="pagination">
+                {% if page > 1 %}
+                    <a href="{{ url_for('event_leaderboard', event=event, page=page-1) }}">&laquo; Previous</a>
+                {% endif %}
+                
+                <span>Page {{ page }} of {{ total_pages }}</span>
+                
+                {% if page < total_pages %}
+                    <a href="{{ url_for('event_leaderboard', event=event, page=page+1) }}">Next &raquo;</a>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>No results available for this event.</p>
+        {% endif %}
+        <br>
+        <a href="{{ url_for('leaderboard') }}" class="back-button">Back to Events</a>
+        <a href="{{ url_for('home') }}" class="home-button">Home</a>
+    </div>
+</body>
+</html> 

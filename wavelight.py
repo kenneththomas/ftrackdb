@@ -124,42 +124,51 @@ def leaderboard():
     conn = Database.get_connection()
     with conn:
         cur = conn.cursor()
-        cur.execute('SELECT Event, Athlete, Result, Team FROM Results ORDER BY Event ASC, Result ASC')
+        # Get all distinct events and count of results for each event
+        cur.execute('''
+            SELECT Event, COUNT(DISTINCT Athlete) as athlete_count 
+            FROM Results 
+            GROUP BY Event 
+            ORDER BY Event ASC
+        ''')
+        event_data = cur.fetchall()
+    return render_template('leaderboard.html', event_data=event_data)
+
+@app.route('/leaderboard/<event>')
+def event_leaderboard(event):
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+    
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        # Get total count for pagination
+        cur.execute('SELECT COUNT(DISTINCT Athlete) FROM Results WHERE Event = ?', (event,))
+        total_results = cur.fetchone()[0]
+        
+        # Get paginated results
+        cur.execute('''
+            SELECT Event, Athlete, Result, Team 
+            FROM Results 
+            WHERE Event = ? 
+            GROUP BY Athlete 
+            ORDER BY 
+                CASE 
+                    WHEN Event = '100m' THEN CAST(Result AS FLOAT)
+                    ELSE Result 
+                END ASC
+            LIMIT ? OFFSET ?
+        ''', (event, per_page, offset))
         results = cur.fetchall()
-
-    leaderboard_results = {}
-    current_event = None
-    event_results = []
-
-    for result in results:
-        event = result[0]
-        if current_event is None or event != current_event:
-            if current_event is not None:
-                if current_event != '100m':
-                    event_results.sort(key=lambda x: x[2])  # Sort event results by time
-                else:
-                    event_results.sort(key=lambda x: float(x[2]))  # Sort event results by time
-                leaderboard_results[current_event] = event_results
-            current_event = event
-            event_results = []
-
-        event_results.append(result)
-
-    if current_event is not None:
-        event_results.sort(key=lambda x: x[2])  # Sort the last event results by time
-        leaderboard_results[current_event] = event_results
-
-    #discard duplicate athletes
-    for event in leaderboard_results:
-        athletes = set()
-        leaderboard_results[event] = [result for result in leaderboard_results[event]
-                                      if not (result[1] in athletes or athletes.add(result[1]))]
-
-    #only use top 20 results
-    for event in leaderboard_results:
-        leaderboard_results[event] = leaderboard_results[event][:20]
-
-    return render_template('leaderboard.html', results=leaderboard_results)
+    
+    total_pages = (total_results + per_page - 1) // per_page
+    
+    return render_template('event_leaderboard.html', 
+                         event=event,
+                         results=results,
+                         page=page,
+                         total_pages=total_pages)
 
 @app.route('/team/<team_name>')
 def team_results(team_name):

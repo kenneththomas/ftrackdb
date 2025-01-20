@@ -7,30 +7,17 @@
 <body>
     {% include 'navbar.html' %}
     <div class="container">
-        <h1>Leaderboard</h1>
-        {% if results %}
-            {% for event, event_results in results.items() %}
-                <h2>{{ event }}</h2>
-                <table>
-                    <tr>
-                        <th>Event</th>
-                        <th>Athlete</th>
-                        <th>Result</th>
-                        <th>Team</th>
-                    </tr>                    
-                    {% for result in event_results %}
-                        <tr>
-                            <td>{{ result[0] }}</td>
-                            <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
-                            <td>{{ result[2] }}</td>
-                            <td><a href="{{ url_for('team_results', team_name=result[3]) }}">{{ result[3] }}</a></td>
-                        </tr>
-                    {% endfor %}
-                </table>
+        <h1>Track & Field Events</h1>
+        <div class="event-list">
+            {% for event, count in event_data %}
+                <div class="event-card">
+                    <a href="{{ url_for('event_leaderboard', event=event) }}">
+                        <h3>{{ event }}</h3>
+                        <p>{{ count }} Athletes</p>
+                    </a>
+                </div>
             {% endfor %}
-        {% else %}
-            <p>No results available.</p>
-        {% endif %}
+        </div>
         <br>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>

@@ -162,3 +162,58 @@ table td:empty::before {
     content: "—";
     color: #ddd;
 }
+
+.event-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.event-card {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.event-card:hover {
+    background: #e0e0e0;
+}
+
+.pagination {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.pagination a {
+    padding: 8px 16px;
+    margin: 0 4px;
+    border: 1px solid #ddd;
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+.pagination a:hover {
+    background-color: #f5f5f5;
+}
+
+.pagination span {
+    padding: 8px 16px;
+    margin: 0 4px;
+}
+
+.back-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #666;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+.back-button:hover {
+    background-color: #555;
+}
