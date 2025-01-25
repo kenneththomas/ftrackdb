@@ -99,6 +99,30 @@
     .bio-btn.cancel:hover {
         background-color: #5a6268;
     }
+
+    .edit-btn, .save-btn, .cancel-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 5px;
+        margin: 0 2px;
+        font-size: 1.1em;
+    }
+    
+    .edit-btn:hover { color: #14c2b3; }
+    .save-btn:hover { color: #28a745; }
+    .cancel-btn:hover { color: #dc3545; }
+    
+    .editing {
+        background-color: #fff8dc;
+    }
+    
+    .editable input {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #14c2b3;
+        border-radius: 4px;
+    }
     </style>
 </head>
 <body>
@@ -165,19 +189,21 @@
                 </thead>
                 <tbody>
                     {% for result in results %}
-                    <tr>
-                        <td>{{ result[0] }}</td>
-                        <td>
+                    <tr data-result-id="{{ result[5] }}">
+                        <td class="editable" data-field="date">{{ result[0] }}</td>
+                        <td class="editable" data-field="meet">
                             <a href="{{ url_for('meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
-                        <td>{{ result[2] }}</td>
-                        <td>{{ result[3] }}</td>
-                        <td>
+                        <td class="editable" data-field="event">{{ result[2] }}</td>
+                        <td class="editable" data-field="result">{{ result[3] }}</td>
+                        <td class="editable" data-field="team">
                             <a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
                         <td>
-                            <!-- Debug: {{ result[5] }} -->
-                            <button class="delete-btn" data-result-id="{{ result[5] }}">×</button>
+                            <button class="edit-btn" title="Edit">✎</button>
+                            <button class="save-btn" style="display: none;" title="Save">✓</button>
+                            <button class="cancel-btn" style="display: none;" title="Cancel">✗</button>
+                            <button class="delete-btn" data-result-id="{{ result[5] }}" title="Delete">×</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -324,6 +350,92 @@
         .catch(error => {
             console.error('Error:', error);
             alert('Error saving bio');
+        });
+    });
+
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const row = this.closest('tr');
+            const resultId = row.dataset.resultId;
+            
+            // Show save/cancel buttons, hide edit button
+            row.querySelector('.edit-btn').style.display = 'none';
+            row.querySelector('.save-btn').style.display = 'inline';
+            row.querySelector('.cancel-btn').style.display = 'inline';
+            
+            // Store original values and make cells editable
+            row.querySelectorAll('.editable').forEach(cell => {
+                const field = cell.dataset.field;
+                const originalText = cell.textContent.trim();
+                cell.dataset.original = originalText;
+                
+                // Create input field
+                const input = document.createElement('input');
+                input.type = field === 'date' ? 'date' : 'text';
+                input.value = originalText;
+                
+                // Clear cell and add input
+                cell.textContent = '';
+                cell.appendChild(input);
+                cell.classList.add('editing');
+            });
+        });
+    });
+
+    document.querySelectorAll('.cancel-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const row = this.closest('tr');
+            
+            // Restore original values
+            row.querySelectorAll('.editable').forEach(cell => {
+                cell.textContent = cell.dataset.original;
+                cell.classList.remove('editing');
+            });
+            
+            // Reset buttons
+            row.querySelector('.edit-btn').style.display = 'inline';
+            row.querySelector('.save-btn').style.display = 'none';
+            row.querySelector('.cancel-btn').style.display = 'none';
+        });
+    });
+
+    document.querySelectorAll('.save-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const row = this.closest('tr');
+            const resultId = row.dataset.resultId;
+            const updates = {};
+            
+            // Collect updated values
+            row.querySelectorAll('.editable').forEach(cell => {
+                const field = cell.dataset.field;
+                const input = cell.querySelector('input');
+                updates[field] = input.value;
+            });
+            
+            const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            // Send update request
+            fetch(`/update_result/${resultId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token
+                },
+                body: JSON.stringify(updates)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the display
+                    window.location.reload(); // Reload to show updated values
+                } else {
+                    alert('Error updating result');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating result');
+            });
         });
     });
     </script>

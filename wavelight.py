@@ -288,5 +288,40 @@ def update_bio(name):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/update_result/<int:result_id>', methods=['POST'])
+def update_result(result_id):
+    try:
+        data = request.json
+        # Map frontend field names to database column names
+        field_mapping = {
+            'meet': 'Meet_Name',
+            'date': 'Date',
+            'event': 'Event',
+            'result': 'Result',
+            'team': 'Team'
+        }
+        
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            # Update each field that was changed
+            updates = []
+            values = []
+            for field, value in data.items():
+                db_field = field_mapping.get(field)
+                if db_field:
+                    updates.append(f"{db_field} = ?")
+                    values.append(value)
+            values.append(result_id)
+            
+            query = f"UPDATE Results SET {', '.join(updates)} WHERE Result_ID = ?"
+            cur.execute(query, values)
+            conn.commit()
+            
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error updating result {result_id}: {str(e)}")  # Debug logging
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5006)
