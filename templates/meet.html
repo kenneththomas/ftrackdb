@@ -7,34 +7,42 @@
 <body>
     {% include 'navbar.html' %}
     <div class="container">
- 
         <h1>{{ meet_name }} Results</h1>
-        {% if results %}
-        <input type="text" id="filterInput" placeholder="Filter">    
-            <table class="results-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Athlete</th>
-                        <th>Event</th>
-                        <th>Result</th>
-                        <th>Team</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for result in results %}
-                    <tr>
-                        <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
-                        <td>{{ result[2] }}</td>
-                        <td>{{ result[3] }}</td>
-                        <td>
-                            <a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        {% if events %}
+            <input type="text" id="filterInput" placeholder="Filter">
+            {% for event, results in events.items() %}
+                <h2>{{ event }}</h2>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Place</th>
+                            <th>Date</th>
+                            <th>Athlete</th>
+                            <th>Result</th>
+                            <th>Team</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.place }}</td>
+                            <td>{{ result.date }}</td>
+                            <td>
+                                <a href="{{ url_for('athlete_profile', name=result.athlete) }}">
+                                    {{ result.athlete }}
+                                </a>
+                            </td>
+                            <td>{{ result.result }}</td>
+                            <td>
+                                <a href="{{ url_for('team_results', team_name=result.team) }}">
+                                    {{ result.team }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
         {% else %}
             <p>No results available for {{ meet_name }}.</p>
         {% endif %}

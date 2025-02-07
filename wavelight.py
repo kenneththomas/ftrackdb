@@ -247,8 +247,25 @@ def team_results(team_name):
 
 @app.route('/meet/<meet_name>')
 def meet_results(meet_name):
-    results = Result.get_meet_results(meet_name)
-    return render_template('meet.html', meet_name=meet_name, results=results)
+    raw_results = Result.get_meet_results(meet_name)
+    # Group results by event
+    events = {}
+    for row in raw_results:
+        date, athlete, event, result, team = row
+        if event not in events:
+            events[event] = []
+        events[event].append({
+            'date': date,
+            'athlete': athlete,
+            'result': result,
+            'team': team
+        })
+    # Add place numbers for each event group (starting at 1)
+    for event_name, records in events.items():
+        for place, record in enumerate(records, start=1):
+            record['place'] = place
+
+    return render_template('meet.html', meet_name=meet_name, events=events)
 
 #athlete search
 @app.route('/search', methods=['GET', 'POST'])
