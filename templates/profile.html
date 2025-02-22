@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ name }} - Athlete Profile</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
@@ -122,6 +122,89 @@
         padding: 5px;
         border: 1px solid #14c2b3;
         border-radius: 4px;
+    }
+
+    /* Add these mobile-specific styles */
+    @media screen and (max-width: 768px) {
+        .container {
+            padding: 10px;
+            margin: 0;
+        }
+
+        .profile-header {
+            text-align: center;
+        }
+
+        .bio-section {
+            margin: 10px 0;
+            padding: 15px;
+        }
+
+        .pr-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .results-table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .results-table th,
+        .results-table td {
+            min-width: 120px;
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+
+        /* Stack form elements vertically */
+        .result-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            width: 100%;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+        }
+
+        /* Make buttons more touch-friendly */
+        .bio-btn,
+        .submit-btn,
+        .show-quick-insert-btn,
+        .home-button {
+            padding: 12px 20px;
+            min-height: 44px; /* Minimum touch target size */
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        .edit-btn, 
+        .save-btn, 
+        .cancel-btn,
+        .delete-btn {
+            padding: 8px;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        /* Adjust filter input */
+        #filterInput {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        /* Stack bio buttons vertically */
+        .bio-buttons {
+            flex-direction: column;
+            gap: 8px;
+        }
     }
     </style>
 </head>

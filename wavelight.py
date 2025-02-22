@@ -212,9 +212,9 @@ def team_results(team_name):
         cur.execute('SELECT DISTINCT Athlete FROM Results WHERE Team = ?', (team_name,))
         team_athletes = cur.fetchall()
         
-        # Get personal bests for each athlete in each event
+        # Get personal bests for each athlete in each event, now including 'Mile'
+        events = ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m']
         team_pbs = {}
-        events = ['100m', '200m', '400m', '800m', '1500m', '3000m', '5000m', '10000m']
         
         for athlete in team_athletes:
             athlete_name = athlete[0]
@@ -229,7 +229,7 @@ def team_results(team_name):
                     AND Event = ?
                     ORDER BY 
                         CASE 
-                            WHEN Event IN ('100m', '200m', '400m', '800m', '1500m', '3000m', '5000m', '10000m') 
+                            WHEN Event IN ('100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m') 
                             THEN CAST(REPLACE(Result, ':', '') AS DECIMAL) 
                         END ASC
                     LIMIT 1
