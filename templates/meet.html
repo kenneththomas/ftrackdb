@@ -4,19 +4,44 @@
     <title>{{ meet_name }} Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<style>
+    .event-header {
+        background: linear-gradient(to right, #2c3e50, #3498db);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin: 20px 0 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .event-name {
+        font-size: 1.4em;
+        font-weight: bold;
+    }
+    
+    .event-date {
+        font-size: 1.1em;
+        opacity: 0.9;
+    }
+</style>
 <body>
     {% include 'navbar.html' %}
     <div class="container">
         <h1>{{ meet_name }} Results</h1>
         {% if events %}
             <input type="text" id="filterInput" placeholder="Filter">
-            {% for event, results in events.items() %}
-                <h2>{{ event }}</h2>
+            {% for (event, date), results in events.items() %}
+                <div class="event-header">
+                    <span class="event-name">{{ event }}</span>
+                    <span class="event-date">{{ date }}</span>
+                </div>
                 <table class="results-table">
                     <thead>
                         <tr>
                             <th>Place</th>
-                            <th>Date</th>
                             <th>Athlete</th>
                             <th>Result</th>
                             <th>Team</th>
@@ -26,7 +51,6 @@
                         {% for result in results %}
                         <tr>
                             <td>{{ result.place }}</td>
-                            <td>{{ result.date }}</td>
                             <td>
                                 <a href="{{ url_for('athlete_profile', name=result.athlete) }}">
                                     {{ result.athlete }}

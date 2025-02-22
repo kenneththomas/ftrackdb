@@ -248,20 +248,20 @@ def team_results(team_name):
 @app.route('/meet/<meet_name>')
 def meet_results(meet_name):
     raw_results = Result.get_meet_results(meet_name)
-    # Group results by event
+    # Group results by event and date
     events = {}
     for row in raw_results:
         date, athlete, event, result, team = row
-        if event not in events:
-            events[event] = []
-        events[event].append({
-            'date': date,
+        event_date_key = (event, date)
+        if event_date_key not in events:
+            events[event_date_key] = []
+        events[event_date_key].append({
             'athlete': athlete,
             'result': result,
             'team': team
         })
-    # Add place numbers for each event group (starting at 1)
-    for event_name, records in events.items():
+    # Add place numbers for each event-date group
+    for records in events.values():
         for place, record in enumerate(records, start=1):
             record['place'] = place
 
