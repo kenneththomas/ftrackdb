@@ -248,23 +248,104 @@ def team_results(team_name):
 @app.route('/meet/<meet_name>')
 def meet_results(meet_name):
     raw_results = Result.get_meet_results(meet_name)
-    # Group results by event and date
+    # Group standard results by (event, date)
     events = {}
+    # Gather relay splits separately for computing the combined relay result
+    relay_by_team = {}
+    
     for row in raw_results:
         date, athlete, event, result, team = row
-        event_date_key = (event, date)
-        if event_date_key not in events:
-            events[event_date_key] = []
-        events[event_date_key].append({
-            'athlete': athlete,
-            'result': result,
-            'team': team
+        # For relay splits, process them twice:
+        # 1. Include them in the raw results (as "400m RS Relay Splits")
+        # 2. Also include them in relay_by_team for computing the combined result.
+        if event == "400m RS":
+            # Group for combined relay calculations
+            if team not in relay_by_team:
+                relay_by_team[team] = []
+            relay_by_team[team].append({
+                'date': date,
+                'athlete': athlete,
+                'result': result
+            })
+            # Also add the raw split entry to be displayed separately.
+            event_key = (event, date)
+            if event_key not in events:
+                events[event_key] = []
+            events[event_key].append({
+                'athlete': athlete,
+                'result': result,
+                'team': team
+            })
+        else:
+            event_key = (event, date)
+            if event_key not in events:
+                events[event_key] = []
+            events[event_key].append({
+                'athlete': athlete,
+                'result': result,
+                'team': team
+            })
+    
+    # Helper function: parse a result string into seconds.
+    # Supports formats like "mm:ss.ms" (e.g. "1:05.67") or a plain seconds value.
+    def parse_time(time_str):
+        if ':' in time_str:
+            parts = time_str.split(':')
+            if len(parts) == 2:
+                minutes = float(parts[0])
+                seconds = float(parts[1])
+                return minutes * 60 + seconds
+        try:
+            return float(time_str)
+        except:
+            return float('inf')
+    
+    # Process relay splits: for each team, if there are at least 4 splits,
+    # select the fastest four and calculate the combined relay time.
+    relay_results = []
+    for team, splits in relay_by_team.items():
+        if len(splits) < 4:
+            continue  # Skip teams with fewer than 4 splits
+        sorted_splits = sorted(splits, key=lambda x: parse_time(x['result']))
+        best_splits = sorted_splits[:4]
+        total_time = sum(parse_time(s['result']) for s in best_splits)
+        # Use the earliest date among those splits as the relay event date.
+        relay_date = min(s['date'] for s in best_splits)
+        # Format the total time into a "mm:ss.ms" string.
+        minutes = int(total_time // 60)
+        seconds = total_time - minutes * 60
+        formatted_time = f"{minutes}:{seconds:05.2f}"
+        # Tag the relay with the contributing athletes.
+        members = [s['athlete'] for s in best_splits]
+        relay_results.append({
+            'athlete': ', '.join(members),
+            'result': formatted_time,
+            'team': team,
+            'relay_time_numeric': total_time,
+            'date': relay_date
         })
-    # Add place numbers for each event-date group
-    for records in events.values():
+    
+    # Add computed combined relay results to the events dictionary.
+    # They will appear under the event name "400m RS Relay".
+    for rr in relay_results:
+        key = ("400m RS Relay", rr['date'])
+        if key not in events:
+            events[key] = []
+        events[key].append({
+            'athlete': rr['athlete'],
+            'result': rr['result'],
+            'team': rr['team'],
+            'relay_time_numeric': rr['relay_time_numeric']
+        })
+    
+    # Optional: for relay events, sort entries by the numeric relay time and assign places.
+    for event_key, records in events.items():
+        if event_key[0] == "400m RS Relay":
+            records.sort(key=lambda x: x.get('relay_time_numeric', float('inf')))
+        # Assign rankings (place numbers)
         for place, record in enumerate(records, start=1):
             record['place'] = place
-
+    
     return render_template('meet.html', meet_name=meet_name, events=events)
 
 #athlete search
