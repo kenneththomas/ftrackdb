@@ -253,16 +253,29 @@ def meet_results(meet_name):
     # Gather relay splits separately for computing the combined relay result
     relay_by_team = {}
     
+    def parse_time(time_str):
+        if ':' in time_str:
+            parts = time_str.split(':')
+            if len(parts) == 2:
+                minutes = float(parts[0])
+                seconds = float(parts[1])
+                return minutes * 60 + seconds
+        try:
+            return float(time_str)
+        except:
+            return float('inf')
+    
     for row in raw_results:
         date, athlete, event, result, team = row
         # For relay splits, process them twice:
         # 1. Include them in the raw results (as "400m RS Relay Splits")
         # 2. Also include them in relay_by_team for computing the combined result.
         if event == "400m RS":
-            # Group for combined relay calculations
-            if team not in relay_by_team:
-                relay_by_team[team] = []
-            relay_by_team[team].append({
+            # Group for combined relay calculations by team and date
+            relay_key = (team, date)
+            if relay_key not in relay_by_team:
+                relay_by_team[relay_key] = []
+            relay_by_team[relay_key].append({
                 'date': date,
                 'athlete': athlete,
                 'result': result
@@ -286,36 +299,19 @@ def meet_results(meet_name):
                 'team': team
             })
     
-    # Helper function: parse a result string into seconds.
-    # Supports formats like "mm:ss.ms" (e.g. "1:05.67") or a plain seconds value.
-    def parse_time(time_str):
-        if ':' in time_str:
-            parts = time_str.split(':')
-            if len(parts) == 2:
-                minutes = float(parts[0])
-                seconds = float(parts[1])
-                return minutes * 60 + seconds
-        try:
-            return float(time_str)
-        except:
-            return float('inf')
-    
-    # Process relay splits: for each team, if there are at least 4 splits,
+    # Process relay splits: for each team and date grouping, if there are at least 4 splits,
     # select the fastest four and calculate the combined relay time.
     relay_results = []
-    for team, splits in relay_by_team.items():
+    for (team, group_date), splits in relay_by_team.items():
         if len(splits) < 4:
-            continue  # Skip teams with fewer than 4 splits
+            continue  # Skip groups with fewer than 4 splits
         sorted_splits = sorted(splits, key=lambda x: parse_time(x['result']))
         best_splits = sorted_splits[:4]
         total_time = sum(parse_time(s['result']) for s in best_splits)
-        # Use the earliest date among those splits as the relay event date.
-        relay_date = min(s['date'] for s in best_splits)
-        # Format the total time into a "mm:ss.ms" string.
+        relay_date = group_date  # all splits in the group share the same date
         minutes = int(total_time // 60)
         seconds = total_time - minutes * 60
         formatted_time = f"{minutes}:{seconds:05.2f}"
-        # Tag the relay with the contributing athletes.
         members = [s['athlete'] for s in best_splits]
         relay_results.append({
             'athlete': ', '.join(members),
