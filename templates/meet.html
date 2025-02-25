@@ -52,9 +52,15 @@
                         <tr>
                             <td>{{ result.place }}</td>
                             <td>
-                                <a href="{{ url_for('athlete_profile', name=result.athlete) }}">
-                                    {{ result.athlete }}
-                                </a>
+                                {% if result.athletes is defined %}
+                                    {% for athlete in result.athletes %}
+                                        <a href="{{ url_for('athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a>{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <a href="{{ url_for('athlete_profile', name=result.athlete) }}">
+                                        {{ result.athlete }}
+                                    </a>
+                                {% endif %}
                             </td>
                             <td>{{ result.result }}</td>
                             <td>

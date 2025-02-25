@@ -314,7 +314,8 @@ def meet_results(meet_name):
         formatted_time = f"{minutes}:{seconds:05.2f}"
         members = [s['athlete'] for s in best_splits]
         relay_results.append({
-            'athlete': ', '.join(members),
+            'athlete': ', '.join(members),  # fallback display string
+            'athletes': members,            # list of individual athletes for linking
             'result': formatted_time,
             'team': team,
             'relay_time_numeric': total_time,
@@ -329,6 +330,7 @@ def meet_results(meet_name):
             events[key] = []
         events[key].append({
             'athlete': rr['athlete'],
+            'athletes': rr.get('athletes'),
             'result': rr['result'],
             'team': rr['team'],
             'relay_time_numeric': rr['relay_time_numeric']
