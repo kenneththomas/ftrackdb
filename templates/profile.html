@@ -293,7 +293,47 @@
                 </tbody>
             </table>
         </section>
-        
+
+        {% if relay_results %}
+        <section class="relay-results">
+            <h2>Relay Results</h2>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Meet</th>
+                        <th>Event</th>
+                        <th>Result</th>
+                        <th>Team</th>
+                        <th>Relay Members</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in relay_results %}
+                    <tr>
+                        <td>{{ result.date }}</td>
+                        <td>
+                            <a href="{{ url_for('meet_results', meet_name=result.meet) }}">{{ result.meet }}</a>
+                        </td>
+                        <td>{{ result.event }}</td>
+                        <td>{{ result.result }}</td>
+                        <td>
+                            <a href="{{ url_for('team_results', team_name=result.team) }}">{{ result.team }}</a>
+                        </td>
+                        <td>
+                            {% if result.athletes is defined %}
+                                {% for athlete in result.athletes %}
+                                    <a href="{{ url_for('athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endif %}
+
         <button id="showQuickInsert" class="show-quick-insert-btn">Add New Result</button>
         <section class="quick-insert" style="display: none;">
             <h2>Add New Result</h2>

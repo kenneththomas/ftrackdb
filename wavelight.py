@@ -61,6 +61,60 @@ def athlete_profile(name):
     team = athlete_info.get('Team', 'Unknown')
     athlete_class = athlete_info.get('Class', 'Unknown')
     
+    # ---------------------------
+    # Compute relay results for the athlete
+    relay_results = []
+    with conn:
+        cur = conn.cursor()
+        # Find distinct relay events in which the athlete participated (group by Date, Meet, and Team)
+        cur.execute("""
+            SELECT DISTINCT Date, Meet_Name, Team 
+            FROM Results 
+            WHERE Event = '400m RS' AND Athlete = ?
+        """, (name,))
+        relay_keys = cur.fetchall()
+        
+        def parse_time(time_str):
+            if ':' in time_str:
+                parts = time_str.split(':')
+                if len(parts) == 2:
+                    minutes = float(parts[0])
+                    seconds = float(parts[1])
+                    return minutes * 60 + seconds
+            try:
+                return float(time_str)
+            except:
+                return float('inf')
+        
+        for date, meet, team in relay_keys:
+            # Get all splits for this relay event instance
+            cur.execute("""
+                SELECT Athlete, Result 
+                FROM Results 
+                WHERE Event = '400m RS' AND Date=? AND Meet_Name=? AND Team=?
+            """, (date, meet, team))
+            splits = cur.fetchall()
+            if len(splits) < 4:
+                continue  # Not enough splits to form a relay result
+            
+            sorted_splits = sorted(splits, key=lambda x: parse_time(x[1]))
+            best_splits = sorted_splits[:4]
+            total_time = sum(parse_time(x[1]) for x in best_splits)
+            minutes = int(total_time // 60)
+            seconds = total_time - minutes * 60
+            formatted_time = f"{minutes}:{seconds:05.2f}"
+            members = [split[0] for split in best_splits]
+            
+            relay_results.append({
+                'date': date,
+                'meet': meet,
+                'event': "400m RS Relay",
+                'result': formatted_time,
+                'team': team,
+                'athletes': members,
+                'result_id': None  # relay results aren't editable so no DB id is needed
+            })
+    
     return render_template('profile.html', 
                          name=name, 
                          results=results, 
@@ -68,7 +122,8 @@ def athlete_profile(name):
                          annual_prs=annual_prs,
                          team=team, 
                          athlete_class=athlete_class,
-                         bio=bio)
+                         bio=bio,
+                         relay_results=relay_results)
 
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
