@@ -61,12 +61,18 @@ def athlete_profile(name):
     team = athlete_info.get('Team', 'Unknown')
     athlete_class = athlete_info.get('Class', 'Unknown')
     
+    # Get gender flag for athlete from Athletes table
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT is_female FROM Athletes WHERE athlete_name = ?', (name,))
+        gender_row = cur.fetchone()
+        is_female = bool(gender_row[0]) if gender_row and gender_row[0] is not None else False
+    
     # ---------------------------
     # Compute relay results for the athlete
     relay_results = []
     with conn:
         cur = conn.cursor()
-        # Find distinct relay events in which the athlete participated (group by Date, Meet, and Team)
         cur.execute("""
             SELECT DISTINCT Date, Meet_Name, Team 
             FROM Results 
@@ -87,7 +93,6 @@ def athlete_profile(name):
                 return float('inf')
         
         for date, meet, team in relay_keys:
-            # Get all splits for this relay event instance
             cur.execute("""
                 SELECT Athlete, Result 
                 FROM Results 
@@ -95,8 +100,7 @@ def athlete_profile(name):
             """, (date, meet, team))
             splits = cur.fetchall()
             if len(splits) < 4:
-                continue  # Not enough splits to form a relay result
-            
+                continue
             sorted_splits = sorted(splits, key=lambda x: parse_time(x[1]))
             best_splits = sorted_splits[:4]
             total_time = sum(parse_time(x[1]) for x in best_splits)
@@ -112,7 +116,7 @@ def athlete_profile(name):
                 'result': formatted_time,
                 'team': team,
                 'athletes': members,
-                'result_id': None  # relay results aren't editable so no DB id is needed
+                'result_id': None
             })
     
     return render_template('profile.html', 
@@ -123,7 +127,8 @@ def athlete_profile(name):
                          team=team, 
                          athlete_class=athlete_class,
                          bio=bio,
-                         relay_results=relay_results)
+                         relay_results=relay_results,
+                         is_female=is_female)
 
 @app.route('/insert', methods=['GET', 'POST'])
 def insert_result():
@@ -473,6 +478,22 @@ def update_result(result_id):
     except Exception as e:
         print(f"Error updating result {result_id}: {str(e)}")  # Debug logging
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/update_gender/<name>', methods=['POST'])
+def update_gender(name):
+    try:
+        # Accept either form data or JSON data.
+        is_female_str = request.form.get('is_female') or (request.json and request.json.get('is_female'))
+        # Interpret common representations
+        is_female = 1 if str(is_female_str).lower() in ['1', 'true', 'yes'] else 0
+        Athlete.update_gender(name, is_female)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.context_processor
+def inject_get_gender():
+    return dict(get_gender=Athlete.get_gender)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5006)

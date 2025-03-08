@@ -235,3 +235,8 @@ table td:empty::before {
 .back-button:hover {
     background-color: #555;
 }
+
+/* Style for female athlete profile links */
+.female-text {
+    color: rgb(216, 83, 105);
+}

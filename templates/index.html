@@ -37,7 +37,11 @@
                     {% for result in results %}
                     <tr>
                         <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td>
+                            <a href="{{ url_for('athlete_profile', name=result[1]) }}" class="{% if get_gender(result[1]) %}female-text{% endif %}">
+                                {{ result[1] }}
+                            </a>
+                        </td>
                         <td><a href="{{ url_for('meet_results', meet_name=result[2]) }}">{{ result[2] }}</a></td>
                         <td>{{ result[3] }}</td>
                         <td>{{ result[4] }}</td>

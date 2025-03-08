@@ -8,6 +8,10 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
+    /* New CSS rule for female profiles */
+    .female-text {
+        color: pink;
+    }
     .bio-section {
         margin: 20px 0;
         padding: 20px;
@@ -212,11 +216,18 @@
     {% include 'navbar.html' %}
     <div class="container">
         <header class="profile-header">
-            <h1>{{ name }}</h1>
+            <!-- Conditionally add the class "female-text" to display the name in pink -->
+            <h1 class="{% if is_female %}female-text{% endif %}">{{ name }}</h1>
             <p class="athlete-team">Team: {{ team }}</p>
             <p class="athlete-class">Class: {{ athlete_class }}</p>
             
-            <!-- Add bio section -->
+            <!-- New gender display and toggle control -->
+            <p class="athlete-gender">Gender: <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></p>
+            <button id="toggle-gender" class="bio-btn">
+                Mark as {% if is_female %}Male{% else %}Female{% endif %}
+            </button>
+            
+            <!-- Existing bio section -->
             <div class="bio-section">
                 <h3>About</h3>
                 <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
@@ -559,6 +570,44 @@
                 console.error('Error:', error);
                 alert('Error updating result');
             });
+        });
+    });
+
+    // New JavaScript to handle gender toggle
+    document.getElementById('toggle-gender').addEventListener('click', function() {
+        const currentGenderText = document.getElementById('athlete-gender-display').textContent.trim();
+        // Toggle: if currently Female, set to Male; otherwise, set to Female.
+        const newIsFemale = currentGenderText === "Female" ? false : true;
+        const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch(`/update_gender/{{ name }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf_token
+            },
+            body: JSON.stringify({ is_female: newIsFemale })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the display text and button label accordingly
+                document.getElementById('athlete-gender-display').textContent = newIsFemale ? "Female" : "Male";
+                document.getElementById('toggle-gender').textContent = newIsFemale ? "Mark as Male" : "Mark as Female";
+                // Also update the h1 styling
+                const h1 = document.querySelector('.profile-header h1');
+                if (newIsFemale) {
+                    h1.classList.add('female-text');
+                } else {
+                    h1.classList.remove('female-text');
+                }
+            } else {
+                alert('Error updating gender');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating gender');
         });
     });
     </script>

@@ -20,11 +20,14 @@ class Database:
         try:
             cur = conn.cursor()
             
-            # Create Athletes table if it doesn't exist
+            # Create Athletes table if it doesn't exist.
+            # Note: If the table already exists you may need to run an ALTER TABLE command
+            # to add the new column "is_female". For a new database, include it here.
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS Athletes (
                     athlete_name TEXT PRIMARY KEY,
                     bio TEXT,
+                    is_female INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -54,7 +57,7 @@ class Result:
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            # Make sure to include Result_ID in the SELECT statement
+            # Include Result_ID in the SELECT statement
             cur.execute('''
                 SELECT Date, Meet_Name, Event, Result, Team, Result_ID 
                 FROM Results 
@@ -146,3 +149,25 @@ class Athlete:
                 DO UPDATE SET bio = ?, updated_at = CURRENT_TIMESTAMP
             ''', (name, bio, bio))
             conn.commit()
+
+    @staticmethod
+    def update_gender(name, is_female):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO Athletes (athlete_name, is_female)
+                VALUES (?, ?)
+                ON CONFLICT(athlete_name)
+                DO UPDATE SET is_female = ?, updated_at = CURRENT_TIMESTAMP
+            ''', (name, is_female, is_female))
+            conn.commit()
+
+    @staticmethod
+    def get_gender(name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT is_female FROM Athletes WHERE athlete_name = ?', (name,))
+            result = cur.fetchone()
+            return bool(result[0]) if result and result[0] is not None else False

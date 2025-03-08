@@ -54,10 +54,12 @@
                             <td>
                                 {% if result.athletes is defined %}
                                     {% for athlete in result.athletes %}
-                                        <a href="{{ url_for('athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a>{% if not loop.last %}, {% endif %}
+                                        <a href="{{ url_for('athlete_profile', name=athlete|trim) }}" class="{% if get_gender(athlete|trim) %}female-text{% endif %}">
+                                            {{ athlete|trim }}
+                                        </a>{% if not loop.last %}, {% endif %}
                                     {% endfor %}
                                 {% else %}
-                                    <a href="{{ url_for('athlete_profile', name=result.athlete) }}">
+                                    <a href="{{ url_for('athlete_profile', name=result.athlete) }}" class="{% if get_gender(result.athlete) %}female-text{% endif %}">
                                         {{ result.athlete }}
                                     </a>
                                 {% endif %}
