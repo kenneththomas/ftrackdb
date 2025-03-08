@@ -2,11 +2,21 @@ from flask import Flask, render_template, redirect, url_for, flash, request, jso
 from flask_wtf import CSRFProtect
 from forms import ResultForm, SearchForm
 from models import Result, Database, Athlete
+import markdown
+from markupsafe import Markup
 
 app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
 app.secret_key = 'your_secret_key_here'
 csrf = CSRFProtect(app)
+
+# Add a custom Jinja filter to convert Markdown to HTML
+@app.template_filter('markdown_to_html')
+def markdown_to_html(text):
+    if not text:
+        return ""
+    # You can add options to markdown.markdown() if needed.
+    return Markup(markdown.markdown(text))
 
 @app.route('/')
 def home():
