@@ -231,7 +231,7 @@
             <div class="bio-section">
                 <h3>About</h3>
                 <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
-                    {{ (bio or "No bio available. Click to add one.") | replace('\n', '<br>') | safe }}
+                    {{ (bio or "No bio available. Click to add one.") | markdown_to_html }}
                 </div>
                 <div id="bio-edit" style="display: none;">
                     <textarea id="bio-textarea" placeholder="Write something about this athlete...">{{ bio or "" }}</textarea>
@@ -448,18 +448,31 @@
     // Set today's date as default
     document.querySelector('input[name="date[]"]').valueAsDate = new Date();
 
+    // Global variable to hold the SimpleMDE instance
+    var bioEditor;
+
+    // When the bio display is clicked, hide it and show the editable markdown editor
     document.getElementById('bio-display').addEventListener('click', function() {
         document.getElementById('bio-display').style.display = 'none';
         document.getElementById('bio-edit').style.display = 'block';
+        if (!bioEditor) {
+            bioEditor = new SimpleMDE({ 
+                element: document.getElementById("bio-textarea"),
+                autoDownloadFontAwesome: false,
+                spellChecker: false
+            });
+        }
     });
 
+    // Cancel button: Hide the editor and show the display again
     document.getElementById('cancel-bio').addEventListener('click', function() {
         document.getElementById('bio-edit').style.display = 'none';
         document.getElementById('bio-display').style.display = 'block';
     });
 
+    // Save button: Get the updated bio (in Markdown) from the editor and submit it to the backend
     document.getElementById('save-bio').addEventListener('click', function() {
-        const bio = document.getElementById('bio-textarea').value;
+        const bio = bioEditor ? bioEditor.value() : document.getElementById('bio-textarea').value;
         const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
         fetch(`/update_bio/{{ name }}`, {
@@ -473,10 +486,8 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                document.getElementById('bio-display').textContent = bio || "No bio available. Click to add one.";
-                document.getElementById('bio-display').classList.toggle('empty-bio', !bio);
-                document.getElementById('bio-edit').style.display = 'none';
-                document.getElementById('bio-display').style.display = 'block';
+                // Reloading the page will re-render the bio using the markdown filter
+                window.location.reload();
             } else {
                 alert('Error saving bio');
             }
