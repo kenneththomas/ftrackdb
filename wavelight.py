@@ -243,6 +243,25 @@ def event_leaderboard(event):
                          page=page,
                          total_pages=total_pages)
 
+@app.route('/teams')
+def teams():
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        # Get all teams with their athlete and result counts
+        cur.execute('''
+            SELECT 
+                Team,
+                COUNT(DISTINCT Athlete) as athlete_count,
+                COUNT(*) as result_count
+            FROM Results 
+            GROUP BY Team 
+            ORDER BY Team ASC
+        ''')
+        teams = cur.fetchall()
+    
+    return render_template('teams.html', teams=teams)
+
 @app.route('/team/<team_name>')
 def team_results(team_name):
     conn = Database.get_connection()
