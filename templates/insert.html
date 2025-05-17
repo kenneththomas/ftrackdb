@@ -111,6 +111,111 @@
             <button type="button" onclick="addResultForm()">Add Another Result</button>
             <input type="submit" value="Submit All">
         </form>
+
+        <div class="helper-section">
+            <h3>Helper Tools</h3>
+            <div class="helper-tools">
+                <div class="team-lookup">
+                    <h4>Team Members Lookup</h4>
+                    <input type="text" id="team-lookup" placeholder="Enter team name" onkeyup="lookupTeamMembers(this.value)">
+                    <div id="team-members-list" class="results-list"></div>
+                </div>
+                <div class="athlete-prs">
+                    <h4>Athlete PRs Lookup</h4>
+                    <input type="text" id="athlete-lookup" placeholder="Enter athlete name" onkeyup="lookupAthletePRs(this.value)">
+                    <div id="athlete-prs-list" class="results-list"></div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <style>
+        .helper-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .helper-tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        .team-lookup, .athlete-prs {
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .results-list {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .results-list div {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .results-list div:last-child {
+            border-bottom: none;
+        }
+        .pr-lookup-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.2s;
+        }
+        .pr-lookup-btn:hover {
+            background: #45a049;
+        }
+        .pr-lookup-btn:active {
+            background: #3d8b40;
+        }
+    </style>
+
+    <script>
+        function lookupTeamMembers(teamName) {
+            if (!teamName) {
+                document.getElementById('team-members-list').innerHTML = '';
+                return;
+            }
+            fetch(`/get_team_members/${encodeURIComponent(teamName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById('team-members-list');
+                    list.innerHTML = data.members.map(member => 
+                        `<div>
+                            <span>${member}</span>
+                            <button class="pr-lookup-btn" onclick="lookupAthletePRs('${member}')">View PRs</button>
+                        </div>`
+                    ).join('');
+                });
+        }
+
+        function lookupAthletePRs(athleteName) {
+            if (!athleteName) {
+                document.getElementById('athlete-prs-list').innerHTML = '';
+                return;
+            }
+            // Set the athlete name in the input field
+            document.getElementById('athlete-lookup').value = athleteName;
+            
+            fetch(`/get_athlete_prs/${encodeURIComponent(athleteName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById('athlete-prs-list');
+                    list.innerHTML = data.prs.map(pr => 
+                        `<div><strong>${pr.event}:</strong> ${pr.pr}</div>`
+                    ).join('');
+                });
+        }
+    </script>
 </body>
 </html>

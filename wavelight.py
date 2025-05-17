@@ -54,5 +54,44 @@ def home():
 def inject_get_gender():
     return dict(get_gender=Athlete.get_gender)
 
+@app.route('/get_team_members/<team_name>')
+def get_team_members(team_name):
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        if len(team_name) >= 5:
+            # Use LIKE for partial matching when query is 5+ characters
+            cur.execute('''
+                SELECT DISTINCT Athlete 
+                FROM Results 
+                WHERE Team LIKE ? 
+                ORDER BY Athlete
+            ''', (f'%{team_name}%',))
+        else:
+            # Exact match for shorter queries
+            cur.execute('''
+                SELECT DISTINCT Athlete 
+                FROM Results 
+                WHERE Team = ? 
+                ORDER BY Athlete
+            ''', (team_name,))
+        members = [row[0] for row in cur.fetchall()]
+        return jsonify({'members': members})
+
+@app.route('/get_athlete_prs/<athlete_name>')
+def get_athlete_prs(athlete_name):
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT Event, MIN(Result) as PR
+            FROM Results 
+            WHERE Athlete = ? 
+            GROUP BY Event
+            ORDER BY Event
+        ''', (athlete_name,))
+        prs = [{'event': row[0], 'pr': row[1]} for row in cur.fetchall()]
+        return jsonify({'prs': prs})
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5006)
