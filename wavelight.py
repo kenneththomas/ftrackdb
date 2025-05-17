@@ -29,8 +29,26 @@ app.jinja_env.filters['markdown_to_html'] = markdown_to_html
 @app.route('/')
 def home():
     form = SearchForm()
-    results = Result.get_recent_results()
-    return render_template('index.html', results=results, form=form)
+    page = request.args.get('page', 1, type=int)
+    per_page = 25  # Number of results per page
+    
+    # Get team logos for all teams
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT team_name, logo_url FROM Teams')
+        team_logos = dict(cur.fetchall())
+    
+    results = Result.get_recent_results(limit=per_page, offset=(page-1)*per_page)
+    total_results = Result.get_total_results()
+    total_pages = (total_results + per_page - 1) // per_page
+    
+    return render_template('index.html', 
+                         results=results, 
+                         form=form, 
+                         team_logos=team_logos,
+                         page=page,
+                         total_pages=total_pages)
 
 @app.context_processor
 def inject_get_gender():

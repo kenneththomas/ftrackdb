@@ -5,6 +5,59 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <style>
+        .team-logo {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .team-cell {
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .pagination a {
+            color: #007bff;
+            padding: 8px 16px;
+            text-decoration: none;
+            border: 1px solid #dee2e6;
+            margin: 0 4px;
+            border-radius: 4px;
+        }
+
+        .pagination a:hover {
+            background-color: #e9ecef;
+        }
+
+        .pagination .active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .results-table th {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, #14c2b3, #0e8c7b);
+            z-index: 1;
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -20,39 +73,127 @@
             </div>
         </header>
         
+        <section class="filter-section">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="filterInput" class="form-control" placeholder="Filter results...">
+                </div>
+                <div class="col-md-4">
+                    <select id="eventFilter" class="form-control">
+                        <option value="">All Events</option>
+                        <option value="100m">100m</option>
+                        <option value="200m">200m</option>
+                        <option value="400m">400m</option>
+                        <option value="800m">800m</option>
+                        <option value="1500m">1500m</option>
+                        <option value="Mile">Mile</option>
+                        <option value="3000m">3000m</option>
+                        <option value="5000m">5000m</option>
+                        <option value="10000m">10000m</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select id="teamFilter" class="form-control">
+                        <option value="">All Teams</option>
+                        {% for team in team_logos.keys() %}
+                        <option value="{{ team }}">{{ team }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </section>
+        
         <section class="results">
-            <input type="text" id="filterInput" placeholder="Filter results...">
-            <table class="results-table">
-                <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Athlete</th>
-                    <th>Meet</th>
-                    <th>Event</th>
-                    <th>Result</th>
-                    <th>Team</th>
-                </tr>
-                </thead>
-                <tbody>
-                    {% for result in results %}
-                    <tr>
-                        <td>{{ result[0] }}</td>
-                        <td>
-                            <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" class="{% if get_gender(result[1]) %}female-text{% endif %}">
-                                {{ result[1] }}
-                            </a>
-                        </td>
-                        <td><a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a></td>
-                        <td>{{ result[3] }}</td>
-                        <td>{{ result[4] }}</td>
-                        <td><a href="{{ url_for('team.team_results', team_name=result[5]) }}">{{ result[5] }}</a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Athlete</th>
+                            <th>Meet</th>
+                            <th>Event</th>
+                            <th>Result</th>
+                            <th>Team</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result[0] }}</td>
+                            <td>
+                                <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" class="{% if get_gender(result[1]) %}female-text{% endif %}">
+                                    {{ result[1] }}
+                                </a>
+                            </td>
+                            <td><a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a></td>
+                            <td>{{ result[3] }}</td>
+                            <td>{{ result[4] }}</td>
+                            <td class="team-cell">
+                                {% if team_logos.get(result[5]) %}
+                                    <img src="{{ team_logos[result[5]] }}" alt="{{ result[5] }} logo" class="team-logo">
+                                {% endif %}
+                                <a href="{{ url_for('team.team_results', team_name=result[5]) }}">{{ result[5] }}</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                {% if page > 1 %}
+                    <a href="{{ url_for('home', page=page-1) }}">&laquo; Previous</a>
+                {% endif %}
+                
+                {% set start_page = [1, page - 2]|max %}
+                {% set end_page = [total_pages, page + 2]|min %}
+                
+                {% for p in range(start_page, end_page + 1) %}
+                    <a href="{{ url_for('home', page=p) }}" class="{{ 'active' if p == page else '' }}">
+                        {{ p }}
+                    </a>
+                {% endfor %}
+                
+                {% if page < total_pages %}
+                    <a href="{{ url_for('home', page=page+1) }}">Next &raquo;</a>
+                {% endif %}
+            </div>
         </section>
     </div>
     <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
-    <script src="{{ url_for('static', filename='filter.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterInput = document.getElementById('filterInput');
+            const eventFilter = document.getElementById('eventFilter');
+            const teamFilter = document.getElementById('teamFilter');
+            const table = document.querySelector('.results-table');
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+            function filterTable() {
+                const searchText = filterInput.value.toLowerCase();
+                const selectedEvent = eventFilter.value.toLowerCase();
+                const selectedTeam = teamFilter.value.toLowerCase();
+
+                for (let row of rows) {
+                    const cells = row.getElementsByTagName('td');
+                    const athlete = cells[1].textContent.toLowerCase();
+                    const meet = cells[2].textContent.toLowerCase();
+                    const event = cells[3].textContent.toLowerCase();
+                    const team = cells[5].textContent.toLowerCase();
+
+                    const matchesSearch = athlete.includes(searchText) || meet.includes(searchText);
+                    const matchesEvent = !selectedEvent || event.includes(selectedEvent);
+                    const matchesTeam = !selectedTeam || team.includes(selectedTeam);
+
+                    row.style.display = matchesSearch && matchesEvent && matchesTeam ? '' : 'none';
+                }
+            }
+
+            filterInput.addEventListener('input', filterTable);
+            eventFilter.addEventListener('change', filterTable);
+            teamFilter.addEventListener('change', filterTable);
+        });
+    </script>
 </body>
 </html>

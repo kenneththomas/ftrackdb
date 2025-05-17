@@ -49,7 +49,7 @@ class Database:
 
 class Result:
     @staticmethod
-    def get_recent_results(limit=25):
+    def get_recent_results(limit=25, offset=0):
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
@@ -58,9 +58,17 @@ class Result:
                        Athlete, Meet_Name, Event, Result, Team 
                 FROM Results 
                 ORDER BY Date DESC 
-                LIMIT ?
-            ''', (limit,))
+                LIMIT ? OFFSET ?
+            ''', (limit, offset))
             return cur.fetchall()
+
+    @staticmethod
+    def get_total_results():
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT COUNT(*) FROM Results')
+            return cur.fetchone()[0]
 
     @staticmethod
     def get_athlete_results(name):
