@@ -26,10 +26,10 @@
                 {% for result in results %}
                     <tr>
                         <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
-                        <td>{{ result[2] }}</td>
+                        <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td><a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a></td>
                         <td>{{ result[3] }}</td>
-                        <td><a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
+                        <td><a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
                     </tr>
                 {% endfor %}
             </table>

@@ -60,7 +60,7 @@
             {% endif %}
         {% endwith %}
 
-        <form action="{{ url_for('insert_result') }}" method="post" id="results-form">
+        <form action="{{ url_for('result.insert_result') }}" method="post" id="results-form">
             {{ form.csrf_token }}
             {% if form.errors %}
                 <div class="errors">

@@ -286,12 +286,12 @@
                     <tr data-result-id="{{ result[5] }}">
                         <td class="editable" data-field="date">{{ result[0] }}</td>
                         <td class="editable" data-field="meet">
-                            <a href="{{ url_for('meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
+                            <a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
                         <td class="editable" data-field="event">{{ result[2] }}</td>
                         <td class="editable" data-field="result">{{ result[3] }}</td>
                         <td class="editable" data-field="team">
-                            <a href="{{ url_for('team_results', team_name=result[4]) }}">{{ result[4] }}</a>
+                            <a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
                         <td>
                             <button class="edit-btn" title="Edit">✎</button>
@@ -324,17 +324,17 @@
                     <tr>
                         <td>{{ result.date }}</td>
                         <td>
-                            <a href="{{ url_for('meet_results', meet_name=result.meet) }}">{{ result.meet }}</a>
+                            <a href="{{ url_for('meet.meet_results', meet_name=result.meet) }}">{{ result.meet }}</a>
                         </td>
                         <td>{{ result.event }}</td>
                         <td>{{ result.result }}</td>
                         <td>
-                            <a href="{{ url_for('team_results', team_name=result.team) }}">{{ result.team }}</a>
+                            <a href="{{ url_for('team.team_results', team_name=result.team) }}">{{ result.team }}</a>
                         </td>
                         <td>
                             {% if result.athletes is defined %}
                                 {% for athlete in result.athletes %}
-                                    <a href="{{ url_for('athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a>{% if not loop.last %}, {% endif %}
+                                    <a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a>{% if not loop.last %}, {% endif %}
                                 {% endfor %}
                             {% endif %}
                         </td>

@@ -19,9 +19,9 @@
                 {% for result in results %}
                     <tr>
                         <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
                         <td>{{ result[2] }}</td>
-                        <td><a href="{{ url_for('team_results', team_name=result[3]) }}">{{ result[3] }}</a></td>
+                        <td><a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
                     </tr>
                 {% endfor %}
             </table>
@@ -29,20 +29,20 @@
             <!-- Pagination -->
             <div class="pagination">
                 {% if page > 1 %}
-                    <a href="{{ url_for('event_leaderboard', event=event, page=page-1) }}">&laquo; Previous</a>
+                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event, page=page-1) }}">&laquo; Previous</a>
                 {% endif %}
                 
                 <span>Page {{ page }} of {{ total_pages }}</span>
                 
                 {% if page < total_pages %}
-                    <a href="{{ url_for('event_leaderboard', event=event, page=page+1) }}">Next &raquo;</a>
+                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event, page=page+1) }}">Next &raquo;</a>
                 {% endif %}
             </div>
         {% else %}
             <p>No results available for this event.</p>
         {% endif %}
         <br>
-        <a href="{{ url_for('leaderboard') }}" class="back-button">Back to Events</a>
+        <a href="{{ url_for('leaderboard.leaderboard') }}" class="back-button">Back to Events</a>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>
 </body>

@@ -4,11 +4,11 @@
     <nav>
         <ul>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
-        <a class="btn btn-primary" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-        <a class="btn btn-info" href="{{ url_for('teams') }}">Teams</a>
-        <a class="btn btn-success" href="{{ url_for('insert_result') }}">Insert New Result</a>
-        <a class="btn btn-danger" href="{{ url_for('delete_result') }}">Delete Result</a>
-        <a class="btn btn-primary" href="{{ url_for('search') }}">Search</a>     
+        <a class="btn btn-primary" href="{{ url_for('leaderboard.leaderboard') }}">Leaderboard</a>
+        <a class="btn btn-info" href="{{ url_for('team.teams') }}">Teams</a>
+        <a class="btn btn-success" href="{{ url_for('result.insert_result') }}">Insert New Result</a>
+        <a class="btn btn-danger" href="{{ url_for('result.delete_result') }}">Delete Result</a>
+        <a class="btn btn-primary" href="{{ url_for('athlete.search') }}">Search</a>     
         </ul>
     </nav>
 </div>

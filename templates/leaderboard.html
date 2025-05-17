@@ -11,7 +11,7 @@
         <div class="event-list">
             {% for event, count in event_data %}
                 <div class="event-card">
-                    <a href="{{ url_for('event_leaderboard', event=event) }}">
+                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event) }}">
                         <h3>{{ event }}</h3>
                         <p>{{ count }} Athletes</p>
                     </a>

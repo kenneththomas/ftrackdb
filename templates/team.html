@@ -25,7 +25,7 @@
                 </tr>
                 {% for athlete in athletes %}
                     <tr>
-                        <td><a href="{{ url_for('athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
+                        <td><a href="{{ url_for('athlete.athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
                         {% for event in ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m'] %}
                             <td>{{ team_pbs.get(athlete[0], {}).get(event, '') }}</td>
                         {% endfor %}
@@ -49,9 +49,9 @@
                 {% for result in results %}
                     <tr>
                         <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                        <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
                         <td>
-                            <a href="{{ url_for('meet_results', meet_name=result[2]) }}">{{ result[2] }}</a>
+                            <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a>
                         </td>
                         <td>{{ result[3] }}</td>
                         <td>{{ result[4] }}</td>

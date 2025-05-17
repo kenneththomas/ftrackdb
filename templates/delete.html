@@ -20,7 +20,7 @@
         {% for result in results %}
         <div>
             Result ID: {{ result[0] }}, Date: {{ result[1] }}, Athlete: {{ result[2] }}, Meet: {{ result[3] }}, Event: {{ result[4] }}, Result: {{ result[5] }}, Team: {{ result[6] }}
-            <form id="delete-{{ result[0] }}" action="{{ url_for('delete_result') }}" method="post" style="display: inline;">
+            <form id="delete-{{ result[0] }}" action="{{ url_for('result.delete_result') }}" method="post" style="display: inline;">
                 <input type="hidden" name="result_id" value="{{ result[0] }}">
                 <input type="button" value="Delete" onclick="confirmDelete({{ result[0] }})">
             </form>
