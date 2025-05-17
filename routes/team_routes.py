@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template
-from models import Database
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from models import Database, Team
 
 # Create blueprint
 team_bp = Blueprint('team', __name__)
@@ -63,8 +63,22 @@ def team_results(team_name):
                 if result:
                     team_pbs[athlete_name][event] = result[0]
 
+    # Get team info including logo
+    team_info = Team.get_team_info(team_name)
+
     return render_template('team.html', 
                          team_name=team_name, 
                          results=team_results, 
                          athletes=team_athletes,
-                         team_pbs=team_pbs) 
+                         team_pbs=team_pbs,
+                         team_info=team_info)
+
+@team_bp.route('/team/<team_name>/update_logo', methods=['POST'])
+def update_team_logo(team_name):
+    logo_url = request.form.get('logo_url')
+    if logo_url:
+        Team.update_team_logo(team_name, logo_url)
+        flash('Team logo updated successfully!', 'success')
+    else:
+        flash('No logo URL provided.', 'error')
+    return redirect(url_for('team.team_results', team_name=team_name)) 

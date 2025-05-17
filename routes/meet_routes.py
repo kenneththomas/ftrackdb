@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template
-from models import Result
+from models import Result, Team
 from utils.relay_utils import parse_time
 
 # Create blueprint
@@ -12,6 +12,18 @@ def meet_results(meet_name):
     events = {}
     # Gather relay splits separately for computing the combined relay result
     relay_by_team = {}
+    
+    # Get all unique teams from the results
+    teams = set()
+    for row in raw_results:
+        teams.add(row[4])  # team is at index 4
+    
+    # Get team logos for all teams
+    team_logos = {}
+    for team in teams:
+        team_info = Team.get_team_info(team)
+        if team_info and team_info.get('logo_url'):
+            team_logos[team] = team_info['logo_url']
     
     for row in raw_results:
         date, athlete, event, result, team = row
@@ -92,4 +104,4 @@ def meet_results(meet_name):
         for place, record in enumerate(records, start=1):
             record['place'] = place
     
-    return render_template('meet.html', meet_name=meet_name, events=events) 
+    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos) 

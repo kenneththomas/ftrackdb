@@ -33,6 +33,16 @@ class Database:
                 )
             ''')
             
+            # Create Teams table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Teams (
+                    team_name TEXT PRIMARY KEY,
+                    logo_url TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
             conn.commit()
         except Error as e:
             print(f"Error initializing tables: {e}")
@@ -171,3 +181,26 @@ class Athlete:
             cur.execute('SELECT is_female FROM Athletes WHERE athlete_name = ?', (name,))
             result = cur.fetchone()
             return bool(result[0]) if result and result[0] is not None else False
+
+class Team:
+    @staticmethod
+    def get_team_info(team_name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT logo_url FROM Teams WHERE team_name = ?', (team_name,))
+            result = cur.fetchone()
+            return {'logo_url': result[0] if result else None}
+
+    @staticmethod
+    def update_team_logo(team_name, logo_url):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO Teams (team_name, logo_url) 
+                VALUES (?, ?)
+                ON CONFLICT(team_name) 
+                DO UPDATE SET logo_url = ?, updated_at = CURRENT_TIMESTAMP
+            ''', (team_name, logo_url, logo_url))
+            conn.commit()

@@ -4,11 +4,65 @@
     <title>{{ team_name }} Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<style>
+    .team-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .team-logo {
+        width: 100px;
+        height: 100px;
+        object-fit: contain;
+        margin-right: 20px;
+    }
+
+    .logo-form {
+        margin: 20px 0;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 8px;
+    }
+
+    .logo-form input[type="text"] {
+        width: 300px;
+        padding: 8px;
+        margin-right: 10px;
+    }
+
+    .logo-form button {
+        padding: 8px 15px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .logo-form button:hover {
+        background: #2980b9;
+    }
+</style>
 <body>
     {% include 'navbar.html' %}
 
     <div class="container">
-        <h1>{{ team_name }} Personal Bests</h1>
+        <div class="team-header">
+            {% if team_info and team_info.logo_url %}
+                <img src="{{ team_info.logo_url }}" alt="{{ team_name }} logo" class="team-logo">
+            {% endif %}
+            <h1>{{ team_name }} Personal Bests</h1>
+        </div>
+
+        <div class="logo-form">
+            <form method="POST" action="{{ url_for('team.update_team_logo', team_name=team_name) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="logo_url" placeholder="Enter team logo URL" value="{{ team_info.logo_url if team_info and team_info.logo_url else '' }}">
+                <button type="submit">Update Logo</button>
+            </form>
+        </div>
+
         {% if athletes %}
             <table>
                 <tr>

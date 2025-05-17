@@ -26,6 +26,19 @@
         font-size: 1.1em;
         opacity: 0.9;
     }
+
+    .team-logo {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+
+    .team-cell {
+        display: flex;
+        align-items: center;
+    }
 </style>
 <body>
     {% include 'navbar.html' %}
@@ -65,7 +78,10 @@
                                 {% endif %}
                             </td>
                             <td>{{ result.result }}</td>
-                            <td>
+                            <td class="team-cell">
+                                {% if team_logos.get(result.team) %}
+                                    <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
+                                {% endif %}
                                 <a href="{{ url_for('team.team_results', team_name=result.team) }}">
                                     {{ result.team }}
                                 </a>
