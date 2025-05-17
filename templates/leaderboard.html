@@ -3,23 +3,93 @@
 <head>
     <title>Leaderboard</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .event-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .event-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .event-card a {
+            text-decoration: none;
+            color: inherit;
+        }
+        .event-card h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .event-card p {
+            margin: 0;
+            color: #666;
+        }
+        .relay-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+        .relay-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .relay-card {
+            background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+            border-left: 4px solid #3498db;
+        }
+        .relay-card h3 {
+            color: #2980b9;
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     <div class="container">
         <h1>Track & Field Events</h1>
+        
+        <!-- Individual Events -->
         <div class="event-list">
             {% for event, count in event_data %}
-                <div class="event-card">
-                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event) }}">
-                        <h3>{{ event }}</h3>
-                        <p>{{ count }} Athletes</p>
-                    </a>
-                </div>
+                {% if not event.startswith('4x') %}
+                    <div class="event-card">
+                        <a href="{{ url_for('leaderboard.event_leaderboard', event=event) }}">
+                            <h3>{{ event }}</h3>
+                            <p>{{ count }} Athletes</p>
+                        </a>
+                    </div>
+                {% endif %}
             {% endfor %}
         </div>
+
+        <!-- Relay Events -->
+        <div class="relay-section">
+            <h2>Relay Events</h2>
+            <div class="event-list">
+                {% for event, count in event_data %}
+                    {% if event.startswith('4x') %}
+                        <div class="event-card relay-card">
+                            <a href="{{ url_for('leaderboard.event_leaderboard', event=event) }}">
+                                <h3>{{ event }}</h3>
+                                <p>{{ count }} Teams</p>
+                            </a>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        
         <br>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>
 </body>
+</html>
 </html>

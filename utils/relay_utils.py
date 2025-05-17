@@ -13,7 +13,7 @@ def parse_time(time_str):
 def calculate_relay_results(splits, relay_type):
     """
     Calculate relay results from splits
-    splits: list of tuples containing (athlete, result)
+    splits: list of tuples containing (athlete, result, date, meet, team)
     relay_type: string like '200m RS', '400m RS', '800m RS'
     """
     relay_results = []
@@ -34,12 +34,16 @@ def calculate_relay_results(splits, relay_type):
     # Convert relay type to full name (e.g., '400m RS' -> '4x400m')
     relay_name = f"4x{relay_type.replace(' RS', '')}"
     
+    # Get the first split's date, meet, and team (they should all be the same)
+    first_split = best_splits[0]
+    
     return [{
-        'date': splits[0][2],  # Assuming date is third element
-        'meet': splits[0][3],  # Assuming meet is fourth element
+        'date': first_split[2],  # date is third element
+        'meet': first_split[3],  # meet is fourth element
         'event': f"{relay_name} Relay",
         'result': formatted_time,
-        'team': splits[0][4],  # Assuming team is fifth element
+        'team': first_split[4],  # team is fifth element
         'athletes': members,
+        'splits': [(split[0], split[1]) for split in best_splits],  # Just athlete and result for display
         'result_id': None
     }] 

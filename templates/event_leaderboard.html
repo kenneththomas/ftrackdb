@@ -3,6 +3,40 @@
 <head>
     <title>{{ event }} Leaderboard</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .team-logo {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .team-cell {
+            display: flex;
+            align-items: center;
+        }
+        .meet-info {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 4px;
+        }
+        .meet-link {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .meet-link:hover {
+            text-decoration: underline;
+        }
+        .relay-split {
+            display: inline-block;
+            margin-right: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .team-members {
+            margin-bottom: 8px;
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -11,17 +45,53 @@
         {% if results %}
             <table>
                 <tr>
-                    <th>Event</th>
-                    <th>Athlete</th>
-                    <th>Result</th>
-                    <th>Team</th>
+                    <th>Place</th>
+                    {% if is_relay %}
+                        <th>Team</th>
+                        <th>Result</th>
+                        <th>Team Members & Splits</th>
+                        <th>Meet</th>
+                    {% else %}
+                        <th>Event</th>
+                        <th>Athlete</th>
+                        <th>Result</th>
+                        <th>Team</th>
+                    {% endif %}
                 </tr>                    
                 {% for result in results %}
                     <tr>
-                        <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
-                        <td>{{ result[2] }}</td>
-                        <td><a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
+                        <td>{{ loop.index + (page - 1) * 20 }}</td>
+                        {% if is_relay %}
+                            <td class="team-cell">
+                                {% if team_logos.get(result.team) %}
+                                    <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
+                                {% endif %}
+                                <a href="{{ url_for('team.team_results', team_name=result.team) }}">
+                                    {{ result.team }}
+                                </a>
+                            </td>
+                            <td>{{ result.result }}</td>
+                            <td>
+                                <div class="team-members">
+                                    {% for athlete, split in result.splits %}
+                                        <div class="relay-split">
+                                            <a href="{{ url_for('athlete.athlete_profile', name=athlete) }}">{{ athlete }}</a>: {{ split }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('meet.meet_results', meet_name=result.meet) }}" class="meet-link">
+                                    {{ result.meet }}
+                                </a>
+                                <div class="meet-info">{{ result.date }}</div>
+                            </td>
+                        {% else %}
+                            <td>{{ result[0] }}</td>
+                            <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                            <td>{{ result[2] }}</td>
+                            <td><a href="{{ url_for('team.team_results', team_name=result[3]) }}">{{ result[3] }}</a></td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
             </table>
