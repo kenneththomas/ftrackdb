@@ -93,5 +93,16 @@ def get_athlete_prs(athlete_name):
         prs = [{'event': row[0], 'pr': row[1]} for row in cur.fetchall()]
         return jsonify({'prs': prs})
 
+@app.route('/meets')
+def meets():
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+    search = request.args.get('search', '', type=str)
+    offset = (page - 1) * per_page
+    results = Result.get_recent_meets(limit=per_page, offset=offset, search=search if search else None)
+    total_results = Result.get_total_meets(search=search if search else None)
+    total_pages = (total_results + per_page - 1) // per_page
+    return render_template('meets.html', results=results, page=page, total_pages=total_pages, search=search)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5006)

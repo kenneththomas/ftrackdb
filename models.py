@@ -145,6 +145,38 @@ class Result:
             if conn:
                 conn.close()
 
+    @staticmethod
+    def get_recent_meets(limit=25, offset=0, search=None):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            query = '''
+                SELECT DISTINCT Meet_Name, strftime('%Y-%m-%d', Date) as formatted_date
+                FROM Results
+            '''
+            params = []
+            if search:
+                query += ' WHERE Meet_Name LIKE ?'
+                params.append(f'%{search}%')
+            query += ' ORDER BY formatted_date DESC, Meet_Name ASC LIMIT ? OFFSET ?'
+            params.extend([limit, offset])
+            cur.execute(query, params)
+            return cur.fetchall()
+
+    @staticmethod
+    def get_total_meets(search=None):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            query = 'SELECT COUNT(*) FROM (SELECT DISTINCT Meet_Name, strftime("%Y-%m-%d", Date) as formatted_date FROM Results'
+            params = []
+            if search:
+                query += ' WHERE Meet_Name LIKE ?'
+                params.append(f'%{search}%')
+            query += ')'
+            cur.execute(query, params)
+            return cur.fetchone()[0]
+
 class Athlete:
     @staticmethod
     def get_bio(name):
