@@ -120,7 +120,12 @@ class Result:
                        Athlete, Event, Result, Team 
                 FROM Results 
                 WHERE Meet_Name = ? 
-                ORDER BY Event, Result ASC
+                ORDER BY Event, 
+                    CASE 
+                        WHEN Event IN ('60m', '100m', '200m', '400m', '60mH', '100mH', '110mH', '400mH') 
+                        THEN CAST(REPLACE(Result, ':', '') AS DECIMAL)
+                        ELSE Result 
+                    END ASC
             ''', (meet_name,))
             return cur.fetchall()
 
