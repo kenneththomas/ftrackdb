@@ -13,4 +13,12 @@ class ResultForm(FlaskForm):
 
 class SearchForm(FlaskForm):
     athlete = StringField('Athlete', validators=[DataRequired()])
-    submit = SubmitField('Search') 
+    submit = SubmitField('Search')
+
+class MeetResultForm(FlaskForm):
+    date = DateField('Date', validators=[DataRequired()])
+    athlete = StringField('Athlete', validators=[DataRequired()])
+    event = StringField('Event', validators=[DataRequired()])
+    result = StringField('Result', validators=[DataRequired()])
+    team = StringField('Team', validators=[DataRequired()])
+    submit = SubmitField('Submit') 

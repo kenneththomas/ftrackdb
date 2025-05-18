@@ -1,12 +1,28 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from models import Result, Team
 from utils.relay_utils import parse_time
+from forms import MeetResultForm
 
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)
 
-@meet_bp.route('/meet/<meet_name>')
+@meet_bp.route('/meet/<meet_name>', methods=['GET', 'POST'])
 def meet_results(meet_name):
+    form = MeetResultForm()
+    if form.validate_on_submit():
+        # Insert the result for this meet
+        data = {
+            'date': form.date.data.strftime('%Y-%m-%d'),
+            'athlete': form.athlete.data,
+            'meet': meet_name,
+            'event': form.event.data,
+            'result': form.result.data,
+            'team': form.team.data
+        }
+        Result.insert_result(data)
+        flash('Result added!', 'success')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+
     raw_results = Result.get_meet_results(meet_name)
     # Group standard results by (event, date)
     events = {}
@@ -104,4 +120,4 @@ def meet_results(meet_name):
         for place, record in enumerate(records, start=1):
             record['place'] = place
     
-    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos) 
+    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos, form=form) 
