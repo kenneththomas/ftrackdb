@@ -128,6 +128,24 @@
         border-radius: 4px;
     }
 
+    .team-logo {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+
+    .profile-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .profile-header-content {
+        flex: 1;
+    }
+
     /* Add these mobile-specific styles */
     @media screen and (max-width: 768px) {
         .container {
@@ -137,6 +155,11 @@
 
         .profile-header {
             text-align: center;
+            flex-direction: column;
+        }
+
+        .team-logo {
+            margin: 0 auto 10px auto;
         }
 
         .bio-section {
@@ -216,28 +239,33 @@
     {% include 'navbar.html' %}
     <div class="container">
         <header class="profile-header">
-            <!-- Conditionally add the class "female-text" to display the name in pink -->
-            <h1 class="{% if is_female %}female-text{% endif %}">{{ name }}</h1>
-            <p class="athlete-team">Team: {{ team }}</p>
-            <p class="athlete-class">Class: {{ athlete_class }}</p>
-            
-            <!-- New gender display and toggle control -->
-            <p class="athlete-gender">Gender: <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></p>
-            <button id="toggle-gender" class="bio-btn">
-                Mark as {% if is_female %}Male{% else %}Female{% endif %}
-            </button>
-            
-            <!-- Existing bio section -->
-            <div class="bio-section">
-                <h3>About</h3>
-                <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
-                    {{ (bio or "No bio available. Click to add one.") | markdown_to_html }}
-                </div>
-                <div id="bio-edit" style="display: none;">
-                    <textarea id="bio-textarea" placeholder="Write something about this athlete...">{{ bio or "" }}</textarea>
-                    <div class="bio-buttons">
-                        <button id="save-bio" class="bio-btn save">Save</button>
-                        <button id="cancel-bio" class="bio-btn cancel">Cancel</button>
+            {% if team_logo %}
+                <img src="{{ team_logo }}" alt="{{ team }} logo" class="team-logo">
+            {% endif %}
+            <div class="profile-header-content">
+                <!-- Conditionally add the class "female-text" to display the name in pink -->
+                <h1 class="{% if is_female %}female-text{% endif %}">{{ name }}</h1>
+                <p class="athlete-team">Team: {{ team }}</p>
+                <p class="athlete-class">Class: {{ athlete_class }}</p>
+                
+                <!-- New gender display and toggle control -->
+                <p class="athlete-gender">Gender: <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></p>
+                <button id="toggle-gender" class="bio-btn">
+                    Mark as {% if is_female %}Male{% else %}Female{% endif %}
+                </button>
+                
+                <!-- Existing bio section -->
+                <div class="bio-section">
+                    <h3>About</h3>
+                    <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
+                        {{ (bio or "No bio available. Click to add one.") | markdown_to_html }}
+                    </div>
+                    <div id="bio-edit" style="display: none;">
+                        <textarea id="bio-textarea" placeholder="Write something about this athlete...">{{ bio or "" }}</textarea>
+                        <div class="bio-buttons">
+                            <button id="save-bio" class="bio-btn save">Save</button>
+                            <button id="cancel-bio" class="bio-btn cancel">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -290,7 +318,10 @@
                         </td>
                         <td class="editable" data-field="event">{{ result[2] }}</td>
                         <td class="editable" data-field="result">{{ result[3] }}</td>
-                        <td class="editable" data-field="team">
+                        <td class="editable team-cell" data-field="team">
+                            {% if team_logos.get(result[4]) %}
+                                <img src="{{ team_logos[result[4]] }}" alt="{{ result[4] }} logo" class="team-logo">
+                            {% endif %}
                             <a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
                         <td>

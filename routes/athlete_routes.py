@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from models import Result, Database, Athlete
+from models import Result, Database, Athlete, Team
 from forms import SearchForm
 from utils.relay_utils import calculate_relay_results
 
@@ -53,6 +53,24 @@ def athlete_profile(name):
     team = athlete_info.get('Team', 'Unknown')
     athlete_class = athlete_info.get('Class', 'Unknown')
     
+    # Get team logo for current team
+    team_logo = None
+    if team != 'Unknown':
+        team_info = Team.get_team_info(team)
+        if team_info and team_info.get('logo_url'):
+            team_logo = team_info['logo_url']
+    
+    # Get team logos for all teams in results
+    team_logos = {}
+    teams = set()
+    for result in results:
+        teams.add(result[4])  # team is at index 4
+    
+    for team_name in teams:
+        team_info = Team.get_team_info(team_name)
+        if team_info and team_info.get('logo_url'):
+            team_logos[team_name] = team_info['logo_url']
+    
     # Get gender flag for athlete from Athletes table
     with conn:
         cur = conn.cursor()
@@ -94,7 +112,9 @@ def athlete_profile(name):
                          athlete_class=athlete_class,
                          bio=bio,
                          relay_results=relay_results,
-                         is_female=is_female)
+                         is_female=is_female,
+                         team_logo=team_logo,
+                         team_logos=team_logos)
 
 @athlete_bp.route('/search', methods=['GET', 'POST'])
 def search():
