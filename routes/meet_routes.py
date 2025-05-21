@@ -1,10 +1,87 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import Result, Team
+from models import Result, Team, Database
 from utils.relay_utils import parse_time
 from forms import MeetResultForm
+from datetime import datetime, timedelta
 
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)
+
+def get_athlete_ranking(athlete, event, date, include_current=False):
+    """Get athlete's ranking for an event as of the given date"""
+    # Get date 1 year before the meet date
+    meet_date = datetime.strptime(date, '%Y-%m-%d')
+    one_year_ago = (meet_date - timedelta(days=365)).strftime('%Y-%m-%d')
+    target_date = date if include_current else (meet_date - timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        # For time events (lower is better)
+        if 'm' in event or 'Mile' in event:
+            cur.execute('''
+                WITH RankedResults AS (
+                    SELECT 
+                        Athlete,
+                        Result,
+                        ROW_NUMBER() OVER (ORDER BY Result ASC) as rank
+                    FROM Results 
+                    WHERE Event = ? 
+                    AND Date <= ?
+                    AND Date >= ?
+                    GROUP BY Athlete
+                    HAVING Result = MIN(Result)
+                )
+                SELECT rank 
+                FROM RankedResults 
+                WHERE Athlete = ?
+            ''', (event, target_date, one_year_ago, athlete))
+        # For field events (higher is better)
+        else:
+            cur.execute('''
+                WITH RankedResults AS (
+                    SELECT 
+                        Athlete,
+                        Result,
+                        ROW_NUMBER() OVER (ORDER BY Result DESC) as rank
+                    FROM Results 
+                    WHERE Event = ? 
+                    AND Date <= ?
+                    AND Date >= ?
+                    GROUP BY Athlete
+                    HAVING Result = MAX(Result)
+                )
+                SELECT rank 
+                FROM RankedResults 
+                WHERE Athlete = ?
+            ''', (event, target_date, one_year_ago, athlete))
+        
+        result = cur.fetchone()
+        return result[0] if result else None
+
+def is_pr(athlete, event, result):
+    """Check if a result is a PR for the athlete"""
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        # Get all results for this athlete and event
+        cur.execute('''
+            SELECT Result 
+            FROM Results 
+            WHERE Athlete = ? AND Event = ?
+            ORDER BY Result ASC
+        ''', (athlete, event))
+        all_results = [row[0] for row in cur.fetchall()]
+        
+        if not all_results:
+            return True  # First time running this event
+        
+        # For time events, lower is better
+        if 'm' in event or 'Mile' in event:
+            return result == min(all_results)
+        # For field events, higher is better
+        else:
+            return result == max(all_results)
 
 @meet_bp.route('/meet/<meet_name>', methods=['GET', 'POST'])
 def meet_results(meet_name):
@@ -63,7 +140,10 @@ def meet_results(meet_name):
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
-                'team': team
+                'team': team,
+                'is_pr': is_pr(athlete, event, result),
+                'ranking_before': get_athlete_ranking(athlete, event, date, include_current=False),
+                'ranking_after': get_athlete_ranking(athlete, event, date, include_current=True)
             })
         else:
             event_key = (event, date)
@@ -72,7 +152,10 @@ def meet_results(meet_name):
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
-                'team': team
+                'team': team,
+                'is_pr': is_pr(athlete, event, result),
+                'ranking_before': get_athlete_ranking(athlete, event, date, include_current=False),
+                'ranking_after': get_athlete_ranking(athlete, event, date, include_current=True)
             })
     
     # Process relay splits: for each team and date grouping, if there are at least 4 splits,

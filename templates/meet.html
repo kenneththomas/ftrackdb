@@ -143,6 +143,55 @@
         display: none;
     }
 
+    .pr-flag {
+        display: inline-block;
+        background: #4CAF50;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.8em;
+        margin-left: 8px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .new-flag {
+        display: inline-block;
+        background: #2196F3;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.8em;
+        margin-left: 8px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .ranking-badge {
+        display: inline-block;
+        background: #617394;
+        color: white;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-size: 0.7em;
+        margin-left: 6px;
+        font-weight: bold;
+        vertical-align: middle;
+    }
+
+    .ranking-arrow {
+        margin: 0 2px;
+        font-size: 0.8em;
+    }
+
+    .ranking-arrow.up {
+        color: #4CAF50;
+    }
+
+    .ranking-arrow.down {
+        color: #f44336;
+    }
+
     .meet-container a {
         color: #fff;
         text-decoration: none;
@@ -280,8 +329,25 @@
                                                     {% endfor %}
                                                 {% else %}
                                                     <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
+                                                    {% if result.ranking_before %}
+                                                        <span class="ranking-badge">#{{ result.ranking_before }}</span>
+                                                    {% endif %}
                                                 {% endif %}
                                                 <span class="inline-result">{{ result.result }}</span>
+                                                {% if result.ranking_before and result.ranking_after %}
+                                                    {% if result.ranking_after < result.ranking_before %}
+                                                        <span class="ranking-arrow up">↑</span>
+                                                    {% elif result.ranking_after > result.ranking_before %}
+                                                        <span class="ranking-arrow down">↓</span>
+                                                    {% endif %}
+                                                    <span class="ranking-badge">#{{ result.ranking_after }}</span>
+                                                {% elif result.ranking_after %}
+                                                    <span class="new-flag">NEW</span>
+                                                    <span class="ranking-badge">#{{ result.ranking_after }}</span>
+                                                {% endif %}
+                                                {% if result.is_pr %}
+                                                    <span class="pr-flag">PR</span>
+                                                {% endif %}
                                             </div>
                                         </div>
                                         <a href="{{ url_for('team.team_results', team_name=result.team) }}" class="team-meta">{{ result.team }}</a>
