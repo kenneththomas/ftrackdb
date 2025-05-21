@@ -182,6 +182,52 @@ class Result:
             cur.execute(query, params)
             return cur.fetchone()[0]
 
+    @staticmethod
+    def get_recent_winners(limit=25, offset=0):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                WITH RankedResults AS (
+                    SELECT 
+                        strftime('%Y-%m-%d', Date) as formatted_date,
+                        Athlete,
+                        Meet_Name,
+                        Event,
+                        Result,
+                        Team,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY Meet_Name, Event 
+                            ORDER BY 
+                                CASE 
+                                    WHEN Event IN ('60m', '100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m', '60mH', '100mH', '110mH', '400mH') 
+                                    THEN CAST(REPLACE(Result, ':', '') AS DECIMAL)
+                                    ELSE Result 
+                                END ASC
+                        ) as rn
+                    FROM Results
+                )
+                SELECT formatted_date, Athlete, Meet_Name, Event, Result, Team
+                FROM RankedResults
+                WHERE rn = 1
+                ORDER BY formatted_date DESC, Meet_Name, Event
+                LIMIT ? OFFSET ?
+            ''', (limit, offset))
+            return cur.fetchall()
+
+    @staticmethod
+    def get_total_winners():
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT COUNT(*) FROM (
+                    SELECT DISTINCT Meet_Name, Event
+                    FROM Results
+                )
+            ''')
+            return cur.fetchone()[0]
+
 class Athlete:
     @staticmethod
     def get_bio(name):

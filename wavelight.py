@@ -39,8 +39,8 @@ def home():
         cur.execute('SELECT team_name, logo_url FROM Teams')
         team_logos = dict(cur.fetchall())
     
-    results = Result.get_recent_results(limit=per_page, offset=(page-1)*per_page)
-    total_results = Result.get_total_results()
+    results = Result.get_recent_winners(limit=per_page, offset=(page-1)*per_page)
+    total_results = Result.get_total_winners()
     total_pages = (total_results + per_page - 1) // per_page
     
     return render_template('index.html', 
