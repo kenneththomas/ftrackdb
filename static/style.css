@@ -240,3 +240,8 @@ table td:empty::before {
 .female-text {
     color: rgb(216, 83, 105);
 }
+
+.profile-dark {
+    background: #23272a !important;
+    color: #e0e0e0 !important;
+}
