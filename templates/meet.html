@@ -5,47 +5,248 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <style>
+    body {
+        background: #181a1b !important;
+        background-image: none !important;
+        color: #e0e0e0;
+    }
+
+    .meet-container {
+        background: #23272a;
+        color: #e0e0e0;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.5);
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px;
+        font-family: 'Courier New', Courier, monospace;
+        line-height: 1.6;
+    }
+
+    .meet-container h1 {
+        text-align: center;
+        font-family: 'Courier New', Courier, monospace;
+        border-bottom: 2px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 40px;
+        font-size: 2.5em;
+        color: #fff;
+    }
+
     .event-header {
-        background: linear-gradient(to right, #2c3e50, #3498db);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        margin: 20px 0 10px 0;
+        background: transparent;
+        color: #fff;
+        padding: 20px 0;
+        margin: 40px 0 20px 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-bottom: 2px solid #444;
     }
     
     .event-name {
-        font-size: 1.4em;
+        font-size: 1.6em;
         font-weight: bold;
     }
     
     .event-date {
-        font-size: 1.1em;
-        opacity: 0.9;
+        font-size: 1.2em;
     }
 
+    .results-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-bottom: 40px;
+        font-family: 'Courier New', Courier, monospace;
+        background: #23272a;
+        color: #e0e0e0;
+    }
+
+    .results-table th {
+        background: #617394;
+        color: #fff;
+        padding: 15px 10px;
+        text-align: left;
+        border-bottom: 2px solid #444;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+
+    .results-table td {
+        padding: 16px 10px 12px 0;
+        border-bottom: 1px solid #333;
+        vertical-align: middle;
+        background: #23272a;
+        color: #e0e0e0;
+    }
+    .results-table tr:nth-child(even) td {
+        background: #202225;
+    }
+    .athlete-cell {
+        text-align: left;
+        font-size: 1.08em;
+        padding-left: 0.5em;
+    }
+    .athlete-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .place-num {
+        font-weight: bold;
+        font-size: 1.2em;
+        min-width: 2em;
+        color: #003087;
+        margin-right: 6px;
+    }
     .team-logo {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         object-fit: contain;
         vertical-align: middle;
         margin-right: 8px;
+        opacity: 0.95;
+    }
+    .athlete-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+    }
+    .athlete-name {
+        font-weight: bold;
+        font-size: 1.08em;
+        color: #fff;
+        margin-bottom: 0;
+    }
+    .team-meta {
+        font-size: 0.98em;
+        color: #fff;
+        margin-top: 0;
+        margin-left: 2px;
+        font-weight: normal;
+    }
+    .inline-result {
+        display: inline-block;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
+        font-size: 1.08em;
+        color: #fff;
+        letter-spacing: 0.5px;
+        vertical-align: middle;
+        margin-left: 10px;
+    }
+    .result-time {
+        display: none;
     }
 
-    .team-cell {
-        display: flex;
-        align-items: center;
+    .meet-container a {
+        color: #fff;
+        text-decoration: none;
+        border-bottom: 1px dotted #fff;
+        transition: color 0.2s ease;
+    }
+
+    .meet-container a:hover {
+        color: #b48ead;
+    }
+
+    .meet-container .female-text {
+        color: #b48ead;
+    }
+
+    #filterInput {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 30px;
+        font-family: 'Courier New', Courier, monospace;
+        border: none;
+        border-bottom: 2px solid #444;
+        background: #181a1b;
+        color: #e0e0e0;
+        font-size: 1.1em;
+    }
+
+    #filterInput:focus {
+        outline: none;
+        border-bottom: 2px solid #007bff;
+    }
+
+    .meet-container .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .meet-container .form-group {
+        margin-bottom: 20px;
+    }
+
+    .meet-container .form-control {
+        width: 100%;
+        padding: 10px;
+        font-family: 'Courier New', Courier, monospace;
+        border: none;
+        border-bottom: 2px solid #444;
+        background: #181a1b;
+        color: #e0e0e0;
+        font-size: 1em;
+    }
+
+    .meet-container .form-control:focus {
+        outline: none;
+        border-bottom: 2px solid #007bff;
+    }
+
+    .meet-container .btn {
+        padding: 12px 24px;
+        background: #000;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 1.1em;
+        transition: background 0.2s ease;
+    }
+
+    .meet-container .btn:hover {
+        background: #333;
+    }
+
+    .meet-container .home-button {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #000;
+        color: white;
+        text-decoration: none;
+        margin-top: 30px;
+        font-size: 1.1em;
+        transition: background 0.2s ease;
+    }
+
+    .meet-container .home-button:hover {
+        background: #333;
+    }
+
+    /* Place styling */
+    .results-table td:first-child {
+        font-weight: bold;
+        width: 60px;
+    }
+
+    /* Result styling */
+    .results-table td:nth-child(3) {
+        font-family: 'Courier New', Courier, monospace;
+        letter-spacing: 0.5px;
     }
 </style>
 <body>
     {% include 'navbar.html' %}
-    <div class="container">
+    <div class="meet-container">
         <h1>{{ meet_name }} Results</h1>
         {% if events %}
-            <input type="text" id="filterInput" placeholder="Filter">
+            <input type="text" id="filterInput" placeholder="Filter results...">
             {% for (event, date), results in events.items() %}
                 <div class="event-header">
                     <span class="event-name">{{ event }}</span>
@@ -54,37 +255,34 @@
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Place</th>
-                            <th>Athlete</th>
-                            <th>Result</th>
-                            <th>Team</th>
+                            <th style="width:100%;">Pl / Athlete</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for result in results %}
                         <tr>
-                            <td>{{ result.place }}</td>
-                            <td>
-                                {% if result.athletes is defined %}
-                                    {% for athlete in result.athletes %}
-                                        <a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}" class="{% if get_gender(athlete|trim) %}female-text{% endif %}">
-                                            {{ athlete|trim }}
-                                        </a>{% if not loop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="{% if get_gender(result.athlete) %}female-text{% endif %}">
-                                        {{ result.athlete }}
-                                    </a>
-                                {% endif %}
-                            </td>
-                            <td>{{ result.result }}</td>
-                            <td class="team-cell">
-                                {% if team_logos.get(result.team) %}
-                                    <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
-                                {% endif %}
-                                <a href="{{ url_for('team.team_results', team_name=result.team) }}">
-                                    {{ result.team }}
-                                </a>
+                            <td class="athlete-cell">
+                                <div class="athlete-row">
+                                    <span class="place-num">{{ result.place }}</span>
+                                    {% if team_logos.get(result.team) %}
+                                        <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
+                                    {% endif %}
+                                    <span class="athlete-info">
+                                        <div style="display: flex; align-items: center;">
+                                            <div>
+                                                {% if result.athletes is defined %}
+                                                    {% for athlete in result.athletes %}
+                                                        <a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}" class="athlete-name {% if get_gender(athlete|trim) %}female-text{% endif %}"><b>{{ athlete|trim }}</b></a>{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
+                                                {% endif %}
+                                                <span class="inline-result">{{ result.result }}</span>
+                                            </div>
+                                        </div>
+                                        <a href="{{ url_for('team.team_results', team_name=result.team) }}" class="team-meta">{{ result.team }}</a>
+                                    </span>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -128,7 +326,7 @@
                     {{ form.team(class="form-control", required=True, autocomplete="off") }}
                 </div>
             </div>
-            <button type="submit" class="btn btn-success">Add Result</button>
+            <button type="submit" class="btn">Add Result</button>
         </form>
         <br>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
