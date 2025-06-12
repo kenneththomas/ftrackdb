@@ -298,6 +298,32 @@
     {% include 'navbar.html' %}
     <div class="meet-container">
         <h1>{{ meet_name }} Results</h1>
+        
+        {% if sorted_teams %}
+        <div class="team-scoring-section" style="margin-bottom: 40px; background: #2a2d30; padding: 20px; border-radius: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Team Scores</h2>
+                <form method="post" action="{{ url_for('meet.calculate_meet_scores', meet_name=meet_name) }}" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn" style="background: #617394;">Recalculate Scores</button>
+                </form>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                {% for team, score in sorted_teams %}
+                <div class="team-score-card" style="background: #23272a; padding: 15px; border-radius: 5px; display: flex; align-items: center; gap: 15px;">
+                    {% if team_logos.get(team) %}
+                        <img src="{{ team_logos[team] }}" alt="{{ team }} logo" style="width: 40px; height: 40px; object-fit: contain;">
+                    {% endif %}
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1em;">{{ team }}</div>
+                        <div style="color: #617394; font-size: 1.2em;">{{ "%.1f"|format(score) }} pts</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if events %}
             <input type="text" id="filterInput" placeholder="Filter results...">
             {% for (event, date), results in events.items() %}

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import Result, Team, Database
+from models import Result, Team, Database, TeamScore
 from utils.relay_utils import parse_time
 from forms import MeetResultForm
 from datetime import datetime, timedelta
@@ -97,6 +97,8 @@ def meet_results(meet_name):
             'team': form.team.data
         }
         Result.insert_result(data)
+        # Clear cached team scores since we added a new result
+        TeamScore.update_meet_scores(meet_name, {})
         flash('Result added!', 'success')
         return redirect(url_for('meet.meet_results', meet_name=meet_name))
 
@@ -117,7 +119,71 @@ def meet_results(meet_name):
         team_info = Team.get_team_info(team)
         if team_info and team_info.get('logo_url'):
             team_logos[team] = team_info['logo_url']
-    
+
+    # Get cached team scores
+    cached_scores = TeamScore.get_meet_scores(meet_name)
+    if cached_scores:
+        sorted_teams = [(row[0], row[1]) for row in cached_scores]
+    else:
+        # Calculate team scores if not cached
+        team_scores = {team: 0 for team in teams}
+        
+        # NCAA scoring system: 10-8-6-5-4-3-2-1
+        ncaa_points = {
+            1: 10,
+            2: 8,
+            3: 6,
+            4: 5,
+            5: 4,
+            6: 3,
+            7: 2,
+            8: 1
+        }
+        
+        for (event, date), results in events.items():
+            # Skip relay splits as they're part of the relay event
+            if event == "400m RS":
+                continue
+                
+            # Sort results by place
+            sorted_results = sorted(results, key=lambda x: x['place'])
+            
+            # Track current place and points
+            current_place = 1
+            tied_results = []
+            
+            for i, result in enumerate(sorted_results):
+                # Skip if place is beyond 8th
+                if result['place'] > 8:
+                    continue
+                    
+                tied_results.append(result)
+                
+                # Check if next result has same place or if this is the last result
+                if i == len(sorted_results) - 1 or sorted_results[i + 1]['place'] != result['place']:
+                    # Calculate points for the tied places
+                    total_points = 0
+                    for place in range(current_place, current_place + len(tied_results)):
+                        if place in ncaa_points:
+                            total_points += ncaa_points[place]
+                    
+                    # Average the points for tied places
+                    avg_points = total_points / len(tied_results)
+                    
+                    # Assign points to each tied result
+                    for tied_result in tied_results:
+                        team_scores[tied_result['team']] += avg_points
+                    
+                    # Move to next place after the ties
+                    current_place += len(tied_results)
+                    tied_results = []
+        
+        # Cache the calculated scores
+        TeamScore.update_meet_scores(meet_name, team_scores)
+        
+        # Sort teams by score
+        sorted_teams = sorted(team_scores.items(), key=lambda x: x[1], reverse=True)
+
     for row in raw_results:
         date, athlete, event, result, team = row
         # For relay splits, process them twice:
@@ -202,8 +268,8 @@ def meet_results(meet_name):
         # Assign rankings (place numbers)
         for place, record in enumerate(records, start=1):
             record['place'] = place
-    
-    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos, form=form)
+
+    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos, form=form, sorted_teams=sorted_teams)
 
 @meet_bp.route('/meet/<old_name>/rename', methods=['POST'])
 def rename_meet(old_name):
@@ -236,4 +302,110 @@ def rename_meet(old_name):
         conn.commit()
     
     flash(f'Meet renamed successfully to {new_name}', 'success')
-    return redirect(url_for('meet.meet_results', meet_name=new_name)) 
+    return redirect(url_for('meet.meet_results', meet_name=new_name))
+
+@meet_bp.route('/meet/<meet_name>/calculate_scores', methods=['POST'])
+def calculate_meet_scores(meet_name):
+    # Get all results for this meet
+    raw_results = Result.get_meet_results(meet_name)
+    
+    # Get all unique teams
+    teams = set()
+    for row in raw_results:
+        teams.add(row[4])  # team is at index 4
+    
+    # Calculate team scores
+    team_scores = {team: 0 for team in teams}
+    
+    # NCAA scoring system: 10-8-6-5-4-3-2-1
+    ncaa_points = {
+        1: 10,
+        2: 8,
+        3: 6,
+        4: 5,
+        5: 4,
+        6: 3,
+        7: 2,
+        8: 1
+    }
+    
+    # Group results by event and date
+    events = {}
+    for row in raw_results:
+        date, athlete, event, result, team = row
+        event_key = (event, date)
+        if event_key not in events:
+            events[event_key] = []
+        events[event_key].append({
+            'athlete': athlete,
+            'result': result,
+            'team': team
+        })
+    
+    # Calculate places for each event
+    for (event, date), results in events.items():
+        # For time events (lower is better)
+        if 'm' in event or 'Mile' in event:
+            results.sort(key=lambda x: parse_time(x['result']))
+        # For field events (higher is better)
+        else:
+            results.sort(key=lambda x: float(x['result']), reverse=True)
+        
+        # Assign places
+        current_place = 1
+        current_result = None
+        tied_count = 0
+        
+        for i, result in enumerate(results):
+            if current_result is None or result['result'] != current_result:
+                current_place += tied_count
+                tied_count = 0
+                current_result = result['result']
+            
+            result['place'] = current_place
+            tied_count += 1
+    
+    # Calculate scores for each event
+    for (event, date), results in events.items():
+        # Skip relay splits as they're part of the relay event
+        if event == "400m RS":
+            continue
+            
+        # Sort results by place
+        sorted_results = sorted(results, key=lambda x: x['place'])
+        
+        # Track current place and points
+        current_place = 1
+        tied_results = []
+        
+        for i, result in enumerate(sorted_results):
+            # Skip if place is beyond 8th
+            if result['place'] > 8:
+                continue
+                
+            tied_results.append(result)
+            
+            # Check if next result has same place or if this is the last result
+            if i == len(sorted_results) - 1 or sorted_results[i + 1]['place'] != result['place']:
+                # Calculate points for the tied places
+                total_points = 0
+                for place in range(current_place, current_place + len(tied_results)):
+                    if place in ncaa_points:
+                        total_points += ncaa_points[place]
+                
+                # Average the points for tied places
+                avg_points = total_points / len(tied_results)
+                
+                # Assign points to each tied result
+                for tied_result in tied_results:
+                    team_scores[tied_result['team']] += avg_points
+                
+                # Move to next place after the ties
+                current_place += len(tied_results)
+                tied_results = []
+    
+    # Cache the calculated scores
+    TeamScore.update_meet_scores(meet_name, team_scores)
+    
+    flash('Team scores have been recalculated!', 'success')
+    return redirect(url_for('meet.meet_results', meet_name=meet_name)) 

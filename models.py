@@ -43,6 +43,17 @@ class Database:
                 )
             ''')
             
+            # Create TeamScores table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS TeamScores (
+                    meet_name TEXT,
+                    team_name TEXT,
+                    score REAL,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (meet_name, team_name)
+                )
+            ''')
+            
             conn.commit()
         except Error as e:
             print(f"Error initializing tables: {e}")
@@ -294,4 +305,33 @@ class Team:
                 ON CONFLICT(team_name) 
                 DO UPDATE SET logo_url = ?, updated_at = CURRENT_TIMESTAMP
             ''', (team_name, logo_url, logo_url))
+            conn.commit()
+
+class TeamScore:
+    @staticmethod
+    def get_meet_scores(meet_name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT team_name, score 
+                FROM TeamScores 
+                WHERE meet_name = ? 
+                ORDER BY score DESC
+            ''', (meet_name,))
+            return cur.fetchall()
+
+    @staticmethod
+    def update_meet_scores(meet_name, team_scores):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            # Delete existing scores for this meet
+            cur.execute('DELETE FROM TeamScores WHERE meet_name = ?', (meet_name,))
+            # Insert new scores
+            for team, score in team_scores.items():
+                cur.execute('''
+                    INSERT INTO TeamScores (meet_name, team_name, score)
+                    VALUES (?, ?, ?)
+                ''', (meet_name, team, score))
             conn.commit()
