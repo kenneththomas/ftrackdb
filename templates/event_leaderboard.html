@@ -36,12 +36,37 @@
         .team-members {
             margin-bottom: 8px;
         }
+        .filter-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .filter-section select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-right: 10px;
+        }
+        .filter-section select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
     </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     <div class="container">
         <h1>{{ event }} Leaderboard</h1>
+        
+        <!-- Year Filter -->
+        <div class="filter-section">
+            <select id="yearFilter" onchange="updateYearFilter(this.value)">
+                <option value="all" {% if year_filter == 'all' %}selected{% endif %}>All Time</option>
+                <option value="last_year" {% if year_filter == 'last_year' %}selected{% endif %}>Last Year</option>
+            </select>
+        </div>
+
         {% if results %}
             <table>
                 <tr>
@@ -99,13 +124,13 @@
             <!-- Pagination -->
             <div class="pagination">
                 {% if page > 1 %}
-                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event, page=page-1) }}">&laquo; Previous</a>
+                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event, page=page-1, year=year_filter) }}">&laquo; Previous</a>
                 {% endif %}
                 
                 <span>Page {{ page }} of {{ total_pages }}</span>
                 
                 {% if page < total_pages %}
-                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event, page=page+1) }}">Next &raquo;</a>
+                    <a href="{{ url_for('leaderboard.event_leaderboard', event=event, page=page+1, year=year_filter) }}">Next &raquo;</a>
                 {% endif %}
             </div>
         {% else %}
@@ -115,5 +140,11 @@
         <a href="{{ url_for('leaderboard.leaderboard') }}" class="back-button">Back to Events</a>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>
+
+    <script>
+        function updateYearFilter(value) {
+            window.location.href = "{{ url_for('leaderboard.event_leaderboard', event=event) }}?year=" + value;
+        }
+    </script>
 </body>
 </html> 

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request
 from models import Database, Team
 from utils.relay_utils import calculate_relay_results, parse_time
+from datetime import datetime, timedelta
 
 # Create blueprint
 leaderboard_bp = Blueprint('leaderboard', __name__)
@@ -56,6 +57,14 @@ def event_leaderboard(event):
     page = request.args.get('page', 1, type=int)
     per_page = 20
     offset = (page - 1) * per_page
+    year_filter = request.args.get('year', 'all')
+    
+    # Calculate date range for last year if requested
+    date_filter = None
+    if year_filter == 'last_year':
+        today = datetime.now()
+        one_year_ago = today - timedelta(days=365)
+        date_filter = one_year_ago.strftime('%Y-%m-%d')
     
     conn = Database.get_connection()
     with conn:
@@ -67,12 +76,20 @@ def event_leaderboard(event):
         if is_relay:
             # For relay events, we need to handle them differently
             # First get all relay splits
-            cur.execute('''
+            query = '''
                 SELECT Date, Meet_Name, Team, Athlete, Result
                 FROM Results 
                 WHERE Event = ?
-                ORDER BY Date DESC
-            ''', (event.replace('4x', '') + ' RS',))
+            '''
+            params = [event.replace('4x', '') + ' RS']
+            
+            if date_filter:
+                query += ' AND Date >= ?'
+                params.append(date_filter)
+                
+            query += ' ORDER BY Date DESC'
+            
+            cur.execute(query, params)
             relay_splits = cur.fetchall()
             
             # Group splits by team and date
@@ -113,16 +130,32 @@ def event_leaderboard(event):
                                 page=page,
                                 total_pages=total_pages,
                                 is_relay=True,
-                                team_logos=team_logos)
+                                team_logos=team_logos,
+                                year_filter=year_filter)
         else:
             # For non-relay events, use the original logic
-            cur.execute('SELECT COUNT(DISTINCT Athlete) FROM Results WHERE Event = ?', (event,))
+            count_query = 'SELECT COUNT(DISTINCT Athlete) FROM Results WHERE Event = ?'
+            count_params = [event]
+            
+            if date_filter:
+                count_query += ' AND Date >= ?'
+                count_params.append(date_filter)
+            
+            cur.execute(count_query, count_params)
             total_results = cur.fetchone()[0]
             
-            cur.execute('''
+            query = '''
                 SELECT Event, Athlete, Result, Team 
                 FROM Results 
-                WHERE Event = ? 
+                WHERE Event = ?
+            '''
+            params = [event]
+            
+            if date_filter:
+                query += ' AND Date >= ?'
+                params.append(date_filter)
+                
+            query += '''
                 GROUP BY Athlete 
                 ORDER BY 
                     CASE 
@@ -130,7 +163,10 @@ def event_leaderboard(event):
                         ELSE Result 
                     END ASC
                 LIMIT ? OFFSET ?
-            ''', (event, per_page, offset))
+            '''
+            params.extend([per_page, offset])
+            
+            cur.execute(query, params)
             results = cur.fetchall()
             
             total_pages = (total_results + per_page - 1) // per_page
@@ -140,4 +176,5 @@ def event_leaderboard(event):
                                 results=results,
                                 page=page,
                                 total_pages=total_pages,
-                                is_relay=False) 
+                                is_relay=False,
+                                year_filter=year_filter) 
