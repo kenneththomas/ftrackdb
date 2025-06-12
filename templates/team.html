@@ -55,14 +55,6 @@
             <h1>{{ team_name }} Personal Bests</h1>
         </div>
 
-        <div class="logo-form">
-            <form method="POST" action="{{ url_for('team.update_team_logo', team_name=team_name) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="logo_url" placeholder="Enter team logo URL" value="{{ team_info.logo_url if team_info and team_info.logo_url else '' }}">
-                <button type="submit">Update Logo</button>
-            </form>
-        </div>
-
         {% if athletes %}
             <table>
                 <tr>
@@ -117,6 +109,14 @@
         {% endif %}
         <br>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
+        <div class="logo-form">
+            <form method="POST" action="{{ url_for('team.update_team_logo', team_name=team_name) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="logo_url" placeholder="Enter team logo URL" value="{{ team_info.logo_url if team_info and team_info.logo_url else '' }}">
+                <button type="submit">Update Logo</button>
+            </form>
+        </div>
+
     </div>
 </body>
 </html>
