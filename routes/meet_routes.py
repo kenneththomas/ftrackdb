@@ -203,4 +203,37 @@ def meet_results(meet_name):
         for place, record in enumerate(records, start=1):
             record['place'] = place
     
-    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos, form=form) 
+    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos, form=form)
+
+@meet_bp.route('/meet/<old_name>/rename', methods=['POST'])
+def rename_meet(old_name):
+    new_name = request.form.get('new_name')
+    meet_date = request.form.get('meet_date')
+    
+    if not new_name:
+        flash('New meet name is required', 'error')
+        return redirect(url_for('meet.meet_results', meet_name=old_name))
+    
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        
+        # If a date is provided, only rename results for that specific date
+        if meet_date:
+            cur.execute('''
+                UPDATE Results 
+                SET Meet_Name = ? 
+                WHERE Meet_Name = ? AND Date = ?
+            ''', (new_name, old_name, meet_date))
+        else:
+            # Otherwise rename all results for this meet
+            cur.execute('''
+                UPDATE Results 
+                SET Meet_Name = ? 
+                WHERE Meet_Name = ?
+            ''', (new_name, old_name))
+        
+        conn.commit()
+    
+    flash(f'Meet renamed successfully to {new_name}', 'success')
+    return redirect(url_for('meet.meet_results', meet_name=new_name)) 
