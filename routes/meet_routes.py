@@ -1,63 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import Result, Team, Database, TeamScore
+from models import Result, Team, Database, TeamScore, AthleteRanking
 from utils.relay_utils import parse_time
 from forms import MeetResultForm
 from datetime import datetime, timedelta
 
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)
-
-def get_athlete_ranking(athlete, event, date, include_current=False):
-    """Get athlete's ranking for an event as of the given date"""
-    # Get date 1 year before the meet date
-    meet_date = datetime.strptime(date, '%Y-%m-%d')
-    one_year_ago = (meet_date - timedelta(days=365)).strftime('%Y-%m-%d')
-    target_date = date if include_current else (meet_date - timedelta(days=1)).strftime('%Y-%m-%d')
-    
-    conn = Database.get_connection()
-    with conn:
-        cur = conn.cursor()
-        # For time events (lower is better)
-        if 'm' in event or 'Mile' in event:
-            cur.execute('''
-                WITH RankedResults AS (
-                    SELECT 
-                        Athlete,
-                        Result,
-                        ROW_NUMBER() OVER (ORDER BY Result ASC) as rank
-                    FROM Results 
-                    WHERE Event = ? 
-                    AND Date <= ?
-                    AND Date >= ?
-                    GROUP BY Athlete
-                    HAVING Result = MIN(Result)
-                )
-                SELECT rank 
-                FROM RankedResults 
-                WHERE Athlete = ?
-            ''', (event, target_date, one_year_ago, athlete))
-        # For field events (higher is better)
-        else:
-            cur.execute('''
-                WITH RankedResults AS (
-                    SELECT 
-                        Athlete,
-                        Result,
-                        ROW_NUMBER() OVER (ORDER BY Result DESC) as rank
-                    FROM Results 
-                    WHERE Event = ? 
-                    AND Date <= ?
-                    AND Date >= ?
-                    GROUP BY Athlete
-                    HAVING Result = MAX(Result)
-                )
-                SELECT rank 
-                FROM RankedResults 
-                WHERE Athlete = ?
-            ''', (event, target_date, one_year_ago, athlete))
-        
-        result = cur.fetchone()
-        return result[0] if result else None
 
 def is_pr(athlete, event, result):
     """Check if a result is a PR for the athlete"""
@@ -97,8 +45,9 @@ def meet_results(meet_name):
             'team': form.team.data
         }
         Result.insert_result(data)
-        # Clear cached team scores since we added a new result
+        # Clear cached team scores and rankings since we added a new result
         TeamScore.update_meet_scores(meet_name, {})
+        AthleteRanking.update_meet_rankings(meet_name, [])
         flash('Result added!', 'success')
         return redirect(url_for('meet.meet_results', meet_name=meet_name))
 
@@ -184,6 +133,18 @@ def meet_results(meet_name):
         # Sort teams by score
         sorted_teams = sorted(team_scores.items(), key=lambda x: x[1], reverse=True)
 
+    # Get cached rankings
+    cached_rankings = AthleteRanking.get_meet_rankings(meet_name)
+    rankings_dict = {}
+    if cached_rankings:
+        for row in cached_rankings:
+            event, date, athlete, ranking_before, ranking_after = row
+            key = (event, date, athlete)
+            rankings_dict[key] = {
+                'ranking_before': ranking_before,
+                'ranking_after': ranking_after
+            }
+
     for row in raw_results:
         date, athlete, event, result, team = row
         # For relay splits, process them twice:
@@ -203,25 +164,35 @@ def meet_results(meet_name):
             event_key = (event, date)
             if event_key not in events:
                 events[event_key] = []
+            
+            # Get rankings from cache or calculate if not available
+            ranking_key = (event, date, athlete)
+            rankings = rankings_dict.get(ranking_key, {})
+            
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
                 'team': team,
                 'is_pr': is_pr(athlete, event, result),
-                'ranking_before': get_athlete_ranking(athlete, event, date, include_current=False),
-                'ranking_after': get_athlete_ranking(athlete, event, date, include_current=True)
+                'ranking_before': rankings.get('ranking_before'),
+                'ranking_after': rankings.get('ranking_after')
             })
         else:
             event_key = (event, date)
             if event_key not in events:
                 events[event_key] = []
+            
+            # Get rankings from cache or calculate if not available
+            ranking_key = (event, date, athlete)
+            rankings = rankings_dict.get(ranking_key, {})
+            
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
                 'team': team,
                 'is_pr': is_pr(athlete, event, result),
-                'ranking_before': get_athlete_ranking(athlete, event, date, include_current=False),
-                'ranking_after': get_athlete_ranking(athlete, event, date, include_current=True)
+                'ranking_before': rankings.get('ranking_before'),
+                'ranking_after': rankings.get('ranking_after')
             })
     
     # Process relay splits: for each team and date grouping, if there are at least 4 splits,
@@ -408,4 +379,53 @@ def calculate_meet_scores(meet_name):
     TeamScore.update_meet_scores(meet_name, team_scores)
     
     flash('Team scores have been recalculated!', 'success')
+    return redirect(url_for('meet.meet_results', meet_name=meet_name))
+
+@meet_bp.route('/meet/<meet_name>/calculate_rankings', methods=['POST'])
+def calculate_rankings(meet_name):
+    """Calculate and cache rankings for all athletes in a meet"""
+    # Get all results for this meet
+    raw_results = Result.get_meet_results(meet_name)
+    
+    # Group results by event and date
+    events_by_date = {}
+    for row in raw_results:
+        date, athlete, event, result, team = row
+        event_date_key = (event, date)
+        if event_date_key not in events_by_date:
+            events_by_date[event_date_key] = []
+        events_by_date[event_date_key].append({
+            'athlete': athlete,
+            'result': result,
+            'team': team
+        })
+    
+    # Calculate rankings for each event/date combination
+    rankings_data = []
+    for (event, date), results in events_by_date.items():
+        # Skip relay splits as they're part of the relay event
+        if event == "400m RS":
+            continue
+            
+        # Calculate rankings before the meet (excluding current results)
+        rankings_before = AthleteRanking.calculate_rankings_for_date(event, date, include_current=False)
+        
+        # Calculate rankings after the meet (including current results)
+        rankings_after = AthleteRanking.calculate_rankings_for_date(event, date, include_current=True)
+        
+        # Store rankings for each athlete in this event
+        for result in results:
+            athlete = result['athlete']
+            rankings_data.append({
+                'event': event,
+                'date': date,
+                'athlete': athlete,
+                'ranking_before': rankings_before.get(athlete),
+                'ranking_after': rankings_after.get(athlete)
+            })
+    
+    # Cache the calculated rankings
+    AthleteRanking.update_meet_rankings(meet_name, rankings_data)
+    
+    flash('Athlete rankings have been calculated and cached!', 'success')
     return redirect(url_for('meet.meet_results', meet_name=meet_name)) 

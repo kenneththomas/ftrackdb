@@ -54,6 +54,20 @@ class Database:
                 )
             ''')
             
+            # Create AthleteRankings table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS AthleteRankings (
+                    meet_name TEXT,
+                    event TEXT,
+                    date TEXT,
+                    athlete TEXT,
+                    ranking_before INTEGER,
+                    ranking_after INTEGER,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (meet_name, event, date, athlete)
+                )
+            ''')
+            
             conn.commit()
         except Error as e:
             print(f"Error initializing tables: {e}")
@@ -335,3 +349,89 @@ class TeamScore:
                     VALUES (?, ?, ?)
                 ''', (meet_name, team, score))
             conn.commit()
+
+class AthleteRanking:
+    @staticmethod
+    def get_meet_rankings(meet_name):
+        """Get cached rankings for a specific meet"""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT event, date, athlete, ranking_before, ranking_after
+                FROM AthleteRankings 
+                WHERE meet_name = ?
+                ORDER BY event, date, athlete
+            ''', (meet_name,))
+            return cur.fetchall()
+
+    @staticmethod
+    def update_meet_rankings(meet_name, rankings_data):
+        """Update cached rankings for a meet"""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            # Delete existing rankings for this meet
+            cur.execute('DELETE FROM AthleteRankings WHERE meet_name = ?', (meet_name,))
+            # Insert new rankings
+            for ranking in rankings_data:
+                cur.execute('''
+                    INSERT INTO AthleteRankings (meet_name, event, date, athlete, ranking_before, ranking_after)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (meet_name, ranking['event'], ranking['date'], ranking['athlete'], 
+                     ranking['ranking_before'], ranking['ranking_after']))
+            conn.commit()
+
+    @staticmethod
+    def calculate_rankings_for_date(event, date, include_current=False):
+        """Calculate rankings for an event as of a specific date"""
+        from datetime import datetime, timedelta
+        
+        # Get date 1 year before the meet date
+        meet_date = datetime.strptime(date, '%Y-%m-%d')
+        one_year_ago = (meet_date - timedelta(days=365)).strftime('%Y-%m-%d')
+        target_date = date if include_current else (meet_date - timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            # For time events (lower is better)
+            if 'm' in event or 'Mile' in event:
+                cur.execute('''
+                    WITH RankedResults AS (
+                        SELECT 
+                            Athlete,
+                            Result,
+                            ROW_NUMBER() OVER (ORDER BY Result ASC) as rank
+                        FROM Results 
+                        WHERE Event = ? 
+                        AND Date <= ?
+                        AND Date >= ?
+                        GROUP BY Athlete
+                        HAVING Result = MIN(Result)
+                    )
+                    SELECT Athlete, rank 
+                    FROM RankedResults
+                    ORDER BY rank
+                ''', (event, target_date, one_year_ago))
+            # For field events (higher is better)
+            else:
+                cur.execute('''
+                    WITH RankedResults AS (
+                        SELECT 
+                            Athlete,
+                            Result,
+                            ROW_NUMBER() OVER (ORDER BY Result DESC) as rank
+                        FROM Results 
+                        WHERE Event = ? 
+                        AND Date <= ?
+                        AND Date >= ?
+                        GROUP BY Athlete
+                        HAVING Result = MAX(Result)
+                    )
+                    SELECT Athlete, rank 
+                    FROM RankedResults
+                    ORDER BY rank
+                ''', (event, target_date, one_year_ago))
+            
+            return dict(cur.fetchall())
