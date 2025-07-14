@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from models import Result, Database, Athlete, Team
+from models import Result, Database, Athlete, Team, AthleteRanking
 from forms import SearchForm
 from utils.relay_utils import calculate_relay_results
 
@@ -103,6 +103,9 @@ def athlete_profile(name):
                 if splits:
                     relay_results.extend(calculate_relay_results(splits, relay_type))
     
+    # Get current rankings for the athlete
+    rankings = AthleteRanking.calculate_athlete_rankings(name)
+    
     return render_template('profile.html', 
                          name=name, 
                          results=results, 
@@ -114,7 +117,14 @@ def athlete_profile(name):
                          relay_results=relay_results,
                          is_female=is_female,
                          team_logo=team_logo,
-                         team_logos=team_logos)
+                         team_logos=team_logos,
+                         rankings=rankings)
+
+@athlete_bp.route('/athlete/<name>/calculate_rankings', methods=['POST'])
+def calculate_athlete_rankings(name):
+    """Calculate and return current rankings for an athlete"""
+    rankings = AthleteRanking.calculate_athlete_rankings(name)
+    return jsonify({'success': True, 'rankings': rankings})
 
 @athlete_bp.route('/search', methods=['GET', 'POST'])
 def search():

@@ -373,6 +373,22 @@
         box-shadow: 0 2px 16px rgba(0,0,0,0.2);
         border: none;
     }
+
+    .ranking-arrow.down {
+        color: #f44336;
+    }
+
+    .ranking-badge {
+        display: inline-block;
+        background: #617394;
+        color: white;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-size: 0.7em;
+        margin-left: 6px;
+        font-weight: bold;
+        vertical-align: middle;
+    }
     </style>
 </head>
 <body>
@@ -392,6 +408,11 @@
                 <p class="athlete-gender">Gender: <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></p>
                 <button id="toggle-gender" class="bio-btn">
                     Mark as {% if is_female %}Male{% else %}Female{% endif %}
+                </button>
+                
+                <!-- Calculate rankings button -->
+                <button id="calculate-rankings" class="bio-btn" style="background: #617394; margin-left: 10px;">
+                    Calculate Rankings
                 </button>
                 
                 <!-- Existing bio section -->
@@ -417,7 +438,12 @@
                 {% for event, result in prs.items() %}
                 <div class="pr-item">
                     <span class="pr-event">{{ event }}</span>
-                    <span class="pr-result">{{ result }}</span>
+                    <span class="pr-result">
+                        {{ result }}
+                        {% if rankings.get(event) %}
+                            <span class="ranking-badge">#{{ rankings[event] }}</span>
+                        {% endif %}
+                    </span>
                 </div>
                 {% endfor %}
             </div>
@@ -429,7 +455,12 @@
                 {% for event, result in annual_prs.items() %}
                 <div class="pr-item">
                     <span class="pr-event">{{ event }}</span>
-                    <span class="pr-result">{{ result }}</span>
+                    <span class="pr-result">
+                        {{ result }}
+                        {% if rankings.get(event) %}
+                            <span class="ranking-badge">#{{ rankings[event] }}</span>
+                        {% endif %}
+                    </span>
                 </div>
                 {% endfor %}
             </div>
@@ -457,7 +488,12 @@
                             <a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
                         <td class="editable" data-field="event">{{ result[2] }}</td>
-                        <td class="editable" data-field="result">{{ result[3] }}</td>
+                        <td class="editable" data-field="result">
+                            {{ result[3] }}
+                            {% if rankings.get(result[2]) and result[3] == prs.get(result[2]) %}
+                                <span class="ranking-badge">#{{ rankings[result[2]] }}</span>
+                            {% endif %}
+                        </td>
                         <td class="editable team-cell" data-field="team">
                             {% if team_logos.get(result[4]) %}
                                 <img src="{{ team_logos[result[4]] }}" alt="{{ result[4] }} logo" class="team-logo">
@@ -790,6 +826,32 @@
         .catch(error => {
             console.error('Error:', error);
             alert('Error updating gender');
+        });
+    });
+
+    // JavaScript to handle calculate rankings button
+    document.getElementById('calculate-rankings').addEventListener('click', function() {
+        const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch(`/athlete/{{ name }}/calculate_rankings`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf_token
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload the page to show updated rankings
+                window.location.reload();
+            } else {
+                alert('Error calculating rankings');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error calculating rankings');
         });
     });
     </script>

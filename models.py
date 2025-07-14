@@ -435,3 +435,69 @@ class AthleteRanking:
                 ''', (event, target_date, one_year_ago))
             
             return dict(cur.fetchall())
+
+    @staticmethod
+    def calculate_athlete_rankings(athlete_name):
+        """Calculate current rankings for an athlete across all their events"""
+        from datetime import datetime, timedelta
+        
+        # Get date 1 year ago from today
+        one_year_ago = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            
+            # Get all events the athlete has competed in
+            cur.execute('''
+                SELECT DISTINCT Event 
+                FROM Results 
+                WHERE Athlete = ?
+                ORDER BY Event
+            ''', (athlete_name,))
+            events = [row[0] for row in cur.fetchall()]
+            
+            rankings = {}
+            for event in events:
+                # For time events (lower is better)
+                if 'm' in event or 'Mile' in event:
+                    cur.execute('''
+                        WITH RankedResults AS (
+                            SELECT 
+                                Athlete,
+                                Result,
+                                ROW_NUMBER() OVER (ORDER BY Result ASC) as rank
+                            FROM Results 
+                            WHERE Event = ? 
+                            AND Date >= ?
+                            GROUP BY Athlete
+                            HAVING Result = MIN(Result)
+                        )
+                        SELECT rank 
+                        FROM RankedResults
+                        WHERE Athlete = ?
+                    ''', (event, one_year_ago, athlete_name))
+                # For field events (higher is better)
+                else:
+                    cur.execute('''
+                        WITH RankedResults AS (
+                            SELECT 
+                                Athlete,
+                                Result,
+                                ROW_NUMBER() OVER (ORDER BY Result DESC) as rank
+                            FROM Results 
+                            WHERE Event = ? 
+                            AND Date >= ?
+                            GROUP BY Athlete
+                            HAVING Result = MAX(Result)
+                        )
+                        SELECT rank 
+                        FROM RankedResults
+                        WHERE Athlete = ?
+                    ''', (event, one_year_ago, athlete_name))
+                
+                result = cur.fetchone()
+                if result:
+                    rankings[event] = result[0]
+            
+            return rankings
