@@ -450,6 +450,11 @@
 
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>
+    
+    <!-- Comments Section -->
+    {% from 'comments_simple.html' import render_comments %}
+    {{ render_comments(comments, comment_form, 'meet', meet_name) }}
+    
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
     <script>
         function lookupTeam(athleteInput) {

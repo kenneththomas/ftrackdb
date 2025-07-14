@@ -1,0 +1,208 @@
+{% macro render_comments(comments, comment_form, page_type, page_id) %}
+<div class="comments-section" style="margin-top: 40px; background: #2a2d30; padding: 30px; border-radius: 5px;">
+    <h3 style="margin-top: 0; margin-bottom: 20px; color: #fff;">Comments ({{ comments|length }})</h3>
+    
+    <!-- Comment Form -->
+    <div class="comment-form" style="margin-bottom: 30px;">
+        <form method="post" action="{{ url_for('comment.add_comment', page_type=page_type, page_id=page_id) }}" class="new-comment-form">
+            {{ comment_form.csrf_token }}
+            <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Username</label>
+                    {{ comment_form.username(class="form-control", placeholder="Your name", style="width: 100%;") }}
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Comment</label>
+                    {{ comment_form.content(class="form-control", placeholder="Write a comment...", rows=3, style="width: 100%; resize: vertical;") }}
+                </div>
+            </div>
+            {{ comment_form.submit(class="btn", style="background: #4CAF50;") }}
+        </form>
+    </div>
+
+    <!-- Comments List -->
+    <div class="comments-list">
+        {% if comments %}
+            {% for comment in comments %}
+                {{ render_comment(comment, page_type, page_id, comment_form) }}
+            {% endfor %}
+        {% else %}
+            <p style="color: #888; font-style: italic;">No comments yet. Be the first to comment!</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .comment {
+        background: #23272a;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 3px solid #617394;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .comment-author {
+        font-weight: bold;
+        color: #fff;
+        font-size: 1.1em;
+    }
+    
+    .comment-date {
+        color: #888;
+        font-size: 0.9em;
+    }
+    
+    .comment-content {
+        color: #e0e0e0;
+        line-height: 1.5;
+        margin-bottom: 10px;
+        white-space: pre-wrap;
+    }
+    
+    .comment-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .reply-btn {
+        background: none;
+        border: none;
+        color: #617394;
+        cursor: pointer;
+        font-size: 0.9em;
+        text-decoration: underline;
+        padding: 0;
+    }
+    
+    .reply-btn:hover {
+        color: #fff;
+    }
+    
+    .delete-btn {
+        background: none;
+        border: none;
+        color: #f44336;
+        cursor: pointer;
+        font-size: 0.9em;
+        text-decoration: underline;
+        padding: 0;
+    }
+    
+    .delete-btn:hover {
+        color: #ff6b6b;
+    }
+    
+    .reply-form {
+        background: #1e2124;
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 10px;
+        margin-left: 20px;
+        border-left: 2px solid #444;
+    }
+    
+    .reply-form.hidden {
+        display: none;
+    }
+    
+    .replies {
+        margin-left: 20px;
+        margin-top: 10px;
+    }
+    
+    .reply {
+        background: #1e2124;
+        border-radius: 5px;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-left: 2px solid #444;
+    }
+    
+    .new-comment-form .form-control {
+        background: #181a1b;
+        border: 1px solid #444;
+        color: #e0e0e0;
+        padding: 8px 12px;
+        border-radius: 3px;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    }
+    
+    .new-comment-form .form-control:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+    
+    .new-comment-form textarea.form-control {
+        min-height: 80px;
+    }
+</style>
+
+<script>
+function showReplyForm(commentId) {
+    var replyForm = document.getElementById('reply-form-' + commentId);
+    if (replyForm) {
+        replyForm.classList.toggle('hidden');
+    }
+}
+
+function setParentId(commentId) {
+    var parentIdField = document.querySelector('.new-comment-form input[name="parent_id"]');
+    if (parentIdField) {
+        parentIdField.value = commentId;
+    }
+}
+</script>
+{% endmacro %}
+
+{% macro render_comment(comment, page_type, page_id, comment_form) %}
+<div class="comment">
+    <div class="comment-header">
+        <span class="comment-author">{{ comment.username }}</span>
+        <span class="comment-date">{{ comment.created_at }}</span>
+    </div>
+    <div class="comment-content">{{ comment.content }}</div>
+    <div class="comment-actions">
+        <button class="reply-btn" onclick="showReplyForm({{ comment.comment_id }})">Reply</button>
+        <form method="post" action="{{ url_for('comment.delete_comment', page_type=page_type, page_id=page_id, comment_id=comment.comment_id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="delete-btn" onclick="return confirm('Delete this comment?')">Delete</button>
+        </form>
+    </div>
+    
+    <!-- Reply Form -->
+    <div id="reply-form-{{ comment.comment_id }}" class="reply-form hidden">
+        <form method="post" action="{{ url_for('comment.add_comment', page_type=page_type, page_id=page_id) }}">
+            {{ comment_form.csrf_token }}
+            <input type="hidden" name="parent_id" value="{{ comment.comment_id }}">
+            <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Your name" required style="width: 100%;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Reply</label>
+                    <textarea name="content" class="form-control" placeholder="Write a reply..." rows=2 required style="width: 100%; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn" style="background: #617394;">Post Reply</button>
+        </form>
+    </div>
+    
+    <!-- Replies -->
+    {% if comment.replies %}
+        <div class="replies">
+            {% for reply in comment.replies %}
+                {{ render_comment(reply, page_type, page_id, comment_form) }}
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endmacro %} 

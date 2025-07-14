@@ -10,6 +10,7 @@ from routes.result_routes import result_bp
 from routes.team_routes import team_bp
 from routes.meet_routes import meet_bp
 from routes.leaderboard_routes import leaderboard_bp
+from routes.comment_routes import comment_bp
 
 app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
@@ -22,6 +23,7 @@ app.register_blueprint(result_bp)
 app.register_blueprint(team_bp)
 app.register_blueprint(meet_bp)
 app.register_blueprint(leaderboard_bp)
+app.register_blueprint(comment_bp)
 
 # Add a custom Jinja filter to convert Markdown to HTML
 app.jinja_env.filters['markdown_to_html'] = markdown_to_html

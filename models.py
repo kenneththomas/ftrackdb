@@ -68,6 +68,20 @@ class Database:
                 )
             ''')
             
+            # Create Comments table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Comments (
+                    comment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    page_type TEXT NOT NULL,
+                    page_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    parent_id INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (parent_id) REFERENCES Comments(comment_id) ON DELETE CASCADE
+                )
+            ''')
+            
             conn.commit()
         except Error as e:
             print(f"Error initializing tables: {e}")
@@ -501,3 +515,76 @@ class AthleteRanking:
                     rankings[event] = result[0]
             
             return rankings
+
+class Comment:
+    @staticmethod
+    def get_comments(page_type, page_id):
+        """Get all comments for a specific page, organized in a threaded structure"""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT comment_id, username, content, parent_id, created_at
+                FROM Comments 
+                WHERE page_type = ? AND page_id = ?
+                ORDER BY created_at ASC
+            ''', (page_type, page_id))
+            comments = cur.fetchall()
+            
+            # Organize comments into a threaded structure
+            comment_dict = {}
+            root_comments = []
+            
+            for comment in comments:
+                comment_dict[comment[0]] = {
+                    'comment_id': comment[0],
+                    'username': comment[1],
+                    'content': comment[2],
+                    'parent_id': comment[3],
+                    'created_at': comment[4],
+                    'replies': []
+                }
+            
+            for comment_id, comment in comment_dict.items():
+                if comment['parent_id'] is None:
+                    root_comments.append(comment)
+                else:
+                    parent = comment_dict.get(comment['parent_id'])
+                    if parent:
+                        parent['replies'].append(comment)
+            
+            return root_comments
+
+    @staticmethod
+    def add_comment(page_type, page_id, username, content, parent_id=None):
+        """Add a new comment"""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO Comments (page_type, page_id, username, content, parent_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (page_type, page_id, username, content, parent_id))
+            conn.commit()
+            return cur.lastrowid
+
+    @staticmethod
+    def delete_comment(comment_id):
+        """Delete a comment and all its replies"""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('DELETE FROM Comments WHERE comment_id = ?', (comment_id,))
+            conn.commit()
+
+    @staticmethod
+    def get_comment_count(page_type, page_id):
+        """Get the total number of comments for a page"""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT COUNT(*) FROM Comments 
+                WHERE page_type = ? AND page_id = ?
+            ''', (page_type, page_id))
+            return cur.fetchone()[0]

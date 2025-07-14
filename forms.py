@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, DateField, SubmitField, FormField, FieldList
-from wtforms.validators import DataRequired
+from wtforms import StringField, DateField, SubmitField, FormField, FieldList, TextAreaField, HiddenField
+from wtforms.validators import DataRequired, Length
 
 class ResultForm(FlaskForm):
     date = DateField('Date', validators=[DataRequired()])
@@ -21,4 +21,10 @@ class MeetResultForm(FlaskForm):
     event = StringField('Event', validators=[DataRequired()])
     result = StringField('Result', validators=[DataRequired()])
     team = StringField('Team', validators=[DataRequired()])
-    submit = SubmitField('Submit') 
+    submit = SubmitField('Submit')
+
+class CommentForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=1, max=50)])
+    content = TextAreaField('Comment', validators=[DataRequired(), Length(min=1, max=1000)])
+    parent_id = HiddenField('Parent ID')
+    submit = SubmitField('Post Comment') 

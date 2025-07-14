@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import Result, Team, Database, TeamScore, AthleteRanking
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from models import Result, Team, Database, TeamScore, AthleteRanking, Comment
 from utils.relay_utils import parse_time
-from forms import MeetResultForm
+from forms import MeetResultForm, CommentForm
 from datetime import datetime, timedelta
 
 # Create blueprint
@@ -34,6 +34,8 @@ def is_pr(athlete, event, result):
 @meet_bp.route('/meet/<meet_name>', methods=['GET', 'POST'])
 def meet_results(meet_name):
     form = MeetResultForm()
+    comment_form = CommentForm()
+    
     if form.validate_on_submit():
         # Insert the result for this meet
         data = {
@@ -62,6 +64,9 @@ def meet_results(meet_name):
     for row in raw_results:
         teams.add(row[4])  # team is at index 4
     
+    # Initialize sorted_teams as empty list in case no results exist
+    sorted_teams = []
+    
     # Get team logos for all teams
     team_logos = {}
     for team in teams:
@@ -88,6 +93,9 @@ def meet_results(meet_name):
             7: 2,
             8: 1
         }
+        
+        # Initialize sorted_teams as empty list in case no events exist
+        sorted_teams = []
         
         for (event, date), results in events.items():
             # Skip relay splits as they're part of the relay event
@@ -240,7 +248,19 @@ def meet_results(meet_name):
         for place, record in enumerate(records, start=1):
             record['place'] = place
 
-    return render_template('meet.html', meet_name=meet_name, events=events, team_logos=team_logos, form=form, sorted_teams=sorted_teams)
+    # Get comments for this meet
+    comments = Comment.get_comments('meet', meet_name)
+    comment_count = Comment.get_comment_count('meet', meet_name)
+
+    return render_template('meet.html', 
+                         meet_name=meet_name, 
+                         events=events, 
+                         team_logos=team_logos, 
+                         form=form, 
+                         sorted_teams=sorted_teams,
+                         comment_form=comment_form,
+                         comments=comments,
+                         comment_count=comment_count)
 
 @meet_bp.route('/meet/<old_name>/rename', methods=['POST'])
 def rename_meet(old_name):
@@ -429,3 +449,5 @@ def calculate_rankings(meet_name):
     
     flash('Athlete rankings have been calculated and cached!', 'success')
     return redirect(url_for('meet.meet_results', meet_name=meet_name)) 
+
+ 
