@@ -1,217 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Track and Field Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
-    <style>
-        body {
-            background: #181a1b !important;
-            background-image: none !important;
-            color: #e0e0e0;
-        }
-
-        .container {
-            background: #23272a;
-            color: #e0e0e0;
-            box-shadow: 0 2px 16px rgba(0,0,0,0.5);
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-            line-height: 1.6;
-        }
-
-        .profile-header h2 {
-            text-align: center;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-            border-bottom: 2px solid #444;
-            padding-bottom: 10px;
-            margin-bottom: 40px;
-            font-size: 2.5em;
-            color: #fff;
-        }
-
-        .team-logo {
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
-            vertical-align: middle;
-            margin-right: 8px;
-            opacity: 0.95;
-        }
-
-        .team-cell {
-            display: flex;
-            align-items: center;
-        }
-
-        .filter-section {
-            background: #2a2d30;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-
-        .filter-section .form-control {
-            background: #181a1b;
-            color: #e0e0e0;
-            border: none;
-            border-bottom: 2px solid #444;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-            font-size: 1em;
-        }
-
-        .filter-section .form-control:focus {
-            outline: none;
-            border-bottom: 2px solid #007bff;
-            background: #181a1b;
-            color: #e0e0e0;
-        }
-
-        .filter-section .btn {
-            background: #000;
-            color: white;
-            border: none;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-            font-size: 1.1em;
-            transition: background 0.2s ease;
-        }
-
-        .filter-section .btn:hover {
-            background: #333;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-        }
-
-        .pagination a {
-            color: #007bff;
-            padding: 8px 16px;
-            text-decoration: none;
-            border: 1px solid #444;
-            margin: 0 4px;
-            border-radius: 4px;
-            background: #23272a;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-        }
-
-        .pagination a:hover {
-            background-color: #2a2d30;
-            color: #fff;
-        }
-
-        .pagination .active {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-
-        .results-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-bottom: 40px;
-            font-family: 'Courier New', Courier, monospace;
-            background: #23272a;
-            color: #e0e0e0;
-        }
-
-        .results-table th {
-            position: sticky;
-            top: 0;
-            background: #617394;
-            color: #fff;
-            padding: 15px 10px;
-            text-align: left;
-            border-bottom: 2px solid #444;
-            font-weight: bold;
-            font-size: 1.1em;
-            z-index: 1;
-        }
-
-        .results-table td {
-            padding: 16px 10px 12px 0;
-            border-bottom: 1px solid #333;
-            vertical-align: middle;
-            background: #23272a;
-            color: #e0e0e0;
-        }
-
-        .results-table tr:nth-child(even) td {
-            background: #202225;
-        }
-
-        .container a {
-            color: #fff;
-            text-decoration: none;
-            border-bottom: 1px dotted #fff;
-            transition: color 0.2s ease;
-        }
-
-        .container a:hover {
-            color: #b48ead;
-        }
-
-        .container .female-text {
-            color: #b48ead;
-        }
-
-        .form-inline .form-control {
-            background: #181a1b;
-            color: #e0e0e0;
-            border: none;
-            border-bottom: 2px solid #444;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-            font-size: 1em;
-        }
-
-        .form-inline .form-control:focus {
-            outline: none;
-            border-bottom: 2px solid #007bff;
-            background: #181a1b;
-            color: #e0e0e0;
-        }
-
-        .form-inline .btn {
-            background: #000;
-            color: white;
-            border: none;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-            font-size: 1.1em;
-            transition: background 0.2s ease;
-        }
-
-        .form-inline .btn:hover {
-            background: #333;
-        }
-    </style>
 </head>
-<body>
+<body class="index-page">
     {% include 'navbar.html' %}
-    <div class="container">
-        <header class="profile-header">
+    <div class="index-container">
+        <header class="index-profile-header" role="banner">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>Latest Results</h2>
-                <form method="POST" action="{{ url_for('athlete.search') }}" class="form-inline">
+                <h1>Latest Results</h1>
+                <form method="POST" action="{{ url_for('athlete.search') }}" class="index-form-inline" role="search">
                     {{ form.csrf_token }}
-                    {{ form.athlete(class="form-control mr-2", placeholder="Search athlete...") }}
-                    <button type="submit" class="btn btn-primary">Search</button>
+                    {{ form.athlete(class="form-control mr-2", placeholder="Search athlete...", **{"aria-label": "Search for athlete"}) }}
+                    <button type="submit" class="btn btn-primary" aria-label="Submit search">Search</button>
                 </form>
             </div>
         </header>
         
-        <section class="filter-section">
+        <section class="index-filter-section" role="search" aria-label="Filter results">
             <div class="row">
                 <div class="col-md-4">
-                    <input type="text" id="filterInput" class="form-control" placeholder="Filter results...">
+                    <label for="filterInput" class="sr-only">Filter results</label>
+                    <input type="text" id="filterInput" class="form-control" placeholder="Filter results..." aria-label="Filter results by athlete or meet">
                 </div>
                 <div class="col-md-4">
-                    <select id="eventFilter" class="form-control">
+                    <label for="eventFilter" class="sr-only">Filter by event</label>
+                    <select id="eventFilter" class="form-control" aria-label="Filter by event">
                         <option value="">All Events</option>
                         <option value="100m">100m</option>
                         <option value="200m">200m</option>
@@ -225,7 +44,8 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <select id="teamFilter" class="form-control">
+                    <label for="teamFilter" class="sr-only">Filter by team</label>
+                    <select id="teamFilter" class="form-control" aria-label="Filter by team">
                         <option value="">All Teams</option>
                         {% for team in team_logos.keys() %}
                         <option value="{{ team }}">{{ team }}</option>
@@ -235,36 +55,49 @@
             </div>
         </section>
         
-        <section class="results">
-            <div class="table-responsive">
-                <table class="results-table">
+        <section class="results" role="main" aria-label="Track and field results">
+            <div class="table-responsive" role="region" aria-label="Results table">
+                <table class="index-results-table" role="table" aria-label="Track and field results">
                     <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Athlete</th>
-                            <th>Meet</th>
-                            <th>Event</th>
-                            <th>Result</th>
-                            <th>Team</th>
+                        <tr role="row">
+                            <th scope="col" role="columnheader">Date</th>
+                            <th scope="col" role="columnheader">Athlete</th>
+                            <th scope="col" role="columnheader">Meet</th>
+                            <th scope="col" role="columnheader">Event</th>
+                            <th scope="col" role="columnheader">Result</th>
+                            <th scope="col" role="columnheader">Team</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for result in results %}
-                        <tr>
-                            <td>{{ result[0] }}</td>
-                            <td>
-                                <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" class="{% if get_gender(result[1]) %}female-text{% endif %}">
+                        <tr role="row" data-athlete="{{ result[1] }}" data-meet="{{ result[2] }}" data-event="{{ result[3] }}" data-team="{{ result[5] }}">
+                            <td role="cell" data-label="Date">{{ result[0] }}</td>
+                            <td role="cell" data-label="Athlete">
+                                <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" 
+                                   class="{% if get_gender(result[1]) %}female-text{% endif %}"
+                                   aria-label="View {{ result[1] }}'s profile">
                                     {{ result[1] }}
                                 </a>
                             </td>
-                            <td><a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a></td>
-                            <td>{{ result[3] }}</td>
-                            <td>{{ result[4] }}</td>
-                            <td class="team-cell">
+                            <td role="cell" data-label="Meet">
+                                <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}" 
+                                   aria-label="View results for {{ result[2] }} meet">
+                                    {{ result[2] }}
+                                </a>
+                            </td>
+                            <td role="cell" data-label="Event">{{ result[3] }}</td>
+                            <td role="cell" data-label="Result">{{ result[4] }}</td>
+                            <td class="team-cell" role="cell" data-label="Team">
                                 {% if team_logos.get(result[5]) %}
-                                    <img src="{{ team_logos[result[5]] }}" alt="{{ result[5] }} logo" class="team-logo">
+                                    <img src="{{ team_logos[result[5]] }}" 
+                                         alt="{{ result[5] }} logo" 
+                                         class="team-logo"
+                                         loading="lazy">
                                 {% endif %}
-                                <a href="{{ url_for('team.team_results', team_name=result[5]) }}">{{ result[5] }}</a>
+                                <a href="{{ url_for('team.team_results', team_name=result[5]) }}" 
+                                   aria-label="View {{ result[5] }} team results">
+                                    {{ result[5] }}
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -273,58 +106,133 @@
             </div>
 
             <!-- Pagination -->
-            <div class="pagination">
+            <nav class="index-pagination" role="navigation" aria-label="Results pagination">
                 {% if page > 1 %}
-                    <a href="{{ url_for('home', page=page-1) }}">&laquo; Previous</a>
+                    <a href="{{ url_for('home', page=page-1) }}" 
+                       aria-label="Go to previous page">&laquo; Previous</a>
                 {% endif %}
                 
                 {% set start_page = [1, page - 2]|max %}
                 {% set end_page = [total_pages, page + 2]|min %}
                 
                 {% for p in range(start_page, end_page + 1) %}
-                    <a href="{{ url_for('home', page=p) }}" class="{{ 'active' if p == page else '' }}">
+                    <a href="{{ url_for('home', page=p) }}" 
+                       class="{{ 'active' if p == page else '' }}"
+                       aria-label="Go to page {{ p }}"
+                       {% if p == page %}aria-current="page"{% endif %}>
                         {{ p }}
                     </a>
                 {% endfor %}
                 
                 {% if page < total_pages %}
-                    <a href="{{ url_for('home', page=page+1) }}">Next &raquo;</a>
+                    <a href="{{ url_for('home', page=page+1) }}" 
+                       aria-label="Go to next page">Next &raquo;</a>
                 {% endif %}
-            </div>
+            </nav>
         </section>
     </div>
+    
+    <!-- Loading indicator -->
+    <div id="loadingIndicator" class="loading" style="display: none;" aria-hidden="true">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    
     <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const filterInput = document.getElementById('filterInput');
             const eventFilter = document.getElementById('eventFilter');
             const teamFilter = document.getElementById('teamFilter');
-            const table = document.querySelector('.results-table');
+            const table = document.querySelector('.index-results-table');
             const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            
+            let filterTimeout;
 
-            function filterTable() {
-                const searchText = filterInput.value.toLowerCase();
-                const selectedEvent = eventFilter.value.toLowerCase();
-                const selectedTeam = teamFilter.value.toLowerCase();
-
-                for (let row of rows) {
-                    const cells = row.getElementsByTagName('td');
-                    const athlete = cells[1].textContent.toLowerCase();
-                    const meet = cells[2].textContent.toLowerCase();
-                    const event = cells[3].textContent.toLowerCase();
-                    const team = cells[5].textContent.toLowerCase();
-
-                    const matchesSearch = athlete.includes(searchText) || meet.includes(searchText);
-                    const matchesEvent = !selectedEvent || event.includes(selectedEvent);
-                    const matchesTeam = !selectedTeam || team.includes(selectedTeam);
-
-                    row.style.display = matchesSearch && matchesEvent && matchesTeam ? '' : 'none';
-                }
+            function showLoading() {
+                loadingIndicator.style.display = 'block';
+                loadingIndicator.setAttribute('aria-hidden', 'false');
             }
 
-            filterInput.addEventListener('input', filterTable);
-            eventFilter.addEventListener('change', filterTable);
-            teamFilter.addEventListener('change', filterTable);
+            function hideLoading() {
+                loadingIndicator.style.display = 'none';
+                loadingIndicator.setAttribute('aria-hidden', 'true');
+            }
+
+            function filterTable() {
+                showLoading();
+                
+                // Clear existing timeout
+                if (filterTimeout) {
+                    clearTimeout(filterTimeout);
+                }
+                
+                // Debounce the filtering
+                filterTimeout = setTimeout(() => {
+                    const searchText = filterInput.value.toLowerCase();
+                    const selectedEvent = eventFilter.value.toLowerCase();
+                    const selectedTeam = teamFilter.value.toLowerCase();
+                    let visibleCount = 0;
+
+                    for (let row of rows) {
+                        const athlete = row.dataset.athlete ? row.dataset.athlete.toLowerCase() : '';
+                        const meet = row.dataset.meet ? row.dataset.meet.toLowerCase() : '';
+                        const event = row.dataset.event ? row.dataset.event.toLowerCase() : '';
+                        const team = row.dataset.team ? row.dataset.team.toLowerCase() : '';
+
+                        const matchesSearch = !searchText || 
+                                           athlete.includes(searchText) || 
+                                           meet.includes(searchText);
+                        const matchesEvent = !selectedEvent || event.includes(selectedEvent);
+                        const matchesTeam = !selectedTeam || team.includes(selectedTeam);
+
+                        const shouldShow = matchesSearch && matchesEvent && matchesTeam;
+                        row.style.display = shouldShow ? '' : 'none';
+                        
+                        if (shouldShow) visibleCount++;
+                    }
+                    
+                    // Update aria-live region for screen readers
+                    const statusMessage = `Showing ${visibleCount} of ${rows.length} results`;
+                    updateStatusMessage(statusMessage);
+                    
+                    hideLoading();
+                }, 150); // 150ms debounce
+            }
+
+            function updateStatusMessage(message) {
+                let statusRegion = document.getElementById('filterStatus');
+                if (!statusRegion) {
+                    statusRegion = document.createElement('div');
+                    statusRegion.id = 'filterStatus';
+                    statusRegion.setAttribute('aria-live', 'polite');
+                    statusRegion.setAttribute('aria-atomic', 'true');
+                    statusRegion.className = 'sr-only';
+                    document.body.appendChild(statusRegion);
+                }
+                statusRegion.textContent = message;
+            }
+
+            // Add event listeners with proper error handling
+            try {
+                filterInput.addEventListener('input', filterTable);
+                eventFilter.addEventListener('change', filterTable);
+                teamFilter.addEventListener('change', filterTable);
+                
+                // Add keyboard navigation
+                filterInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        filterInput.value = '';
+                        filterTable();
+                        filterInput.focus();
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error setting up filters:', error);
+            }
         });
     </script>
 </body>
