@@ -718,7 +718,29 @@
             // Store original values and make cells editable
             row.querySelectorAll('.editable').forEach(cell => {
                 const field = cell.dataset.field;
-                const originalText = cell.textContent.trim();
+                let originalText;
+                
+                // Store original HTML content for proper restoration
+                cell.dataset.originalHtml = cell.innerHTML;
+                
+                // For result field, exclude ranking badge content
+                if (field === 'result') {
+                    // Get only the text content, excluding the ranking badge
+                    const rankingBadge = cell.querySelector('.ranking-badge');
+                    if (rankingBadge) {
+                        // Actually remove the ranking badge temporarily to get clean text
+                        const badgeParent = rankingBadge.parentNode;
+                        badgeParent.removeChild(rankingBadge);
+                        originalText = cell.textContent.trim();
+                        // Restore the ranking badge
+                        badgeParent.appendChild(rankingBadge);
+                    } else {
+                        originalText = cell.textContent.trim();
+                    }
+                } else {
+                    originalText = cell.textContent.trim();
+                }
+                
                 cell.dataset.original = originalText;
                 
                 // Create input field
@@ -740,7 +762,8 @@
             
             // Restore original values
             row.querySelectorAll('.editable').forEach(cell => {
-                cell.textContent = cell.dataset.original;
+                // Restore original HTML content (includes ranking badges)
+                cell.innerHTML = cell.dataset.originalHtml;
                 cell.classList.remove('editing');
             });
             
