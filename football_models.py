@@ -265,8 +265,8 @@ class Play:
         return play_id
     
     @staticmethod
-    def get_game_plays(game_id):
-        """Get all plays for a specific game"""
+    def get_game_plays(game_id, limit=20, offset=0):
+        """Get all plays for a specific game, sorted by scoring plays first, then by yards"""
         from models import Database
         conn = Database.get_connection()
         with conn:
@@ -277,9 +277,31 @@ class Play:
                        strftime('%Y-%m-%d %H:%M:%S', created_at) as formatted_time
                 FROM Plays
                 WHERE game_id = ?
-                ORDER BY play_id DESC
-            ''', (game_id,))
+                ORDER BY 
+                    -- Prioritize scoring plays first
+                    CASE 
+                        WHEN is_touchdown = 1 THEN 1
+                        WHEN play_type = 'FG' AND is_successful = 1 THEN 1
+                        WHEN play_type = 'XP' AND is_successful = 1 THEN 1
+                        ELSE 0
+                    END DESC,
+                    -- Then by most yards
+                    yards DESC,
+                    -- Finally by play order
+                    play_id DESC
+                LIMIT ? OFFSET ?
+            ''', (game_id, limit, offset))
             return cur.fetchall()
+    
+    @staticmethod
+    def get_game_plays_count(game_id):
+        """Get total count of plays for a specific game"""
+        from models import Database
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT COUNT(*) FROM Plays WHERE game_id = ?', (game_id,))
+            return cur.fetchone()[0]
     
     @staticmethod
     def get_player_stats(player_name):

@@ -111,7 +111,15 @@ def view_game(game_id):
         flash('Game not found', 'error')
         return redirect(url_for('football.football_home'))
     
-    plays = Play.get_game_plays(game_id)
+    # Pagination for plays
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
+    
+    plays = Play.get_game_plays(game_id, limit=per_page, offset=offset)
+    total_plays = Play.get_game_plays_count(game_id)
+    total_pages = (total_plays + per_page - 1) // per_page  # Ceiling division
+    
     player_stats = Play.get_game_player_stats(game_id)
     
     # Get team logos
@@ -125,7 +133,10 @@ def view_game(game_id):
                          game=game, 
                          plays=plays,
                          player_stats=player_stats,
-                         team_logos=team_logos)
+                         team_logos=team_logos,
+                         page=page,
+                         total_pages=total_pages,
+                         total_plays=total_plays)
 
 @football_bp.route('/player/<player_name>')
 def view_player(player_name):

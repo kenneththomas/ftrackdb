@@ -180,6 +180,15 @@
             background-color: #c82333;
             border-color: #bd2130;
         }
+        .play-actions {
+            display: none;
+        }
+        .edit-mode .play-actions {
+            display: flex;
+        }
+        .edit-toggle-btn {
+            margin-left: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -382,10 +391,15 @@
         </div>
         {% endif %}
         
-        <div class="play-log">
-            <h3>Play-by-Play</h3>
-            <a href="{{ url_for('football.play_entry', home_team=game[1], away_team=game[2], game_date=game[3]) }}" 
-               class="btn btn-success mb-3">Add Play to This Game</a>
+        <div class="play-log" id="playLog">
+            <h3>Play-by-Play ({{ total_plays }} total plays)</h3>
+            <div class="mb-3">
+                <a href="{{ url_for('football.play_entry', home_team=game[1], away_team=game[2], game_date=game[3]) }}" 
+                   class="btn btn-success">Add Play to This Game</a>
+                <button onclick="toggleEditMode()" class="btn btn-secondary edit-toggle-btn" id="editToggleBtn">
+                    <span id="editToggleText">Edit Plays</span>
+                </button>
+            </div>
             
             {% if plays %}
                 {% for play in plays %}
@@ -424,6 +438,55 @@
                     </div>
                 </div>
                 {% endfor %}
+                
+                <!-- Pagination Controls -->
+                {% if total_pages > 1 %}
+                <div style="margin-top: 2rem; text-align: center;">
+                    <nav aria-label="Play pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('football.view_game', game_id=game[0], page=page-1) }}">Previous</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                            {% endif %}
+                            
+                            {% for p in range(1, total_pages + 1) %}
+                                {% if p == page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                                {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('football.view_game', game_id=game[0], page=p) }}">{{ p }}</a>
+                                </li>
+                                {% elif p == 4 or p == total_pages - 3 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page < total_pages %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('football.view_game', game_id=game[0], page=page+1) }}">Next</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    <p style="color: #666; margin-top: 1rem;">
+                        Showing plays {{ ((page-1) * 20) + 1 }} - {{ [page * 20, total_plays]|min }} of {{ total_plays }}
+                        <br><small style="font-size: 0.9rem;">Sorted by: Scoring plays first, then most yards</small>
+                    </p>
+                </div>
+                {% endif %}
             {% else %}
                 <p>No plays recorded yet for this game.</p>
             {% endif %}
@@ -431,6 +494,25 @@
     </div>
     
     <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+    <script>
+        function toggleEditMode() {
+            const playLog = document.getElementById('playLog');
+            const toggleBtn = document.getElementById('editToggleBtn');
+            const toggleText = document.getElementById('editToggleText');
+            
+            if (playLog.classList.contains('edit-mode')) {
+                playLog.classList.remove('edit-mode');
+                toggleBtn.classList.remove('btn-warning');
+                toggleBtn.classList.add('btn-secondary');
+                toggleText.textContent = 'Edit Plays';
+            } else {
+                playLog.classList.add('edit-mode');
+                toggleBtn.classList.remove('btn-secondary');
+                toggleBtn.classList.add('btn-warning');
+                toggleText.textContent = 'Cancel Editing';
+            }
+        }
+    </script>
 </body>
 </html>
 
