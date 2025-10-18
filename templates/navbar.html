@@ -3,13 +3,14 @@
 <div class="navbar">
     <nav>
         <ul>
-        <a href="{{ url_for('home') }}" class="home-button">Home</a>
+        <a href="{{ url_for('home') }}" class="home-button">Track Home</a>
         <a class="btn btn-primary" href="{{ url_for('leaderboard.leaderboard') }}">Leaderboard</a>
         <a class="btn btn-warning" href="{{ url_for('meets') }}">Meets</a>
         <a class="btn btn-info" href="{{ url_for('team.teams') }}">Teams</a>
         <a class="btn btn-success" href="{{ url_for('result.insert_result') }}">Insert New Result</a>
         <a class="btn btn-danger" href="{{ url_for('result.delete_result') }}">Delete Result</a>
-        <a class="btn btn-primary" href="{{ url_for('athlete.search') }}">Search</a>     
+        <a class="btn btn-primary" href="{{ url_for('athlete.search') }}">Search</a>
+        <a class="btn btn-secondary" href="{{ url_for('football.football_home') }}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">🏈 Football</a>     
         </ul>
     </nav>
 </div>

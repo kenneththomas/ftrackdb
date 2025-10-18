@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ team_name }} - Football</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <style>
+        .team-header {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .team-logo-large {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 1rem;
+        }
+        .record-display {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        .stats-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .roster-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .player-card {
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .player-card a {
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 500;
+        }
+        .player-card a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    
+    <div class="index-container">
+        <div class="team-header">
+            {% if team_info.logo_url %}
+                <img src="{{ team_info.logo_url }}" alt="{{ team_name }} logo" class="team-logo-large">
+            {% endif %}
+            <h1>{{ team_name }}</h1>
+            <div class="record-display">
+                <div>Season Record: {{ season_record.wins }}-{{ season_record.losses }}</div>
+                <div style="font-size: 1.5rem; margin-top: 0.5rem;">
+                    All-Time: {{ alltime_record.wins }}-{{ alltime_record.losses }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Roster -->
+        <div class="stats-section">
+            <h3>Roster</h3>
+            <div class="roster-grid">
+                {% for player in players %}
+                <div class="player-card">
+                    <a href="{{ url_for('football.view_player', player_name=player) }}">
+                        {{ player }}
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Games -->
+        <div class="stats-section">
+            <h3>Games</h3>
+            <div class="table-responsive">
+                <table class="index-results-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Opponent</th>
+                            <th>Result</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for game in games %}
+                        <tr>
+                            <td>{{ game[3] }}</td>
+                            <td>
+                                {% if game[1] == team_name %}
+                                    vs <a href="{{ url_for('football.view_team', team_name=game[2]) }}">{{ game[2] }}</a>
+                                {% else %}
+                                    @ <a href="{{ url_for('football.view_team', team_name=game[1]) }}">{{ game[1] }}</a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if game[1] == team_name %}
+                                    {% if game[4] > game[5] %}
+                                        <strong style="color: #28a745;">W</strong>
+                                    {% elif game[4] < game[5] %}
+                                        <strong style="color: #dc3545;">L</strong>
+                                    {% else %}
+                                        <strong>T</strong>
+                                    {% endif %}
+                                {% else %}
+                                    {% if game[5] > game[4] %}
+                                        <strong style="color: #28a745;">W</strong>
+                                    {% elif game[5] < game[4] %}
+                                        <strong style="color: #dc3545;">L</strong>
+                                    {% else %}
+                                        <strong>T</strong>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('football.view_game', game_id=game[0]) }}">
+                                    {% if game[1] == team_name %}
+                                        {{ game[4] }} - {{ game[5] }}
+                                    {% else %}
+                                        {{ game[5] }} - {{ game[4] }}
+                                    {% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+</body>
+</html>
+

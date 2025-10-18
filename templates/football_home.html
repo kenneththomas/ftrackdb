@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Stats</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+</head>
+<body class="index-page">
+    {% include 'navbar.html' %}
+    <div class="index-container">
+        <header class="index-profile-header" role="banner">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1>Football Games</h1>
+                <a href="{{ url_for('football.play_entry') }}" class="btn btn-success">Add Play</a>
+            </div>
+        </header>
+        
+        <section class="results" role="main" aria-label="Football games">
+            <div class="table-responsive" role="region" aria-label="Games table">
+                <table class="index-results-table" role="table">
+                    <thead>
+                        <tr role="row">
+                            <th scope="col">Date</th>
+                            <th scope="col">Away Team</th>
+                            <th scope="col">Home Team</th>
+                            <th scope="col">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for game in games %}
+                        <tr role="row">
+                            <td role="cell" data-label="Date">{{ game[3] }}</td>
+                            <td class="team-cell" role="cell" data-label="Away Team">
+                                {% if team_logos.get(game[2]) %}
+                                    <img src="{{ team_logos[game[2]] }}" 
+                                         alt="{{ game[2] }} logo" 
+                                         class="team-logo"
+                                         loading="lazy">
+                                {% endif %}
+                                <a href="{{ url_for('football.view_team', team_name=game[2]) }}">
+                                    {{ game[2] }}
+                                </a>
+                            </td>
+                            <td class="team-cell" role="cell" data-label="Home Team">
+                                {% if team_logos.get(game[1]) %}
+                                    <img src="{{ team_logos[game[1]] }}" 
+                                         alt="{{ game[1] }} logo" 
+                                         class="team-logo"
+                                         loading="lazy">
+                                {% endif %}
+                                <a href="{{ url_for('football.view_team', team_name=game[1]) }}">
+                                    {{ game[1] }}
+                                </a>
+                            </td>
+                            <td role="cell" data-label="Score">
+                                <a href="{{ url_for('football.view_game', game_id=game[0]) }}">
+                                    {{ game[5] }} - {{ game[4] }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+</body>
+</html>
+

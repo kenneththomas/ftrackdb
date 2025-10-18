@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Entry - Football Stats</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='insert.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <style>
+        .play-builder-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-section {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        .form-section h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .conditional-field {
+            display: none;
+        }
+        .conditional-field.active {
+            display: block;
+        }
+        .flash-messages {
+            margin-bottom: 1rem;
+        }
+        .alert {
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    
+    <div class="play-builder-container">
+        <h1>Play Builder</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" id="playForm">
+            {{ form.csrf_token }}
+            
+            <!-- Game Selection -->
+            <div class="form-section">
+                <h3>Game Information</h3>
+                <div class="form-group">
+                    {{ form.away_team.label(class="form-label") }}
+                    {{ form.away_team(class="form-control", list="teamsList", autocomplete="off") }}
+                    <datalist id="teamsList"></datalist>
+                </div>
+                <div class="form-group">
+                    {{ form.home_team.label(class="form-label") }}
+                    {{ form.home_team(class="form-control", list="teamsList2", autocomplete="off") }}
+                    <datalist id="teamsList2"></datalist>
+                </div>
+                <div class="form-group">
+                    {{ form.game_date.label(class="form-label") }}
+                    {{ form.game_date(class="form-control") }}
+                </div>
+            </div>
+            
+            <!-- Play Details -->
+            <div class="form-section">
+                <h3>Play Details</h3>
+                
+                <div class="form-group">
+                    {{ form.team.label(class="form-label") }}
+                    {{ form.team(class="form-control", list="teamsList3", autocomplete="off") }}
+                    <datalist id="teamsList3"></datalist>
+                    <small class="form-text text-muted">Select which team had the ball on this play</small>
+                </div>
+                
+                <div class="form-group">
+                    {{ form.quarterback.label(class="form-label") }}
+                    {{ form.quarterback(class="form-control", list="playersList", autocomplete="off", placeholder="Type or select from list") }}
+                    <datalist id="playersList"></datalist>
+                    <small class="form-text text-muted">The QB on this play (leave blank if not applicable)</small>
+                </div>
+                
+                <div class="form-group">
+                    {{ form.play_type.label(class="form-label") }}
+                    {{ form.play_type(class="form-control", id="playType") }}
+                    <small class="form-text text-muted">What type of play was executed?</small>
+                </div>
+                
+                <!-- Conditional Fields -->
+                <div id="playerField" class="form-group conditional-field">
+                    {{ form.player_name.label(class="form-label") }}
+                    {{ form.player_name(class="form-control", list="playersList2", autocomplete="off", placeholder="Type or select from list") }}
+                    <datalist id="playersList2"></datalist>
+                    <small id="playerHelp" class="form-text text-muted">Who was involved in this play?</small>
+                </div>
+                
+                <div id="yardsField" class="form-group conditional-field">
+                    {{ form.yards.label(class="form-label") }}
+                    {{ form.yards(class="form-control", type="number") }}
+                    <small id="yardsHelp" class="form-text text-muted">Use negative numbers for losses (e.g., -5 for sack)</small>
+                </div>
+                
+                <div id="tdField" class="form-group conditional-field">
+                    <div class="form-check">
+                        {{ form.is_touchdown(class="form-check-input") }}
+                        {{ form.is_touchdown.label(class="form-check-label") }}
+                        <small class="form-text text-muted">Check if this play resulted in a touchdown</small>
+                    </div>
+                </div>
+                
+                <div id="successField" class="form-group conditional-field">
+                    <div class="form-check">
+                        {{ form.is_successful(class="form-check-input", checked=true) }}
+                        {{ form.is_successful.label(class="form-check-label") }}
+                        <small class="form-text text-muted">Was the field goal or extra point good?</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary btn-lg btn-block") }}
+            </div>
+        </form>
+    </div>
+    
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+    <script>
+        // Populate team datalists
+        fetch('{{ url_for("football.api_teams") }}')
+            .then(response => response.json())
+            .then(data => {
+                const teamsList = document.getElementById('teamsList');
+                const teamsList2 = document.getElementById('teamsList2');
+                const teamsList3 = document.getElementById('teamsList3');
+                data.teams.forEach(team => {
+                    const option1 = document.createElement('option');
+                    option1.value = team;
+                    teamsList.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = team;
+                    teamsList2.appendChild(option2);
+                    
+                    const option3 = document.createElement('option');
+                    option3.value = team;
+                    teamsList3.appendChild(option3);
+                });
+            });
+        
+        // Handle play type selection to show/hide fields
+        const playTypeSelect = document.getElementById('playType');
+        const playerField = document.getElementById('playerField');
+        const yardsField = document.getElementById('yardsField');
+        const tdField = document.getElementById('tdField');
+        const successField = document.getElementById('successField');
+        const playerNameInput = document.getElementById('player_name');
+        const teamInput = document.getElementById('team');
+        
+        function updateFieldVisibility() {
+            const playType = playTypeSelect.value;
+            const playerHelp = document.getElementById('playerHelp');
+            const yardsHelp = document.getElementById('yardsHelp');
+            
+            // Hide all conditional fields first
+            playerField.classList.remove('active');
+            yardsField.classList.remove('active');
+            tdField.classList.remove('active');
+            successField.classList.remove('active');
+            
+            // Show fields based on play type
+            switch(playType) {
+                case 'Pass':
+                    playerField.classList.add('active');
+                    playerField.querySelector('label').textContent = 'Receiver (Who caught the ball)';
+                    playerHelp.textContent = 'The player who caught the pass';
+                    yardsField.classList.add('active');
+                    yardsField.querySelector('label').textContent = 'Yards Gained';
+                    yardsHelp.textContent = 'Total yards gained on the reception';
+                    tdField.classList.add('active');
+                    break;
+                case 'Incomplete':
+                    playerField.classList.add('active');
+                    playerField.querySelector('label').textContent = 'Intended Receiver (Optional)';
+                    playerHelp.textContent = 'The player the pass was intended for (optional)';
+                    break;
+                case 'Rush':
+                    playerField.classList.add('active');
+                    playerField.querySelector('label').textContent = 'Running Back (Who ran the ball)';
+                    playerHelp.textContent = 'The player who carried the ball';
+                    yardsField.classList.add('active');
+                    yardsField.querySelector('label').textContent = 'Yards Gained';
+                    yardsHelp.textContent = 'Total yards gained on the rush';
+                    tdField.classList.add('active');
+                    break;
+                case 'Keep':
+                    yardsField.classList.add('active');
+                    yardsField.querySelector('label').textContent = 'Yards Gained';
+                    yardsHelp.textContent = 'Yards gained by the QB on the keeper';
+                    tdField.classList.add('active');
+                    break;
+                case 'Sack':
+                    yardsField.classList.add('active');
+                    yardsField.querySelector('label').textContent = 'Yards Lost';
+                    yardsHelp.textContent = 'Yards lost on the sack (use negative number, e.g., -7)';
+                    break;
+                case 'FG':
+                    playerField.classList.add('active');
+                    playerField.querySelector('label').textContent = 'Kicker (Who kicked the FG)';
+                    playerHelp.textContent = 'The player who attempted the field goal';
+                    yardsField.classList.add('active');
+                    yardsField.querySelector('label').textContent = 'Field Goal Distance (yards)';
+                    yardsHelp.textContent = 'Distance of the field goal attempt in yards';
+                    successField.classList.add('active');
+                    break;
+                case 'XP':
+                    playerField.classList.add('active');
+                    playerField.querySelector('label').textContent = 'Kicker (Who kicked the XP)';
+                    playerHelp.textContent = 'The player who attempted the extra point';
+                    successField.classList.add('active');
+                    break;
+            }
+            
+            // Load players when team is selected
+            if (teamInput.value) {
+                loadTeamPlayers(teamInput.value);
+            }
+        }
+        
+        playTypeSelect.addEventListener('change', updateFieldVisibility);
+        
+        // Load team players for autocomplete
+        function loadTeamPlayers(teamName) {
+            if (!teamName) return;
+            
+            fetch(`{{ url_for('football.api_team_players', team_name='TEAM') }}`.replace('TEAM', encodeURIComponent(teamName)))
+                .then(response => response.json())
+                .then(data => {
+                    const playersList = document.getElementById('playersList');
+                    const playersList2 = document.getElementById('playersList2');
+                    playersList.innerHTML = '';
+                    playersList2.innerHTML = '';
+                    
+                    data.players.forEach(player => {
+                        const option1 = document.createElement('option');
+                        option1.value = player;
+                        playersList.appendChild(option1);
+                        
+                        const option2 = document.createElement('option');
+                        option2.value = player;
+                        playersList2.appendChild(option2);
+                    });
+                });
+        }
+        
+        teamInput.addEventListener('change', function() {
+            loadTeamPlayers(this.value);
+        });
+        
+        // Also load players when team is initially set
+        if (teamInput.value) {
+            loadTeamPlayers(teamInput.value);
+        }
+        
+        // Keep placeholders helpful
+        const qbInput = document.getElementById('quarterback');
+        if (!qbInput.value) {
+            qbInput.placeholder = 'Type or select from list';
+        }
+        
+        // Initialize visibility
+        updateFieldVisibility();
+    </script>
+</body>
+</html>
+

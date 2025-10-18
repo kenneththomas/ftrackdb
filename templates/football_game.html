@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game - {{ game[2] }} @ {{ game[1] }}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <style>
+        .game-header {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .game-score {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        .team-display {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 1rem;
+        }
+        .team-display img {
+            width: 50px;
+            height: 50px;
+            margin-right: 0.5rem;
+        }
+        .play-log {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .play-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .play-item:last-child {
+            border-bottom: none;
+        }
+        .play-type {
+            font-weight: 600;
+            color: #667eea;
+        }
+        .touchdown {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    
+    <div class="index-container">
+        <div class="game-header">
+            <h2>{{ game[3] }}</h2>
+            <div class="game-score">
+                <div class="team-display">
+                    {% if team_logos.get(game[2]) %}
+                        <img src="{{ team_logos[game[2]] }}" alt="{{ game[2] }} logo">
+                    {% endif %}
+                    <a href="{{ url_for('football.view_team', team_name=game[2]) }}" style="color: white;">
+                        {{ game[2] }}
+                    </a>
+                </div>
+                <span>{{ game[5] }}</span>
+                <span> - </span>
+                <span>{{ game[4] }}</span>
+                <div class="team-display">
+                    {% if team_logos.get(game[1]) %}
+                        <img src="{{ team_logos[game[1]] }}" alt="{{ game[1] }} logo">
+                    {% endif %}
+                    <a href="{{ url_for('football.view_team', team_name=game[1]) }}" style="color: white;">
+                        {{ game[1] }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="play-log">
+            <h3>Play-by-Play</h3>
+            <a href="{{ url_for('football.play_entry', home_team=game[1], away_team=game[2], game_date=game[3]) }}" 
+               class="btn btn-success mb-3">Add Play to This Game</a>
+            
+            {% if plays %}
+                {% for play in plays %}
+                <div class="play-item {% if play[6] %}touchdown{% endif %}">
+                    <div class="play-type">{{ play[1] }}</div>
+                    <div>
+                        {% if play[2] %}
+                            QB: <a href="{{ url_for('football.view_player', player_name=play[2]) }}">{{ play[2] }}</a>
+                        {% endif %}
+                        {% if play[3] %}
+                            | Player: <a href="{{ url_for('football.view_player', player_name=play[3]) }}">{{ play[3] }}</a>
+                        {% endif %}
+                        | Team: <a href="{{ url_for('football.view_team', team_name=play[4]) }}">{{ play[4] }}</a>
+                    </div>
+                    <div>
+                        {% if play[5] != 0 %}
+                            Yards: {{ play[5] }}
+                        {% endif %}
+                        {% if play[6] %}
+                            <strong style="color: #28a745;">TOUCHDOWN!</strong>
+                        {% endif %}
+                        {% if play[1] in ['FG', 'XP'] %}
+                            {% if play[8] %}
+                                <strong style="color: #28a745;">GOOD</strong>
+                            {% else %}
+                                <strong style="color: #dc3545;">MISSED</strong>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No plays recorded yet for this game.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+</body>
+</html>
+
