@@ -697,7 +697,17 @@
         }
         
         function addIncompletePass(quarterback, team) {
-            if (!confirm('Add an incomplete pass for ' + quarterback + '?')) {
+            const count = prompt('How many incomplete passes to add for ' + quarterback + '?', '1');
+            
+            // User cancelled or entered nothing
+            if (count === null || count === '') {
+                return;
+            }
+            
+            // Validate it's a positive number
+            const numCount = parseInt(count);
+            if (isNaN(numCount) || numCount < 1) {
+                alert('Please enter a valid positive number');
                 return;
             }
             
@@ -719,7 +729,8 @@
                 body: JSON.stringify({
                     game_id: {{ game[0] }},
                     quarterback: quarterback,
-                    team: team
+                    team: team,
+                    count: numCount
                 })
             })
             .then(response => response.json())

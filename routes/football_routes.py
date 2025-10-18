@@ -427,30 +427,40 @@ def edit_play(play_id):
 
 @football_bp.route('/api/add_incomplete_pass', methods=['POST'])
 def add_incomplete_pass():
-    """Quick add an incomplete pass for a QB"""
+    """Quick add incomplete pass(es) for a QB"""
     try:
         data = request.get_json()
         game_id = data.get('game_id')
         quarterback = data.get('quarterback')
         team = data.get('team')
+        count = data.get('count', 1)  # Default to 1 if not specified
         
         if not all([game_id, quarterback, team]):
             return jsonify({'error': 'Missing required fields'}), 400
         
-        # Add incomplete pass play
-        Play.add_play(
-            game_id=game_id,
-            play_type='Incomplete',
-            player_name='N/A',
-            team=team,
-            yards=0,
-            is_touchdown=False,
-            quarterback=quarterback,
-            is_complete=False,
-            is_successful=True
-        )
+        # Validate count is a positive integer
+        try:
+            count = int(count)
+            if count < 1:
+                return jsonify({'error': 'Count must be a positive number'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid count value'}), 400
         
-        return jsonify({'success': True})
+        # Add incomplete pass play(s)
+        for _ in range(count):
+            Play.add_play(
+                game_id=game_id,
+                play_type='Incomplete',
+                player_name='N/A',
+                team=team,
+                yards=0,
+                is_touchdown=False,
+                quarterback=quarterback,
+                is_complete=False,
+                is_successful=True
+            )
+        
+        return jsonify({'success': True, 'count': count})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
