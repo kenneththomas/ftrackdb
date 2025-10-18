@@ -152,6 +152,34 @@
         .stat-category:first-child {
             margin-top: 0;
         }
+        .play-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .play-actions .btn-sm {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+            font-weight: 500;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
     </style>
 </head>
 <body>
@@ -386,6 +414,13 @@
                                 <strong style="color: #dc3545;">MISSED</strong>
                             {% endif %}
                         {% endif %}
+                    </div>
+                    <div class="play-actions">
+                        <a href="{{ url_for('football.edit_play', play_id=play[0]) }}" class="btn btn-warning btn-sm">Edit</a>
+                        <form method="POST" action="{{ url_for('football.delete_play', play_id=play[0]) }}" style="display: inline;" 
+                              onsubmit="return confirm('Are you sure you want to delete this play?');">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
                     </div>
                 </div>
                 {% endfor %}

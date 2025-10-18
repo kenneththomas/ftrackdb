@@ -76,7 +76,8 @@ def play_entry():
                                   home_team=form.home_team.data,
                                   away_team=form.away_team.data,
                                   game_date=form.game_date.data.strftime('%Y-%m-%d'),
-                                  quarterback=quarterback))
+                                  quarterback=quarterback,
+                                  team=form.team.data))
             
         except Exception as e:
             flash(f'Error adding play: {str(e)}', 'error')
@@ -90,6 +91,8 @@ def play_entry():
         form.game_date.data = date.fromisoformat(request.args.get('game_date'))
     if request.args.get('quarterback'):
         form.quarterback.data = request.args.get('quarterback')
+    if request.args.get('team'):
+        form.team.data = request.args.get('team')
     
     # Get team logos for display
     conn = Database.get_connection()
@@ -227,4 +230,187 @@ def api_teams():
             return jsonify({'teams': teams})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@football_bp.route('/api/game_players')
+def api_game_players():
+    """Get players who have already performed a specific action in the current game"""
+    try:
+        home_team = request.args.get('home_team')
+        away_team = request.args.get('away_team')
+        game_date = request.args.get('game_date')
+        play_type = request.args.get('play_type')
+        team = request.args.get('team')
+        
+        if not all([home_team, away_team, game_date, play_type, team]):
+            return jsonify({'players': []})
+        
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            
+            # First, find the game
+            cur.execute('''
+                SELECT game_id FROM Games 
+                WHERE home_team = ? AND away_team = ? AND game_date = ?
+            ''', (home_team, away_team, game_date))
+            game = cur.fetchone()
+            
+            if not game:
+                return jsonify({'players': []})
+            
+            game_id = game[0]
+            
+            # Get players based on play type
+            play_type_map = {
+                'Pass': ['Pass'],
+                'Rush': ['Rush'],
+                'FG': ['FG'],
+                'XP': ['XP'],
+                'Keep': ['Keep'],
+                'Sack': ['Sack']
+            }
+            
+            if play_type not in play_type_map:
+                return jsonify({'players': []})
+            
+            # Query for players who have done this action
+            cur.execute('''
+                SELECT DISTINCT player_name 
+                FROM Plays 
+                WHERE game_id = ? 
+                AND play_type IN ({})
+                AND team = ?
+                AND player_name IS NOT NULL
+                AND player_name != 'N/A'
+                ORDER BY play_id DESC
+            '''.format(','.join('?' * len(play_type_map[play_type]))), 
+                (game_id, *play_type_map[play_type], team))
+            
+            players = [row[0] for row in cur.fetchall()]
+            return jsonify({'players': players})
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@football_bp.route('/play/<int:play_id>/delete', methods=['POST'])
+def delete_play(play_id):
+    """Delete a specific play"""
+    try:
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            
+            # Get the game_id before deleting
+            cur.execute('SELECT game_id FROM Plays WHERE play_id = ?', (play_id,))
+            result = cur.fetchone()
+            if not result:
+                flash('Play not found', 'error')
+                return redirect(url_for('football.football_home'))
+            
+            game_id = result[0]
+            
+            # Delete the play
+            cur.execute('DELETE FROM Plays WHERE play_id = ?', (play_id,))
+            conn.commit()
+        
+        # Update game score
+        Game.update_score(game_id)
+        
+        flash('Play deleted successfully!', 'success')
+        return redirect(url_for('football.view_game', game_id=game_id))
+    except Exception as e:
+        flash(f'Error deleting play: {str(e)}', 'error')
+        return redirect(url_for('football.football_home'))
+
+@football_bp.route('/play/<int:play_id>/edit', methods=['GET', 'POST'])
+def edit_play(play_id):
+    """Edit a specific play"""
+    conn = Database.get_connection()
+    
+    # Get the play details
+    with conn:
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT p.play_id, p.game_id, p.play_type, p.quarterback, p.player_name, 
+                   p.team, p.yards, p.is_touchdown, p.is_complete, p.is_successful,
+                   g.home_team, g.away_team, g.game_date
+            FROM Plays p
+            JOIN Games g ON p.game_id = g.game_id
+            WHERE p.play_id = ?
+        ''', (play_id,))
+        play = cur.fetchone()
+        
+        if not play:
+            flash('Play not found', 'error')
+            return redirect(url_for('football.football_home'))
+    
+    form = PlayForm()
+    
+    if form.validate_on_submit():
+        try:
+            # Determine player name based on play type
+            player_name = form.player_name.data
+            quarterback = form.quarterback.data
+            
+            # For certain play types, use QB as player
+            if form.play_type.data in ['Keep', 'Sack']:
+                player_name = quarterback
+            
+            # For incomplete passes, receiver name is optional
+            if form.play_type.data == 'Incomplete':
+                player_name = player_name or 'N/A'
+                is_complete = False
+            else:
+                is_complete = True
+            
+            # Update the play
+            with conn:
+                cur = conn.cursor()
+                cur.execute('''
+                    UPDATE Plays 
+                    SET play_type = ?, quarterback = ?, player_name = ?, 
+                        team = ?, yards = ?, is_touchdown = ?, 
+                        is_complete = ?, is_successful = ?
+                    WHERE play_id = ?
+                ''', (form.play_type.data, 
+                      quarterback if form.play_type.data not in ['FG', 'XP'] else None,
+                      player_name, 
+                      form.team.data, 
+                      form.yards.data or 0,
+                      1 if form.is_touchdown.data else 0,
+                      1 if is_complete else 0,
+                      1 if form.is_successful.data else 0,
+                      play_id))
+                conn.commit()
+            
+            # Update game score
+            Game.update_score(play[1])
+            
+            flash('Play updated successfully!', 'success')
+            return redirect(url_for('football.view_game', game_id=play[1]))
+            
+        except Exception as e:
+            flash(f'Error updating play: {str(e)}', 'error')
+    
+    # Pre-fill form with existing play data
+    if request.method == 'GET':
+        form.home_team.data = play[10]
+        form.away_team.data = play[11]
+        form.game_date.data = date.fromisoformat(play[12])
+        form.play_type.data = play[2]
+        form.quarterback.data = play[3]
+        form.player_name.data = play[4]
+        form.team.data = play[5]
+        form.yards.data = play[6]
+        form.is_touchdown.data = bool(play[7])
+        form.is_successful.data = bool(play[9])
+    
+    # Get team logos for display
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT team_name, logo_url FROM Teams')
+        team_logos = dict(cur.fetchall())
+    
+    return render_template('play_entry.html', form=form, team_logos=team_logos, 
+                         edit_mode=True, play_id=play_id, game_id=play[1])
 
