@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Game - {{ game[2] }} @ {{ game[1] }}</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
@@ -189,6 +190,25 @@
         .edit-toggle-btn {
             margin-left: 1rem;
         }
+        .quick-add-btn {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.4rem;
+            margin-left: 0.5rem;
+            background-color: #667eea;
+            border: none;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .quick-add-btn:hover {
+            background-color: #5568d3;
+            transform: scale(1.05);
+        }
+        .quick-add-btn:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
@@ -253,7 +273,12 @@
                         <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
                         <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
                         <td>{{ stat.passing[1] or 0 }}</td>
-                        <td>{{ stat.passing[0] or 0 }}</td>
+                        <td>
+                            {{ stat.passing[0] or 0 }}
+                            <button class="quick-add-btn" 
+                                    onclick="addIncompletePass('{{ stat.player_name }}', '{{ stat.team }}')"
+                                    title="Add incomplete pass">+</button>
+                        </td>
                         <td>{{ stat.passing[2] or 0 }}</td>
                         <td>{{ stat.passing[3] or 0 }}</td>
                         <td>
@@ -511,6 +536,46 @@
                 toggleBtn.classList.add('btn-warning');
                 toggleText.textContent = 'Cancel Editing';
             }
+        }
+        
+        function addIncompletePass(quarterback, team) {
+            if (!confirm('Add an incomplete pass for ' + quarterback + '?')) {
+                return;
+            }
+            
+            // Get CSRF token from meta tag or form
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                            document.querySelector('input[name="csrf_token"]')?.value;
+            
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+            
+            fetch('{{ url_for("football.add_incomplete_pass") }}', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    game_id: {{ game[0] }},
+                    quarterback: quarterback,
+                    team: team
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated stats
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error adding incomplete pass: ' + error);
+            });
         }
     </script>
 </body>

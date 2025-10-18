@@ -425,3 +425,32 @@ def edit_play(play_id):
     return render_template('play_entry.html', form=form, team_logos=team_logos, 
                          edit_mode=True, play_id=play_id, game_id=play[1])
 
+@football_bp.route('/api/add_incomplete_pass', methods=['POST'])
+def add_incomplete_pass():
+    """Quick add an incomplete pass for a QB"""
+    try:
+        data = request.get_json()
+        game_id = data.get('game_id')
+        quarterback = data.get('quarterback')
+        team = data.get('team')
+        
+        if not all([game_id, quarterback, team]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Add incomplete pass play
+        Play.add_play(
+            game_id=game_id,
+            play_type='Incomplete',
+            player_name='N/A',
+            team=team,
+            yards=0,
+            is_touchdown=False,
+            quarterback=quarterback,
+            is_complete=False,
+            is_successful=True
+        )
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
