@@ -424,4 +424,94 @@ class Play:
             all_players.sort()
             
             return all_players
+    
+    @staticmethod
+    def get_game_player_stats(game_id):
+        """Get player stats for a specific game"""
+        from models import Database
+        conn = Database.get_connection()
+        
+        with conn:
+            cur = conn.cursor()
+            
+            # Get all players who participated in this game
+            cur.execute('''
+                SELECT DISTINCT player_name, team
+                FROM Plays
+                WHERE game_id = ?
+                UNION
+                SELECT DISTINCT quarterback, team
+                FROM Plays
+                WHERE game_id = ? AND quarterback IS NOT NULL
+            ''', (game_id, game_id))
+            
+            players_teams = cur.fetchall()
+            
+            stats = []
+            for player_name, team in players_teams:
+                if not player_name or player_name == 'N/A':
+                    continue
+                    
+                # Passing stats
+                cur.execute('''
+                    SELECT 
+                        COUNT(*) as attempts,
+                        SUM(CASE WHEN is_complete = 1 AND play_type = 'Pass' THEN 1 ELSE 0 END) as completions,
+                        SUM(CASE WHEN play_type = 'Pass' THEN yards ELSE 0 END) as pass_yards,
+                        SUM(CASE WHEN play_type = 'Pass' AND is_touchdown = 1 THEN 1 ELSE 0 END) as pass_tds
+                    FROM Plays
+                    WHERE game_id = ? AND quarterback = ? 
+                    AND (play_type = 'Pass' OR play_type = 'Incomplete' OR play_type = 'Sack')
+                ''', (game_id, player_name))
+                passing = cur.fetchone()
+                
+                # Rushing stats
+                cur.execute('''
+                    SELECT 
+                        COUNT(*) as carries,
+                        SUM(yards) as rush_yards,
+                        SUM(is_touchdown) as rush_tds
+                    FROM Plays
+                    WHERE game_id = ? AND player_name = ? 
+                    AND (play_type = 'Rush' OR play_type = 'Keep')
+                ''', (game_id, player_name))
+                rushing = cur.fetchone()
+                
+                # Receiving stats
+                cur.execute('''
+                    SELECT 
+                        COUNT(*) as receptions,
+                        SUM(yards) as rec_yards,
+                        SUM(is_touchdown) as rec_tds
+                    FROM Plays
+                    WHERE game_id = ? AND player_name = ? 
+                    AND play_type = 'Pass' AND is_complete = 1
+                ''', (game_id, player_name))
+                receiving = cur.fetchone()
+                
+                # Kicking stats
+                cur.execute('''
+                    SELECT 
+                        SUM(CASE WHEN play_type = 'FG' THEN 1 ELSE 0 END) as fg_attempts,
+                        SUM(CASE WHEN play_type = 'FG' AND is_successful = 1 THEN 1 ELSE 0 END) as fg_made,
+                        SUM(CASE WHEN play_type = 'XP' THEN 1 ELSE 0 END) as xp_attempts,
+                        SUM(CASE WHEN play_type = 'XP' AND is_successful = 1 THEN 1 ELSE 0 END) as xp_made
+                    FROM Plays
+                    WHERE game_id = ? AND player_name = ?
+                ''', (game_id, player_name))
+                kicking = cur.fetchone()
+                
+                # Only add player if they have any stats
+                if (passing[0] > 0 or rushing[0] > 0 or receiving[0] > 0 or 
+                    (kicking[0] or 0) > 0 or (kicking[2] or 0) > 0):
+                    stats.append({
+                        'player_name': player_name,
+                        'team': team,
+                        'passing': passing,
+                        'rushing': rushing,
+                        'receiving': receiving,
+                        'kicking': kicking
+                    })
+            
+            return stats
 

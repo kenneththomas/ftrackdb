@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
     <style>
+        body {
+            font-size: 16px;
+            line-height: 1.6;
+        }
         .game-header {
             text-align: center;
             padding: 2rem;
@@ -15,21 +19,37 @@
             color: white;
             border-radius: 8px;
             margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .game-header h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
         }
         .game-score {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: bold;
             margin: 1rem 0;
+            letter-spacing: 2px;
         }
         .team-display {
             display: inline-flex;
             align-items: center;
             margin: 0 1rem;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        .team-display a {
+            text-decoration: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .team-display a:hover {
+            text-decoration: underline;
         }
         .team-display img {
-            width: 50px;
-            height: 50px;
-            margin-right: 0.5rem;
+            width: 60px;
+            height: 60px;
+            margin-right: 0.75rem;
         }
         .play-log {
             background: white;
@@ -37,20 +57,100 @@
             padding: 1.5rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .play-log h3 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
         .play-item {
-            padding: 1rem;
+            padding: 1.25rem;
             border-bottom: 1px solid #e0e0e0;
+            font-size: 1.1rem;
         }
         .play-item:last-child {
             border-bottom: none;
         }
         .play-type {
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 1.2rem;
             color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        .play-item > div {
+            margin-bottom: 0.4rem;
+            color: #444;
+        }
+        .play-item a {
+            color: #667eea;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        .play-item a:hover {
+            text-decoration: underline;
         }
         .touchdown {
             background: #d4edda;
             border-left: 4px solid #28a745;
+        }
+        .btn {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+        }
+        .stats-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stats-section h3 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+        .stats-table {
+            width: 100%;
+            font-size: 1rem;
+        }
+        .stats-table th {
+            background: #f8f9fa;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .stats-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+            color: #444;
+        }
+        .stats-table tr:hover {
+            background: #f8f9fa;
+        }
+        .stats-table td:first-child {
+            font-weight: 600;
+        }
+        .stats-table td a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .stats-table td a:hover {
+            text-decoration: underline;
+        }
+        .stat-category {
+            font-weight: 600;
+            color: #667eea;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+        .stat-category:first-child {
+            margin-top: 0;
         }
     </style>
 </head>
@@ -82,6 +182,177 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Player Stats Section -->
+        {% if player_stats %}
+        <div class="stats-section">
+            <h3>Player Stats</h3>
+            
+            <!-- Passing Stats -->
+            {% set passing_stats = [] %}
+            {% for stat in player_stats %}
+                {% if stat.passing[0] > 0 %}
+                    {% set _ = passing_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if passing_stats %}
+            <div class="stat-category">Passing</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>CMP</th>
+                        <th>ATT</th>
+                        <th>YDS</th>
+                        <th>TD</th>
+                        <th>PCT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in passing_stats %}
+                    <tr>
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.passing[1] or 0 }}</td>
+                        <td>{{ stat.passing[0] or 0 }}</td>
+                        <td>{{ stat.passing[2] or 0 }}</td>
+                        <td>{{ stat.passing[3] or 0 }}</td>
+                        <td>
+                            {% if stat.passing[0] > 0 %}
+                                {{ "%.1f"|format((stat.passing[1] or 0) / stat.passing[0] * 100) }}%
+                            {% else %}
+                                0.0%
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- Rushing Stats -->
+            {% set rushing_stats = [] %}
+            {% for stat in player_stats %}
+                {% if stat.rushing[0] > 0 %}
+                    {% set _ = rushing_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if rushing_stats %}
+            <div class="stat-category">Rushing</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>CAR</th>
+                        <th>YDS</th>
+                        <th>AVG</th>
+                        <th>TD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in rushing_stats %}
+                    <tr>
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.rushing[0] or 0 }}</td>
+                        <td>{{ stat.rushing[1] or 0 }}</td>
+                        <td>
+                            {% if stat.rushing[0] > 0 %}
+                                {{ "%.1f"|format((stat.rushing[1] or 0) / stat.rushing[0]) }}
+                            {% else %}
+                                0.0
+                            {% endif %}
+                        </td>
+                        <td>{{ stat.rushing[2] or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- Receiving Stats -->
+            {% set receiving_stats = [] %}
+            {% for stat in player_stats %}
+                {% if stat.receiving[0] > 0 %}
+                    {% set _ = receiving_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if receiving_stats %}
+            <div class="stat-category">Receiving</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>REC</th>
+                        <th>YDS</th>
+                        <th>AVG</th>
+                        <th>TD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in receiving_stats %}
+                    <tr>
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.receiving[0] or 0 }}</td>
+                        <td>{{ stat.receiving[1] or 0 }}</td>
+                        <td>
+                            {% if stat.receiving[0] > 0 %}
+                                {{ "%.1f"|format((stat.receiving[1] or 0) / stat.receiving[0]) }}
+                            {% else %}
+                                0.0
+                            {% endif %}
+                        </td>
+                        <td>{{ stat.receiving[2] or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- Kicking Stats -->
+            {% set kicking_stats = [] %}
+            {% for stat in player_stats %}
+                {% if (stat.kicking[0] or 0) > 0 or (stat.kicking[2] or 0) > 0 %}
+                    {% set _ = kicking_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if kicking_stats %}
+            <div class="stat-category">Kicking</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>FG</th>
+                        <th>FGA</th>
+                        <th>XP</th>
+                        <th>XPA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in kicking_stats %}
+                    <tr>
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.kicking[1] or 0 }}</td>
+                        <td>{{ stat.kicking[0] or 0 }}</td>
+                        <td>{{ stat.kicking[3] or 0 }}</td>
+                        <td>{{ stat.kicking[2] or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+        {% endif %}
         
         <div class="play-log">
             <h3>Play-by-Play</h3>

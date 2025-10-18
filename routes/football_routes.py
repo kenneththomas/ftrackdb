@@ -109,6 +109,7 @@ def view_game(game_id):
         return redirect(url_for('football.football_home'))
     
     plays = Play.get_game_plays(game_id)
+    player_stats = Play.get_game_player_stats(game_id)
     
     # Get team logos
     conn = Database.get_connection()
@@ -120,6 +121,7 @@ def view_game(game_id):
     return render_template('football_game.html', 
                          game=game, 
                          plays=plays,
+                         player_stats=player_stats,
                          team_logos=team_logos)
 
 @football_bp.route('/player/<player_name>')
