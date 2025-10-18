@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ player_name }} - Football Stats</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <style>
+        .stats-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    
+    <div class="profile-container">
+        <header class="profile-header">
+            <h1>{{ player_name }}</h1>
+            <p>Games Played: {{ games_played }}</p>
+        </header>
+        
+        <!-- Passing Stats -->
+        {% if stats.passing and stats.passing[0] %}
+        <div class="stats-section">
+            <h3>Passing Stats</h3>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.passing[1] or 0 }}/{{ stats.passing[0] or 0 }}</div>
+                    <div class="stat-label">Completions/Attempts</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ averages.get('completion_pct', 0) }}%</div>
+                    <div class="stat-label">Completion %</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.passing[2] or 0 }}</div>
+                    <div class="stat-label">Passing Yards</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ averages.get('pass_yards_per_game', 0) }}</div>
+                    <div class="stat-label">Yards/Game</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.passing[3] or 0 }}</div>
+                    <div class="stat-label">TD Passes</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Rushing Stats -->
+        {% if stats.rushing and stats.rushing[1] %}
+        <div class="stats-section">
+            <h3>Rushing Stats</h3>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.rushing[0] or 0 }}</div>
+                    <div class="stat-label">Carries</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.rushing[1] or 0 }}</div>
+                    <div class="stat-label">Rushing Yards</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ averages.get('rush_yards_per_game', 0) }}</div>
+                    <div class="stat-label">Yards/Game</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.rushing[2] or 0 }}</div>
+                    <div class="stat-label">Rushing TDs</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Receiving Stats -->
+        {% if stats.receiving and stats.receiving[0] %}
+        <div class="stats-section">
+            <h3>Receiving Stats</h3>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.receiving[0] or 0 }}</div>
+                    <div class="stat-label">Receptions</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.receiving[1] or 0 }}</div>
+                    <div class="stat-label">Receiving Yards</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ averages.get('rec_yards_per_game', 0) }}</div>
+                    <div class="stat-label">Yards/Game</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.receiving[2] or 0 }}</div>
+                    <div class="stat-label">Receiving TDs</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Kicking Stats -->
+        {% if stats.kicking and (stats.kicking[0] or stats.kicking[2]) %}
+        <div class="stats-section">
+            <h3>Kicking Stats</h3>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.kicking[1] or 0 }}/{{ stats.kicking[0] or 0 }}</div>
+                    <div class="stat-label">Field Goals</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ stats.kicking[3] or 0 }}/{{ stats.kicking[2] or 0 }}</div>
+                    <div class="stat-label">Extra Points</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Game Log -->
+        <div class="stats-section">
+            <h3>Game Log</h3>
+            <div class="table-responsive">
+                <table class="index-results-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Opponent</th>
+                            <th>Score</th>
+                            <th>Pass</th>
+                            <th>Rush</th>
+                            <th>Rec</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for game in game_log %}
+                        <tr>
+                            <td>{{ game[3] }}</td>
+                            <td>
+                                <a href="{{ url_for('football.view_game', game_id=game[0]) }}">
+                                    {% if game[6] == game[1] %}
+                                        vs {{ game[2] }}
+                                    {% else %}
+                                        @ {{ game[1] }}
+                                    {% endif %}
+                                </a>
+                            </td>
+                            <td>{{ game[5] }} - {{ game[4] }}</td>
+                            <td>
+                                {% if game[7] %}
+                                    {{ game[8] }}/{{ game[7] }}, {{ game[9] }} yds, {{ game[10] }} TD
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if game[11] %}
+                                    {{ game[11] }} car, {{ game[12] }} yds, {{ game[13] }} TD
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if game[14] %}
+                                    {{ game[14] }} rec, {{ game[15] }} yds, {{ game[16] }} TD
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+</body>
+</html>
+

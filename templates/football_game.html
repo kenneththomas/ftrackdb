@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Game - {{ game[2] }} @ {{ game[1] }}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .game-header {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .game-header h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .game-score {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin: 1rem 0;
+            letter-spacing: 2px;
+        }
+        .team-display {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 1rem;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        .team-display a {
+            text-decoration: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .team-display a:hover {
+            text-decoration: underline;
+        }
+        .team-display img {
+            width: 60px;
+            height: 60px;
+            margin-right: 0.75rem;
+        }
+        .play-log {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .play-log h3 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .play-item {
+            padding: 1.25rem;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 1.1rem;
+        }
+        .play-item:last-child {
+            border-bottom: none;
+        }
+        .play-type {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        .play-item > div {
+            margin-bottom: 0.4rem;
+            color: #444;
+        }
+        .play-item a {
+            color: #667eea;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        .play-item a:hover {
+            text-decoration: underline;
+        }
+        .touchdown {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .btn {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+        }
+        .stats-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stats-section h3 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+        .stats-table {
+            width: 100%;
+            font-size: 1rem;
+        }
+        .stats-table th {
+            background: #f8f9fa;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .stats-table td {
+            padding: 0.4rem 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+            color: #444;
+        }
+        .stats-table tr:hover {
+            background: #e9ecef;
+        }
+        .stats-table td:first-child {
+            font-weight: 600;
+        }
+        .team-row-home {
+            background: rgba(102, 126, 234, 0.15) !important;
+        }
+        .team-row-away {
+            background: rgba(118, 75, 162, 0.15) !important;
+        }
+        .team-totals-table {
+            width: 100%;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        .team-totals-table th {
+            background: #667eea;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid #5568d3;
+        }
+        .team-totals-table td {
+            padding: 0.9rem;
+            border: 1px solid #dee2e6;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+        }
+        .team-totals-table .stat-label {
+            text-align: left;
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+        .stats-table td a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .stats-table td a:hover {
+            text-decoration: underline;
+        }
+        .stat-category {
+            font-weight: 600;
+            color: #667eea;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+        .stat-category:first-child {
+            margin-top: 0;
+        }
+        .play-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .play-actions .btn-sm {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+            font-weight: 500;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+        .play-actions {
+            display: none;
+        }
+        .edit-mode .play-actions {
+            display: flex;
+        }
+        .edit-toggle-btn {
+            margin-left: 1rem;
+        }
+        .quick-add-btn {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.4rem;
+            margin-left: 0.5rem;
+            background-color: #667eea;
+            border: none;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .quick-add-btn:hover {
+            background-color: #5568d3;
+            transform: scale(1.05);
+        }
+        .quick-add-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    
+    <div class="index-container">
+        <div class="game-header">
+            <h2>{{ game[3] }}</h2>
+            <div class="game-score">
+                <div class="team-display">
+                    {% if team_logos.get(game[2]) %}
+                        <img src="{{ team_logos[game[2]] }}" alt="{{ game[2] }} logo">
+                    {% endif %}
+                    <a href="{{ url_for('football.view_team', team_name=game[2]) }}" style="color: white;">
+                        {{ game[2] }}
+                    </a>
+                </div>
+                <span>{{ game[5] }}</span>
+                <span> - </span>
+                <span>{{ game[4] }}</span>
+                <div class="team-display">
+                    {% if team_logos.get(game[1]) %}
+                        <img src="{{ team_logos[game[1]] }}" alt="{{ game[1] }} logo">
+                    {% endif %}
+                    <a href="{{ url_for('football.view_team', team_name=game[1]) }}" style="color: white;">
+                        {{ game[1] }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Player Stats Section -->
+        {% if player_stats %}
+        <div class="stats-section">
+            <h3>Player Stats</h3>
+            
+            <!-- Passing Stats -->
+            {% set passing_stats = [] %}
+            {% for stat in player_stats %}
+                {% if stat.passing[0] > 0 %}
+                    {% set _ = passing_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            {% set passing_stats = passing_stats|sort(attribute='passing.2', reverse=True) %}
+            
+            {% if passing_stats %}
+            <div class="stat-category">Passing</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>CMP</th>
+                        <th>ATT</th>
+                        <th>YDS</th>
+                        <th>TD</th>
+                        <th>PCT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in passing_stats %}
+                    <tr class="{% if stat.team == game[1] %}team-row-home{% else %}team-row-away{% endif %}">
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.passing[1] or 0 }}</td>
+                        <td>
+                            {{ stat.passing[0] or 0 }}
+                            <button class="quick-add-btn" 
+                                    onclick="addIncompletePass('{{ stat.player_name }}', '{{ stat.team }}')"
+                                    title="Add incomplete pass">+</button>
+                        </td>
+                        <td>{{ stat.passing[2] or 0 }}</td>
+                        <td>{{ stat.passing[3] or 0 }}</td>
+                        <td>
+                            {% if stat.passing[0] > 0 %}
+                                {{ "%.1f"|format((stat.passing[1] or 0) / stat.passing[0] * 100) }}%
+                            {% else %}
+                                0.0%
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- Rushing Stats -->
+            {% set rushing_stats = [] %}
+            {% for stat in player_stats %}
+                {% if stat.rushing[0] > 0 %}
+                    {% set _ = rushing_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            {% set rushing_stats = rushing_stats|sort(attribute='rushing.1', reverse=True) %}
+            
+            {% if rushing_stats %}
+            <div class="stat-category">Rushing</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>CAR</th>
+                        <th>YDS</th>
+                        <th>AVG</th>
+                        <th>TD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in rushing_stats %}
+                    <tr class="{% if stat.team == game[1] %}team-row-home{% else %}team-row-away{% endif %}">
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.rushing[0] or 0 }}</td>
+                        <td>{{ stat.rushing[1] or 0 }}</td>
+                        <td>
+                            {% if stat.rushing[0] > 0 %}
+                                {{ "%.1f"|format((stat.rushing[1] or 0) / stat.rushing[0]) }}
+                            {% else %}
+                                0.0
+                            {% endif %}
+                        </td>
+                        <td>{{ stat.rushing[2] or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- Receiving Stats -->
+            {% set receiving_stats = [] %}
+            {% for stat in player_stats %}
+                {% if stat.receiving[0] > 0 %}
+                    {% set _ = receiving_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            {% set receiving_stats = receiving_stats|sort(attribute='receiving.1', reverse=True) %}
+            
+            {% if receiving_stats %}
+            <div class="stat-category">Receiving</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>REC</th>
+                        <th>YDS</th>
+                        <th>AVG</th>
+                        <th>TD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in receiving_stats %}
+                    <tr class="{% if stat.team == game[1] %}team-row-home{% else %}team-row-away{% endif %}">
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.receiving[0] or 0 }}</td>
+                        <td>{{ stat.receiving[1] or 0 }}</td>
+                        <td>
+                            {% if stat.receiving[0] > 0 %}
+                                {{ "%.1f"|format((stat.receiving[1] or 0) / stat.receiving[0]) }}
+                            {% else %}
+                                0.0
+                            {% endif %}
+                        </td>
+                        <td>{{ stat.receiving[2] or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            
+            <!-- Kicking Stats -->
+            {% set kicking_stats = [] %}
+            {% for stat in player_stats %}
+                {% if (stat.kicking[0] or 0) > 0 or (stat.kicking[2] or 0) > 0 %}
+                    {% set _ = kicking_stats.append(stat) %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if kicking_stats %}
+            <div class="stat-category">Kicking</div>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>FG</th>
+                        <th>FGA</th>
+                        <th>XP</th>
+                        <th>XPA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in kicking_stats %}
+                    <tr class="{% if stat.team == game[1] %}team-row-home{% else %}team-row-away{% endif %}">
+                        <td><a href="{{ url_for('football.view_player', player_name=stat.player_name) }}">{{ stat.player_name }}</a></td>
+                        <td><a href="{{ url_for('football.view_team', team_name=stat.team) }}">{{ stat.team }}</a></td>
+                        <td>{{ stat.kicking[1] or 0 }}</td>
+                        <td>{{ stat.kicking[0] or 0 }}</td>
+                        <td>{{ stat.kicking[3] or 0 }}</td>
+                        <td>{{ stat.kicking[2] or 0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Team Totals Section -->
+        {% if player_stats %}
+        <div class="stats-section">
+            <h3>Team Totals</h3>
+            
+            {% set home_totals = namespace(
+                pass_att=0, pass_cmp=0, pass_yds=0, pass_td=0,
+                rush_car=0, rush_yds=0, rush_td=0,
+                rec_rec=0, rec_yds=0, rec_td=0,
+                fg_att=0, fg_made=0, xp_att=0, xp_made=0
+            ) %}
+            {% set away_totals = namespace(
+                pass_att=0, pass_cmp=0, pass_yds=0, pass_td=0,
+                rush_car=0, rush_yds=0, rush_td=0,
+                rec_rec=0, rec_yds=0, rec_td=0,
+                fg_att=0, fg_made=0, xp_att=0, xp_made=0
+            ) %}
+            
+            {% for stat in player_stats %}
+                {% if stat.team == game[1] %}
+                    {% set home_totals.pass_att = home_totals.pass_att + (stat.passing[0] or 0) %}
+                    {% set home_totals.pass_cmp = home_totals.pass_cmp + (stat.passing[1] or 0) %}
+                    {% set home_totals.pass_yds = home_totals.pass_yds + (stat.passing[2] or 0) %}
+                    {% set home_totals.pass_td = home_totals.pass_td + (stat.passing[3] or 0) %}
+                    {% set home_totals.rush_car = home_totals.rush_car + (stat.rushing[0] or 0) %}
+                    {% set home_totals.rush_yds = home_totals.rush_yds + (stat.rushing[1] or 0) %}
+                    {% set home_totals.rush_td = home_totals.rush_td + (stat.rushing[2] or 0) %}
+                    {% set home_totals.rec_rec = home_totals.rec_rec + (stat.receiving[0] or 0) %}
+                    {% set home_totals.rec_yds = home_totals.rec_yds + (stat.receiving[1] or 0) %}
+                    {% set home_totals.rec_td = home_totals.rec_td + (stat.receiving[2] or 0) %}
+                    {% set home_totals.fg_att = home_totals.fg_att + (stat.kicking[0] or 0) %}
+                    {% set home_totals.fg_made = home_totals.fg_made + (stat.kicking[1] or 0) %}
+                    {% set home_totals.xp_att = home_totals.xp_att + (stat.kicking[2] or 0) %}
+                    {% set home_totals.xp_made = home_totals.xp_made + (stat.kicking[3] or 0) %}
+                {% else %}
+                    {% set away_totals.pass_att = away_totals.pass_att + (stat.passing[0] or 0) %}
+                    {% set away_totals.pass_cmp = away_totals.pass_cmp + (stat.passing[1] or 0) %}
+                    {% set away_totals.pass_yds = away_totals.pass_yds + (stat.passing[2] or 0) %}
+                    {% set away_totals.pass_td = away_totals.pass_td + (stat.passing[3] or 0) %}
+                    {% set away_totals.rush_car = away_totals.rush_car + (stat.rushing[0] or 0) %}
+                    {% set away_totals.rush_yds = away_totals.rush_yds + (stat.rushing[1] or 0) %}
+                    {% set away_totals.rush_td = away_totals.rush_td + (stat.rushing[2] or 0) %}
+                    {% set away_totals.rec_rec = away_totals.rec_rec + (stat.receiving[0] or 0) %}
+                    {% set away_totals.rec_yds = away_totals.rec_yds + (stat.receiving[1] or 0) %}
+                    {% set away_totals.rec_td = away_totals.rec_td + (stat.receiving[2] or 0) %}
+                    {% set away_totals.fg_att = away_totals.fg_att + (stat.kicking[0] or 0) %}
+                    {% set away_totals.fg_made = away_totals.fg_made + (stat.kicking[1] or 0) %}
+                    {% set away_totals.xp_att = away_totals.xp_att + (stat.kicking[2] or 0) %}
+                    {% set away_totals.xp_made = away_totals.xp_made + (stat.kicking[3] or 0) %}
+                {% endif %}
+            {% endfor %}
+            
+            <table class="team-totals-table">
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>
+                            <a href="{{ url_for('football.view_team', team_name=game[1]) }}" style="color: white; text-decoration: none;">
+                                {{ game[1] }}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('football.view_team', team_name=game[2]) }}" style="color: white; text-decoration: none;">
+                                {{ game[2] }}
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="stat-label">Pass Comp/Att</td>
+                        <td>{{ home_totals.pass_cmp }}/{{ home_totals.pass_att }}</td>
+                        <td>{{ away_totals.pass_cmp }}/{{ away_totals.pass_att }}</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Pass Yards</td>
+                        <td>{{ home_totals.pass_yds }}</td>
+                        <td>{{ away_totals.pass_yds }}</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Pass TD</td>
+                        <td>{{ home_totals.pass_td }}</td>
+                        <td>{{ away_totals.pass_td }}</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Rush Carries</td>
+                        <td>{{ home_totals.rush_car }}</td>
+                        <td>{{ away_totals.rush_car }}</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Rush Yards</td>
+                        <td>{{ home_totals.rush_yds }}</td>
+                        <td>{{ away_totals.rush_yds }}</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Rush TD</td>
+                        <td>{{ home_totals.rush_td }}</td>
+                        <td>{{ away_totals.rush_td }}</td>
+                    </tr>
+                    <tr>
+                        <td class="stat-label">Total Yards</td>
+                        <td>{{ home_totals.pass_yds + home_totals.rush_yds }}</td>
+                        <td>{{ away_totals.pass_yds + away_totals.rush_yds }}</td>
+                    </tr>
+                    {% if home_totals.fg_att > 0 or away_totals.fg_att > 0 %}
+                    <tr>
+                        <td class="stat-label">FG Made/Att</td>
+                        <td>{{ home_totals.fg_made }}/{{ home_totals.fg_att }}</td>
+                        <td>{{ away_totals.fg_made }}/{{ away_totals.fg_att }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if home_totals.xp_att > 0 or away_totals.xp_att > 0 %}
+                    <tr>
+                        <td class="stat-label">XP Made/Att</td>
+                        <td>{{ home_totals.xp_made }}/{{ home_totals.xp_att }}</td>
+                        <td>{{ away_totals.xp_made }}/{{ away_totals.xp_att }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        
+        <div class="play-log" id="playLog">
+            <h3>Play-by-Play ({{ total_plays }} total plays)</h3>
+            <div class="mb-3">
+                <a href="{{ url_for('football.play_entry', home_team=game[1], away_team=game[2], game_date=game[3]) }}" 
+                   class="btn btn-success">Add Play to This Game</a>
+                <button onclick="toggleEditMode()" class="btn btn-secondary edit-toggle-btn" id="editToggleBtn">
+                    <span id="editToggleText">Edit Plays</span>
+                </button>
+            </div>
+            
+            {% if plays %}
+                {% for play in plays %}
+                <div class="play-item {% if play[6] %}touchdown{% endif %}">
+                    <div class="play-type">{{ play[1] }}</div>
+                    <div>
+                        {% if play[2] %}
+                            QB: <a href="{{ url_for('football.view_player', player_name=play[2]) }}">{{ play[2] }}</a>
+                        {% endif %}
+                        {% if play[3] %}
+                            | Player: <a href="{{ url_for('football.view_player', player_name=play[3]) }}">{{ play[3] }}</a>
+                        {% endif %}
+                        | Team: <a href="{{ url_for('football.view_team', team_name=play[4]) }}">{{ play[4] }}</a>
+                    </div>
+                    <div>
+                        {% if play[5] != 0 %}
+                            Yards: {{ play[5] }}
+                        {% endif %}
+                        {% if play[6] %}
+                            <strong style="color: #28a745;">TOUCHDOWN!</strong>
+                        {% endif %}
+                        {% if play[1] in ['FG', 'XP'] %}
+                            {% if play[8] %}
+                                <strong style="color: #28a745;">GOOD</strong>
+                            {% else %}
+                                <strong style="color: #dc3545;">MISSED</strong>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="play-actions">
+                        <a href="{{ url_for('football.edit_play', play_id=play[0]) }}" class="btn btn-warning btn-sm">Edit</a>
+                        <form method="POST" action="{{ url_for('football.delete_play', play_id=play[0]) }}" style="display: inline;" 
+                              onsubmit="return confirm('Are you sure you want to delete this play?');">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination Controls -->
+                {% if total_pages > 1 %}
+                <div style="margin-top: 2rem; text-align: center;">
+                    <nav aria-label="Play pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('football.view_game', game_id=game[0], page=page-1) }}">Previous</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                            {% endif %}
+                            
+                            {% for p in range(1, total_pages + 1) %}
+                                {% if p == page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                                {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('football.view_game', game_id=game[0], page=p) }}">{{ p }}</a>
+                                </li>
+                                {% elif p == 4 or p == total_pages - 3 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page < total_pages %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('football.view_game', game_id=game[0], page=page+1) }}">Next</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    <p style="color: #666; margin-top: 1rem;">
+                        Showing plays {{ ((page-1) * 20) + 1 }} - {{ [page * 20, total_plays]|min }} of {{ total_plays }}
+                        <br><small style="font-size: 0.9rem;">Sorted by: Scoring plays first, then most yards</small>
+                    </p>
+                </div>
+                {% endif %}
+            {% else %}
+                <p>No plays recorded yet for this game.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+    <script>
+        function toggleEditMode() {
+            const playLog = document.getElementById('playLog');
+            const toggleBtn = document.getElementById('editToggleBtn');
+            const toggleText = document.getElementById('editToggleText');
+            
+            if (playLog.classList.contains('edit-mode')) {
+                playLog.classList.remove('edit-mode');
+                toggleBtn.classList.remove('btn-warning');
+                toggleBtn.classList.add('btn-secondary');
+                toggleText.textContent = 'Edit Plays';
+            } else {
+                playLog.classList.add('edit-mode');
+                toggleBtn.classList.remove('btn-secondary');
+                toggleBtn.classList.add('btn-warning');
+                toggleText.textContent = 'Cancel Editing';
+            }
+        }
+        
+        function addIncompletePass(quarterback, team) {
+            const count = prompt('How many incomplete passes to add for ' + quarterback + '?', '1');
+            
+            // User cancelled or entered nothing
+            if (count === null || count === '') {
+                return;
+            }
+            
+            // Validate it's a positive number
+            const numCount = parseInt(count);
+            if (isNaN(numCount) || numCount < 1) {
+                alert('Please enter a valid positive number');
+                return;
+            }
+            
+            // Get CSRF token from meta tag or form
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                            document.querySelector('input[name="csrf_token"]')?.value;
+            
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+            
+            fetch('{{ url_for("football.add_incomplete_pass") }}', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    game_id: {{ game[0] }},
+                    quarterback: quarterback,
+                    team: team,
+                    count: numCount
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated stats
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error adding incomplete pass: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>
+
