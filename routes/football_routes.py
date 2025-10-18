@@ -271,6 +271,20 @@ def api_game_players():
             
             game_id = game[0]
             
+            # Special case for quarterbacks
+            if play_type == 'QB':
+                cur.execute('''
+                    SELECT DISTINCT quarterback 
+                    FROM Plays 
+                    WHERE game_id = ? 
+                    AND team = ?
+                    AND quarterback IS NOT NULL
+                    ORDER BY play_id DESC
+                ''', (game_id, team))
+                
+                players = [row[0] for row in cur.fetchall()]
+                return jsonify({'players': players})
+            
             # Get players based on play type
             play_type_map = {
                 'Pass': ['Pass'],

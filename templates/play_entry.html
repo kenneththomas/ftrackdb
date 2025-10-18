@@ -81,6 +81,40 @@
             color: #666;
             margin-bottom: 0.25rem;
         }
+        .play-type-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .play-type-btn {
+            padding: 0.75rem 1rem;
+            background-color: #f8f9fa;
+            color: #333;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .play-type-btn:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+        .play-type-btn.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .play-type-btn.active:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        #playType {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -127,6 +161,9 @@
                 
                 <div class="form-group">
                     {{ form.team.label(class="form-label") }}
+                    <div id="teamSuggestions" class="player-suggestions">
+                        <span class="suggestion-label">Quick select:</span>
+                    </div>
                     {{ form.team(class="form-control", list="teamsList3", autocomplete="off") }}
                     <datalist id="teamsList3"></datalist>
                     <small class="form-text text-muted">Select which team had the ball on this play</small>
@@ -134,6 +171,9 @@
                 
                 <div class="form-group">
                     {{ form.quarterback.label(class="form-label") }}
+                    <div id="qbSuggestions" class="player-suggestions">
+                        <span class="suggestion-label">Quick select (QBs from this game):</span>
+                    </div>
                     {{ form.quarterback(class="form-control", list="playersList", autocomplete="off", placeholder="Type or select from list") }}
                     <datalist id="playersList"></datalist>
                     <small class="form-text text-muted">The QB on this play (leave blank if not applicable)</small>
@@ -141,6 +181,15 @@
                 
                 <div class="form-group">
                     {{ form.play_type.label(class="form-label") }}
+                    <div class="play-type-buttons" id="playTypeButtons">
+                        <button type="button" class="play-type-btn" data-value="Pass">Pass</button>
+                        <button type="button" class="play-type-btn" data-value="Incomplete">Incomplete</button>
+                        <button type="button" class="play-type-btn" data-value="Rush">Rush</button>
+                        <button type="button" class="play-type-btn" data-value="Keep">QB Keep</button>
+                        <button type="button" class="play-type-btn" data-value="Sack">Sack</button>
+                        <button type="button" class="play-type-btn" data-value="FG">Field Goal</button>
+                        <button type="button" class="play-type-btn" data-value="XP">Extra Point</button>
+                    </div>
                     {{ form.play_type(class="form-control", id="playType") }}
                     <small class="form-text text-muted">What type of play was executed?</small>
                 </div>
@@ -216,12 +265,123 @@
         
         // Handle play type selection to show/hide fields
         const playTypeSelect = document.getElementById('playType');
+        const playTypeButtons = document.querySelectorAll('.play-type-btn');
         const playerField = document.getElementById('playerField');
         const yardsField = document.getElementById('yardsField');
         const tdField = document.getElementById('tdField');
         const successField = document.getElementById('successField');
         const playerNameInput = document.getElementById('player_name');
         const teamInput = document.getElementById('team');
+        const qbInput = document.getElementById('quarterback');
+        
+        // Handle play type button clicks
+        playTypeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                playTypeButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Update the hidden select field
+                playTypeSelect.value = this.dataset.value;
+                
+                // Trigger change event to update field visibility
+                playTypeSelect.dispatchEvent(new Event('change'));
+            });
+        });
+        
+        function loadTeamSuggestions() {
+            const homeTeam = document.getElementById('home_team').value;
+            const awayTeam = document.getElementById('away_team').value;
+            
+            const suggestionsContainer = document.getElementById('teamSuggestions');
+            
+            // Clear existing suggestions (keep the label)
+            const label = suggestionsContainer.querySelector('.suggestion-label');
+            suggestionsContainer.innerHTML = '';
+            if (label) {
+                suggestionsContainer.appendChild(label.cloneNode(true));
+            }
+            
+            if (!homeTeam && !awayTeam) {
+                suggestionsContainer.classList.remove('active');
+                return;
+            }
+            
+            // Add buttons for available teams
+            suggestionsContainer.classList.add('active');
+            
+            if (awayTeam) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'player-suggestion-btn';
+                btn.textContent = awayTeam;
+                btn.onclick = function() {
+                    teamInput.value = awayTeam;
+                    teamInput.dispatchEvent(new Event('change'));
+                };
+                suggestionsContainer.appendChild(btn);
+            }
+            
+            if (homeTeam && homeTeam !== awayTeam) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'player-suggestion-btn';
+                btn.textContent = homeTeam;
+                btn.onclick = function() {
+                    teamInput.value = homeTeam;
+                    teamInput.dispatchEvent(new Event('change'));
+                };
+                suggestionsContainer.appendChild(btn);
+            }
+        }
+        
+        function loadQBSuggestions() {
+            const homeTeam = document.getElementById('home_team').value;
+            const awayTeam = document.getElementById('away_team').value;
+            const gameDate = document.getElementById('game_date').value;
+            const team = teamInput.value;
+            
+            const suggestionsContainer = document.getElementById('qbSuggestions');
+            
+            // Clear existing suggestions (keep the label)
+            const label = suggestionsContainer.querySelector('.suggestion-label');
+            suggestionsContainer.innerHTML = '';
+            if (label) {
+                suggestionsContainer.appendChild(label.cloneNode(true));
+            }
+            
+            if (!homeTeam || !awayTeam || !gameDate || !team) {
+                suggestionsContainer.classList.remove('active');
+                return;
+            }
+            
+            // Fetch QB suggestions
+            fetch(`{{ url_for('football.api_game_players') }}?home_team=${encodeURIComponent(homeTeam)}&away_team=${encodeURIComponent(awayTeam)}&game_date=${encodeURIComponent(gameDate)}&play_type=QB&team=${encodeURIComponent(team)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.players && data.players.length > 0) {
+                        suggestionsContainer.classList.add('active');
+                        data.players.forEach(player => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'player-suggestion-btn';
+                            btn.textContent = player;
+                            btn.onclick = function() {
+                                qbInput.value = player;
+                            };
+                            suggestionsContainer.appendChild(btn);
+                        });
+                    } else {
+                        suggestionsContainer.classList.remove('active');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading QB suggestions:', err);
+                    suggestionsContainer.classList.remove('active');
+                });
+        }
         
         function loadPlayerSuggestions() {
             const homeTeam = document.getElementById('home_team').value;
@@ -347,10 +507,28 @@
         }
         
         playTypeSelect.addEventListener('change', updateFieldVisibility);
-        teamInput.addEventListener('change', loadPlayerSuggestions);
-        document.getElementById('home_team').addEventListener('change', loadPlayerSuggestions);
-        document.getElementById('away_team').addEventListener('change', loadPlayerSuggestions);
-        document.getElementById('game_date').addEventListener('change', loadPlayerSuggestions);
+        
+        // Event listeners for team suggestions
+        document.getElementById('home_team').addEventListener('change', function() {
+            loadTeamSuggestions();
+            loadQBSuggestions();
+            loadPlayerSuggestions();
+        });
+        document.getElementById('away_team').addEventListener('change', function() {
+            loadTeamSuggestions();
+            loadQBSuggestions();
+            loadPlayerSuggestions();
+        });
+        document.getElementById('game_date').addEventListener('change', function() {
+            loadQBSuggestions();
+            loadPlayerSuggestions();
+        });
+        
+        // Event listener for when team with possession changes
+        teamInput.addEventListener('change', function() {
+            loadQBSuggestions();
+            loadPlayerSuggestions();
+        });
         
         // Load team players for autocomplete
         function loadTeamPlayers(teamName) {
@@ -386,13 +564,27 @@
         }
         
         // Keep placeholders helpful
-        const qbInput = document.getElementById('quarterback');
         if (!qbInput.value) {
             qbInput.placeholder = 'Type or select from list';
         }
         
-        // Initialize visibility
+        // Initialize play type button selection (for edit mode or pre-filled forms)
+        function initializePlayTypeButton() {
+            const currentValue = playTypeSelect.value;
+            if (currentValue) {
+                playTypeButtons.forEach(btn => {
+                    if (btn.dataset.value === currentValue) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+        }
+        
+        // Initialize visibility and suggestions
+        initializePlayTypeButton();
         updateFieldVisibility();
+        loadTeamSuggestions();
+        loadQBSuggestions();
     </script>
 </body>
 </html>
