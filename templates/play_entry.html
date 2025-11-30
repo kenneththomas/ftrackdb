@@ -172,7 +172,7 @@
                 <div class="form-group">
                     {{ form.quarterback.label(class="form-label") }}
                     <div id="qbSuggestions" class="player-suggestions">
-                        <span class="suggestion-label">Quick select (QBs from this game):</span>
+                        <span class="suggestion-label">Quick select (QBs from this team):</span>
                     </div>
                     {{ form.quarterback(class="form-control", list="playersList", autocomplete="off", placeholder="Type or select from list") }}
                     <datalist id="playersList"></datalist>
@@ -198,7 +198,7 @@
                 <div id="playerField" class="form-group conditional-field">
                     {{ form.player_name.label(class="form-label") }}
                     <div id="playerSuggestions" class="player-suggestions">
-                        <span class="suggestion-label">Quick select (players from this game):</span>
+                        <span class="suggestion-label">Quick select (players from this team):</span>
                     </div>
                     {{ form.player_name(class="form-control", list="playersList2", autocomplete="off", placeholder="Type or select from list") }}
                     <datalist id="playersList2"></datalist>
@@ -338,9 +338,6 @@
         }
         
         function loadQBSuggestions() {
-            const homeTeam = document.getElementById('home_team').value;
-            const awayTeam = document.getElementById('away_team').value;
-            const gameDate = document.getElementById('game_date').value;
             const team = teamInput.value;
             
             const suggestionsContainer = document.getElementById('qbSuggestions');
@@ -352,13 +349,13 @@
                 suggestionsContainer.appendChild(label.cloneNode(true));
             }
             
-            if (!homeTeam || !awayTeam || !gameDate || !team) {
+            if (!team) {
                 suggestionsContainer.classList.remove('active');
                 return;
             }
             
-            // Fetch QB suggestions
-            fetch(`{{ url_for('football.api_game_players') }}?home_team=${encodeURIComponent(homeTeam)}&away_team=${encodeURIComponent(awayTeam)}&game_date=${encodeURIComponent(gameDate)}&play_type=QB&team=${encodeURIComponent(team)}`)
+            // Fetch QB suggestions (historical from this team)
+            fetch(`{{ url_for('football.api_game_players') }}?play_type=QB&team=${encodeURIComponent(team)}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.players && data.players.length > 0) {
@@ -384,9 +381,6 @@
         }
         
         function loadPlayerSuggestions() {
-            const homeTeam = document.getElementById('home_team').value;
-            const awayTeam = document.getElementById('away_team').value;
-            const gameDate = document.getElementById('game_date').value;
             const playType = playTypeSelect.value;
             const team = teamInput.value;
             
@@ -402,13 +396,13 @@
             // Only show suggestions for play types that need a player name
             const playTypesWithSuggestions = ['Pass', 'Rush', 'FG', 'XP'];
             
-            if (!homeTeam || !awayTeam || !gameDate || !playType || !team || !playTypesWithSuggestions.includes(playType)) {
+            if (!playType || !team || !playTypesWithSuggestions.includes(playType)) {
                 suggestionsContainer.classList.remove('active');
                 return;
             }
             
-            // Fetch player suggestions
-            fetch(`{{ url_for('football.api_game_players') }}?home_team=${encodeURIComponent(homeTeam)}&away_team=${encodeURIComponent(awayTeam)}&game_date=${encodeURIComponent(gameDate)}&play_type=${encodeURIComponent(playType)}&team=${encodeURIComponent(team)}`)
+            // Fetch player suggestions (historical from this team in this position)
+            fetch(`{{ url_for('football.api_game_players') }}?play_type=${encodeURIComponent(playType)}&team=${encodeURIComponent(team)}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.players && data.players.length > 0) {
@@ -511,17 +505,9 @@
         // Event listeners for team suggestions
         document.getElementById('home_team').addEventListener('change', function() {
             loadTeamSuggestions();
-            loadQBSuggestions();
-            loadPlayerSuggestions();
         });
         document.getElementById('away_team').addEventListener('change', function() {
             loadTeamSuggestions();
-            loadQBSuggestions();
-            loadPlayerSuggestions();
-        });
-        document.getElementById('game_date').addEventListener('change', function() {
-            loadQBSuggestions();
-            loadPlayerSuggestions();
         });
         
         // Event listener for when team with possession changes
