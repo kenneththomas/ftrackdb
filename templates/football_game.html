@@ -52,6 +52,11 @@
             height: 60px;
             margin-right: 0.75rem;
         }
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
         .play-log {
             background: white;
             border-radius: 8px;
@@ -241,6 +246,218 @@
         .quick-add-btn:active {
             transform: scale(0.95);
         }
+        
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .index-container {
+                padding: 0.5rem;
+            }
+            
+            .game-header {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .game-header h2 {
+                font-size: 1.2rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .game-score {
+                font-size: 2rem;
+                margin: 0.5rem 0;
+                letter-spacing: 1px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.75rem;
+            }
+            
+            .team-display {
+                font-size: 1.2rem;
+                margin: 0.25rem 0;
+                flex-direction: row;
+                text-align: center;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .team-display img {
+                width: 40px;
+                height: 40px;
+                margin-right: 0.5rem;
+                margin-bottom: 0;
+            }
+            
+            .score-value {
+                font-size: 1.8rem;
+                margin-left: 0.5rem;
+            }
+            
+            .stats-section {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .stats-section h3 {
+                font-size: 1.3rem;
+                margin-bottom: 1rem;
+            }
+            
+            .stat-category {
+                font-size: 1rem;
+                margin-top: 1rem;
+            }
+            
+            /* Make tables horizontally scrollable on mobile */
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin: 0 -1rem;
+                padding: 0 1rem;
+            }
+            
+            .stats-table {
+                font-size: 0.85rem;
+                min-width: 600px;
+            }
+            
+            .stats-table th,
+            .stats-table td {
+                padding: 0.5rem 0.4rem;
+            }
+            
+            .team-totals-table {
+                font-size: 0.9rem;
+            }
+            
+            .team-totals-table th,
+            .team-totals-table td {
+                padding: 0.6rem 0.4rem;
+            }
+            
+            .play-log {
+                padding: 1rem;
+            }
+            
+            .play-log h3 {
+                font-size: 1.3rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .play-item {
+                padding: 0.75rem;
+                font-size: 0.95rem;
+            }
+            
+            .play-type {
+                font-size: 1rem;
+                margin-bottom: 0.4rem;
+            }
+            
+            .play-item > div {
+                margin-bottom: 0.3rem;
+                word-wrap: break-word;
+            }
+            
+            /* Stack buttons vertically on mobile */
+            .mb-3 {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .mb-3 .btn {
+                width: 100%;
+                font-size: 1rem;
+                padding: 0.6rem 1rem;
+            }
+            
+            .edit-toggle-btn {
+                margin-left: 0;
+            }
+            
+            .play-actions {
+                flex-direction: column;
+                gap: 0.4rem;
+                margin-top: 0.5rem;
+            }
+            
+            .play-actions .btn-sm {
+                width: 100%;
+                font-size: 0.9rem;
+                padding: 0.5rem;
+            }
+            
+            /* Improve quick-add button for mobile */
+            .quick-add-btn {
+                font-size: 0.85rem;
+                padding: 0.2rem 0.5rem;
+                min-width: 28px;
+                min-height: 28px;
+            }
+            
+            /* Pagination improvements for mobile */
+            .pagination {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .pagination .page-link {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.9rem;
+            }
+            
+            /* Hide some page numbers on very small screens */
+            @media (max-width: 480px) {
+                .pagination .page-item:not(.active):not(:first-child):not(:last-child):not(.disabled) {
+                    display: none;
+                }
+                
+                .pagination .page-item.active ~ .page-item:not(.disabled):not(:last-child),
+                .pagination .page-item.active ~ .page-item.disabled {
+                    display: list-item;
+                }
+                
+                .game-score {
+                    font-size: 1.5rem;
+                }
+                
+                .team-display {
+                    font-size: 1rem;
+                }
+                
+                .score-value {
+                    font-size: 1.5rem;
+                }
+            }
+        }
+        
+        /* Very small screens */
+        @media (max-width: 480px) {
+            .stats-table {
+                min-width: 500px;
+                font-size: 0.8rem;
+            }
+            
+            .stats-table th,
+            .stats-table td {
+                padding: 0.4rem 0.3rem;
+            }
+            
+            .team-totals-table {
+                font-size: 0.85rem;
+            }
+            
+            .team-totals-table th,
+            .team-totals-table td {
+                padding: 0.5rem 0.3rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -257,10 +474,8 @@
                     <a href="{{ url_for('football.view_team', team_name=game[2]) }}" style="color: white;">
                         {{ game[2] }}
                     </a>
+                    <span class="score-value">{{ game[5] }}</span>
                 </div>
-                <span>{{ game[5] }}</span>
-                <span> - </span>
-                <span>{{ game[4] }}</span>
                 <div class="team-display">
                     {% if team_logos.get(game[1]) %}
                         <img src="{{ team_logos[game[1]] }}" alt="{{ game[1] }} logo">
@@ -268,6 +483,7 @@
                     <a href="{{ url_for('football.view_team', team_name=game[1]) }}" style="color: white;">
                         {{ game[1] }}
                     </a>
+                    <span class="score-value">{{ game[4] }}</span>
                 </div>
             </div>
         </div>
@@ -288,6 +504,7 @@
             
             {% if passing_stats %}
             <div class="stat-category">Passing</div>
+            <div class="table-wrapper">
             <table class="stats-table">
                 <thead>
                     <tr>
@@ -325,6 +542,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% endif %}
             
             <!-- Rushing Stats -->
@@ -338,6 +556,7 @@
             
             {% if rushing_stats %}
             <div class="stat-category">Rushing</div>
+            <div class="table-wrapper">
             <table class="stats-table">
                 <thead>
                     <tr>
@@ -368,6 +587,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% endif %}
             
             <!-- Receiving Stats -->
@@ -381,6 +601,7 @@
             
             {% if receiving_stats %}
             <div class="stat-category">Receiving</div>
+            <div class="table-wrapper">
             <table class="stats-table">
                 <thead>
                     <tr>
@@ -411,6 +632,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% endif %}
             
             <!-- Kicking Stats -->
@@ -423,6 +645,7 @@
             
             {% if kicking_stats %}
             <div class="stat-category">Kicking</div>
+            <div class="table-wrapper">
             <table class="stats-table">
                 <thead>
                     <tr>
@@ -447,6 +670,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% endif %}
         </div>
         {% endif %}
@@ -503,6 +727,7 @@
                 {% endif %}
             {% endfor %}
             
+            <div class="table-wrapper">
             <table class="team-totals-table">
                 <thead>
                     <tr>
@@ -571,6 +796,7 @@
                     {% endif %}
                 </tbody>
             </table>
+            </div>
         </div>
         {% endif %}
         
