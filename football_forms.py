@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, DateField, IntegerField, SelectField, BooleanField, SubmitField
+from wtforms import StringField, DateField, IntegerField, SelectField, BooleanField, SubmitField, ValidationError
 from wtforms.validators import DataRequired, Optional
 from datetime import date
 
@@ -31,4 +31,17 @@ class PlayForm(FlaskForm):
     is_successful = BooleanField('Successful (for FG/XP)', default=True)
     
     submit = SubmitField('Add Play')
+    
+    def validate_quarterback(self, field):
+        """Validate that quarterback is provided for play types that require it"""
+        if self.play_type.data in ['Keep', 'Sack', 'Pass', 'Incomplete']:
+            if not field.data or not field.data.strip():
+                raise ValidationError(f'Quarterback is required for {self.play_type.data} plays')
+    
+    def validate_player_name(self, field):
+        """Validate that player name is provided for play types that require it"""
+        # For Keep and Sack, quarterback will be used as player_name (validated above)
+        if self.play_type.data not in ['Keep', 'Sack', 'Incomplete']:
+            if not field.data or not field.data.strip():
+                raise ValidationError(f'Player name is required for {self.play_type.data} plays')
 

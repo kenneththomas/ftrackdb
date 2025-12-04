@@ -45,8 +45,11 @@ def play_entry():
             player_name = form.player_name.data
             quarterback = form.quarterback.data
             
-            # For certain play types, use QB as player
+            # Server-side validation: For certain play types, QB is required
             if form.play_type.data in ['Keep', 'Sack']:
+                if not quarterback or not quarterback.strip():
+                    flash('Quarterback is required for Keep and Sack plays', 'error')
+                    raise ValueError('Missing quarterback for Keep/Sack play')
                 player_name = quarterback
             
             # For incomplete passes, receiver name is optional
@@ -55,6 +58,11 @@ def play_entry():
                 is_complete = False
             else:
                 is_complete = True
+            
+            # Final validation: ensure player_name is not None or empty
+            if not player_name or not player_name.strip():
+                flash('Player name cannot be empty', 'error')
+                raise ValueError('Missing player name')
             
             # Add the play
             Play.add_play(
@@ -364,8 +372,11 @@ def edit_play(play_id):
             player_name = form.player_name.data
             quarterback = form.quarterback.data
             
-            # For certain play types, use QB as player
+            # Server-side validation: For certain play types, QB is required
             if form.play_type.data in ['Keep', 'Sack']:
+                if not quarterback or not quarterback.strip():
+                    flash('Quarterback is required for Keep and Sack plays', 'error')
+                    raise ValueError('Missing quarterback for Keep/Sack play')
                 player_name = quarterback
             
             # For incomplete passes, receiver name is optional
@@ -374,6 +385,11 @@ def edit_play(play_id):
                 is_complete = False
             else:
                 is_complete = True
+            
+            # Final validation: ensure player_name is not None or empty
+            if not player_name or not player_name.strip():
+                flash('Player name cannot be empty', 'error')
+                raise ValueError('Missing player name')
             
             # Update the play
             with conn:

@@ -36,6 +36,9 @@ def home():
     page = request.args.get('page', 1, type=int)
     per_page = 25  # Number of results per page
     
+    # Event filter options
+    filter_events = ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m']
+    
     # Get team logos for all teams
     conn = Database.get_connection()
     with conn:
@@ -51,6 +54,7 @@ def home():
                          results=results, 
                          form=form, 
                          team_logos=team_logos,
+                         filter_events=filter_events,
                          page=page,
                          total_pages=total_pages)
 

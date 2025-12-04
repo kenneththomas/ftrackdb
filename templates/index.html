@@ -32,15 +32,9 @@
                     <label for="eventFilter" class="sr-only">Filter by event</label>
                     <select id="eventFilter" class="form-control" aria-label="Filter by event">
                         <option value="">All Events</option>
-                        <option value="100m">100m</option>
-                        <option value="200m">200m</option>
-                        <option value="400m">400m</option>
-                        <option value="800m">800m</option>
-                        <option value="1500m">1500m</option>
-                        <option value="Mile">Mile</option>
-                        <option value="3000m">3000m</option>
-                        <option value="5000m">5000m</option>
-                        <option value="10000m">10000m</option>
+                        {% for event in filter_events %}
+                        <option value="{{ event }}">{{ event }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -55,39 +49,39 @@
             </div>
         </section>
         
-        <section class="results" role="main" aria-label="Track and field results">
-            <div class="table-responsive" role="region" aria-label="Results table">
-                <table class="index-results-table" role="table" aria-label="Track and field results">
+        <section class="results" aria-label="Track and field results">
+            <div class="table-responsive">
+                <table class="index-results-table" aria-label="Track and field results">
                     <thead>
-                        <tr role="row">
-                            <th scope="col" role="columnheader">Date</th>
-                            <th scope="col" role="columnheader">Athlete</th>
-                            <th scope="col" role="columnheader">Meet</th>
-                            <th scope="col" role="columnheader">Event</th>
-                            <th scope="col" role="columnheader">Result</th>
-                            <th scope="col" role="columnheader">Team</th>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Athlete</th>
+                            <th scope="col">Meet</th>
+                            <th scope="col">Event</th>
+                            <th scope="col">Result</th>
+                            <th scope="col">Team</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for result in results %}
-                        <tr role="row" data-athlete="{{ result[1] }}" data-meet="{{ result[2] }}" data-event="{{ result[3] }}" data-team="{{ result[5] }}">
-                            <td role="cell" data-label="Date">{{ result[0] }}</td>
-                            <td role="cell" data-label="Athlete">
+                        <tr data-athlete="{{ result[1] }}" data-meet="{{ result[2] }}" data-event="{{ result[3] }}" data-team="{{ result[5] }}">
+                            <td data-label="Date">{{ result[0] }}</td>
+                            <td data-label="Athlete">
                                 <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" 
                                    class="{% if get_gender(result[1]) %}female-text{% endif %}"
                                    aria-label="View {{ result[1] }}'s profile">
                                     {{ result[1] }}
                                 </a>
                             </td>
-                            <td role="cell" data-label="Meet">
+                            <td data-label="Meet">
                                 <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}" 
                                    aria-label="View results for {{ result[2] }} meet">
                                     {{ result[2] }}
                                 </a>
                             </td>
-                            <td role="cell" data-label="Event">{{ result[3] }}</td>
-                            <td role="cell" data-label="Result">{{ result[4] }}</td>
-                            <td class="team-cell" role="cell" data-label="Team">
+                            <td data-label="Event">{{ result[3] }}</td>
+                            <td data-label="Result">{{ result[4] }}</td>
+                            <td class="team-cell" data-label="Team">
                                 {% if team_logos.get(result[5]) %}
                                     <img src="{{ team_logos[result[5]] }}" 
                                          alt="{{ result[5] }} logo" 
@@ -133,107 +127,13 @@
     </div>
     
     <!-- Loading indicator -->
-    <div id="loadingIndicator" class="loading" style="display: none;" aria-hidden="true">
-        <div class="spinner-border text-primary" role="status">
+    <div id="loadingIndicator" class="loading" aria-hidden="true">
+        <div class="spinner-border text-primary">
             <span class="sr-only">Loading...</span>
         </div>
     </div>
     
     <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const filterInput = document.getElementById('filterInput');
-            const eventFilter = document.getElementById('eventFilter');
-            const teamFilter = document.getElementById('teamFilter');
-            const table = document.querySelector('.index-results-table');
-            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            
-            let filterTimeout;
-
-            function showLoading() {
-                loadingIndicator.style.display = 'block';
-                loadingIndicator.setAttribute('aria-hidden', 'false');
-            }
-
-            function hideLoading() {
-                loadingIndicator.style.display = 'none';
-                loadingIndicator.setAttribute('aria-hidden', 'true');
-            }
-
-            function filterTable() {
-                showLoading();
-                
-                // Clear existing timeout
-                if (filterTimeout) {
-                    clearTimeout(filterTimeout);
-                }
-                
-                // Debounce the filtering
-                filterTimeout = setTimeout(() => {
-                    const searchText = filterInput.value.toLowerCase();
-                    const selectedEvent = eventFilter.value.toLowerCase();
-                    const selectedTeam = teamFilter.value.toLowerCase();
-                    let visibleCount = 0;
-
-                    for (let row of rows) {
-                        const athlete = row.dataset.athlete ? row.dataset.athlete.toLowerCase() : '';
-                        const meet = row.dataset.meet ? row.dataset.meet.toLowerCase() : '';
-                        const event = row.dataset.event ? row.dataset.event.toLowerCase() : '';
-                        const team = row.dataset.team ? row.dataset.team.toLowerCase() : '';
-
-                        const matchesSearch = !searchText || 
-                                           athlete.includes(searchText) || 
-                                           meet.includes(searchText);
-                        const matchesEvent = !selectedEvent || event.includes(selectedEvent);
-                        const matchesTeam = !selectedTeam || team.includes(selectedTeam);
-
-                        const shouldShow = matchesSearch && matchesEvent && matchesTeam;
-                        row.style.display = shouldShow ? '' : 'none';
-                        
-                        if (shouldShow) visibleCount++;
-                    }
-                    
-                    // Update aria-live region for screen readers
-                    const statusMessage = `Showing ${visibleCount} of ${rows.length} results`;
-                    updateStatusMessage(statusMessage);
-                    
-                    hideLoading();
-                }, 150); // 150ms debounce
-            }
-
-            function updateStatusMessage(message) {
-                let statusRegion = document.getElementById('filterStatus');
-                if (!statusRegion) {
-                    statusRegion = document.createElement('div');
-                    statusRegion.id = 'filterStatus';
-                    statusRegion.setAttribute('aria-live', 'polite');
-                    statusRegion.setAttribute('aria-atomic', 'true');
-                    statusRegion.className = 'sr-only';
-                    document.body.appendChild(statusRegion);
-                }
-                statusRegion.textContent = message;
-            }
-
-            // Add event listeners with proper error handling
-            try {
-                filterInput.addEventListener('input', filterTable);
-                eventFilter.addEventListener('change', filterTable);
-                teamFilter.addEventListener('change', filterTable);
-                
-                // Add keyboard navigation
-                filterInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') {
-                        filterInput.value = '';
-                        filterTable();
-                        filterInput.focus();
-                    }
-                });
-                
-            } catch (error) {
-                console.error('Error setting up filters:', error);
-            }
-        });
-    </script>
+    <script src="{{ url_for('static', filename='index-filter.js') }}"></script>
 </body>
 </html>
