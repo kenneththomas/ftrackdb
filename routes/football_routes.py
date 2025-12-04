@@ -45,8 +45,11 @@ def play_entry():
             player_name = form.player_name.data
             quarterback = form.quarterback.data
             
-            # For certain play types, use QB as player
+            # Server-side validation: For certain play types, QB is required
             if form.play_type.data in ['Keep', 'Sack']:
+                if not quarterback or not quarterback.strip():
+                    flash('Quarterback is required for Keep and Sack plays', 'error')
+                    raise ValueError('Missing quarterback for Keep/Sack play')
                 player_name = quarterback
             
             # For incomplete passes, receiver name is optional
@@ -55,6 +58,11 @@ def play_entry():
                 is_complete = False
             else:
                 is_complete = True
+            
+            # Final validation: ensure player_name is not None or empty
+            if not player_name or not player_name.strip():
+                flash('Player name cannot be empty', 'error')
+                raise ValueError('Missing player name')
             
             # Add the play
             Play.add_play(
@@ -244,7 +252,7 @@ def api_teams():
 
 @football_bp.route('/api/game_players')
 def api_game_players():
-    """Get players who have already performed a specific action in the current game"""
+    """Get historical players from a team who have performed a specific action (position-based)"""
     try:
         home_team = request.args.get('home_team')
         away_team = request.args.get('away_team')
@@ -252,40 +260,28 @@ def api_game_players():
         play_type = request.args.get('play_type')
         team = request.args.get('team')
         
-        if not all([home_team, away_team, game_date, play_type, team]):
+        # Only require team and play_type for historical lookup
+        if not team or not play_type:
             return jsonify({'players': []})
         
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
             
-            # First, find the game
-            cur.execute('''
-                SELECT game_id FROM Games 
-                WHERE home_team = ? AND away_team = ? AND game_date = ?
-            ''', (home_team, away_team, game_date))
-            game = cur.fetchone()
-            
-            if not game:
-                return jsonify({'players': []})
-            
-            game_id = game[0]
-            
-            # Special case for quarterbacks
+            # Special case for quarterbacks - get all QBs who have played for this team
             if play_type == 'QB':
                 cur.execute('''
                     SELECT DISTINCT quarterback 
                     FROM Plays 
-                    WHERE game_id = ? 
-                    AND team = ?
+                    WHERE team = ?
                     AND quarterback IS NOT NULL
-                    ORDER BY play_id DESC
-                ''', (game_id, team))
+                    ORDER BY quarterback
+                ''', (team,))
                 
                 players = [row[0] for row in cur.fetchall()]
                 return jsonify({'players': players})
             
-            # Get players based on play type
+            # Get players based on play type - historical data for this team
             play_type_map = {
                 'Pass': ['Pass'],
                 'Rush': ['Rush'],
@@ -298,18 +294,17 @@ def api_game_players():
             if play_type not in play_type_map:
                 return jsonify({'players': []})
             
-            # Query for players who have done this action
+            # Query for historical players who have done this action for this team
             cur.execute('''
                 SELECT DISTINCT player_name 
                 FROM Plays 
-                WHERE game_id = ? 
-                AND play_type IN ({})
+                WHERE play_type IN ({})
                 AND team = ?
                 AND player_name IS NOT NULL
                 AND player_name != 'N/A'
-                ORDER BY play_id DESC
+                ORDER BY player_name
             '''.format(','.join('?' * len(play_type_map[play_type]))), 
-                (game_id, *play_type_map[play_type], team))
+                (*play_type_map[play_type], team))
             
             players = [row[0] for row in cur.fetchall()]
             return jsonify({'players': players})
@@ -377,8 +372,11 @@ def edit_play(play_id):
             player_name = form.player_name.data
             quarterback = form.quarterback.data
             
-            # For certain play types, use QB as player
+            # Server-side validation: For certain play types, QB is required
             if form.play_type.data in ['Keep', 'Sack']:
+                if not quarterback or not quarterback.strip():
+                    flash('Quarterback is required for Keep and Sack plays', 'error')
+                    raise ValueError('Missing quarterback for Keep/Sack play')
                 player_name = quarterback
             
             # For incomplete passes, receiver name is optional
@@ -387,6 +385,11 @@ def edit_play(play_id):
                 is_complete = False
             else:
                 is_complete = True
+            
+            # Final validation: ensure player_name is not None or empty
+            if not player_name or not player_name.strip():
+                flash('Player name cannot be empty', 'error')
+                raise ValueError('Missing player name')
             
             # Update the play
             with conn:

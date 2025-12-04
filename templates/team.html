@@ -1,122 +1,386 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{ team_name }} Results</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ team_name }} - Track & Field</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .team-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .team-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.15;
+        }
+
+        .team-logo-large {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            margin: 0 auto 1.5rem;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+            background: rgba(255,255,255,0.95);
+            border-radius: 50%;
+            padding: 10px;
+            border: 3px solid rgba(255,255,255,0.2);
+        }
+
+        .team-hero h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .team-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-section {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(102,126,234,0.2);
+        }
+
+        .stats-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(102,126,234,0.3);
+            border-color: rgba(102,126,234,0.4);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .section-header h2 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin: 0;
+            font-size: 1.75rem;
+        }
+
+        .logo-form-section {
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border: 2px dashed rgba(102,126,234,0.3);
+        }
+
+        .logo-form-section h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            color: #cbd5e0;
+            margin-bottom: 1rem;
+        }
+
+        .logo-form {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .logo-form input[type="text"] {
+            flex: 1;
+            min-width: 250px;
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(102,126,234,0.3);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            color: #e2e8f0;
+        }
+
+        .logo-form input[type="text"]::placeholder {
+            color: #718096;
+        }
+
+        .logo-form input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+        }
+
+        .logo-form button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .logo-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(102,126,234,0.5);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 8px;
+        }
+
+        .modern-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .modern-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modern-table thead th {
+            padding: 1rem;
+            font-weight: 600;
+            text-align: left;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modern-table thead th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        .modern-table thead th:last-child {
+            border-top-right-radius: 8px;
+        }
+
+        .modern-table tbody tr {
+            border-bottom: 1px solid rgba(102,126,234,0.2);
+            transition: background-color 0.2s;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .modern-table tbody tr:hover {
+            background-color: rgba(102,126,234,0.15);
+        }
+
+        .modern-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .modern-table td {
+            padding: 1rem;
+            font-size: 0.95rem;
+            color: #cbd5e0;
+        }
+
+        .modern-table td:empty::after {
+            content: '-';
+            color: #4a5568;
+        }
+
+        .modern-table a {
+            color: #a78bfa;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .modern-table a:hover {
+            color: #c4b5fd;
+            text-decoration: underline;
+        }
+
+        .pb-table td:first-child {
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #718096;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .team-hero h1 {
+                font-size: 1.75rem;
+            }
+
+            .team-container {
+                padding: 1rem;
+            }
+
+            .stats-section {
+                padding: 1.25rem;
+            }
+
+            .logo-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .logo-form button {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
-<style>
-    .team-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .team-logo {
-        width: 100px;
-        height: 100px;
-        object-fit: contain;
-        margin-right: 20px;
-    }
-
-    .logo-form {
-        margin: 20px 0;
-        padding: 15px;
-        background: #f5f5f5;
-        border-radius: 8px;
-    }
-
-    .logo-form input[type="text"] {
-        width: 300px;
-        padding: 8px;
-        margin-right: 10px;
-    }
-
-    .logo-form button {
-        padding: 8px 15px;
-        background: #3498db;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    .logo-form button:hover {
-        background: #2980b9;
-    }
-</style>
 <body>
     {% include 'navbar.html' %}
 
-    <div class="container">
-        <div class="team-header">
+    <div class="team-container">
+        <!-- Hero Section -->
+        <div class="team-hero">
             {% if team_info and team_info.logo_url %}
-                <img src="{{ team_info.logo_url }}" alt="{{ team_name }} logo" class="team-logo">
+                <img src="{{ team_info.logo_url }}" alt="{{ team_name }} logo" class="team-logo-large">
             {% endif %}
-            <h1>{{ team_name }} Personal Bests</h1>
+            <h1>{{ team_name }}</h1>
         </div>
 
-        {% if athletes %}
-            <table>
-                <tr>
-                    <th>Athlete</th>
-                    <th>100m</th>
-                    <th>200m</th>
-                    <th>400m</th>
-                    <th>800m</th>
-                    <th>1500m</th>
-                    <th>Mile</th>
-                    <th>3000m</th>
-                    <th>5000m</th>
-                    <th>10000m</th>
-                </tr>
-                {% for athlete in athletes %}
-                    <tr>
-                        <td><a href="{{ url_for('athlete.athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
-                        {% for event in ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m'] %}
-                            <td>{{ team_pbs.get(athlete[0], {}).get(event, '') }}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </table>
-        {% endif %}
-    </div>
+        <!-- Personal Bests Section -->
+        <div class="stats-section">
+            <div class="section-header">
+                <h2>🏆 Personal Bests</h2>
+            </div>
+            
+            {% if athletes %}
+                <div class="table-responsive">
+                    <table class="modern-table pb-table">
+                        <thead>
+                            <tr>
+                                <th>Athlete</th>
+                                <th>100m</th>
+                                <th>200m</th>
+                                <th>400m</th>
+                                <th>800m</th>
+                                <th>1500m</th>
+                                <th>Mile</th>
+                                <th>3000m</th>
+                                <th>5000m</th>
+                                <th>10000m</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for athlete in athletes %}
+                                <tr>
+                                    <td><a href="{{ url_for('athlete.athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
+                                    {% for event in ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m'] %}
+                                        <td>{{ team_pbs.get(athlete[0], {}).get(event, '') }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No personal bests recorded yet.</p>
+                </div>
+            {% endif %}
+        </div>
 
-    <div class="container">
-        <h1>{{ team_name }} Results</h1>
-        {% if results %}
-            <table>
-                <tr>
-                    <th>Date</th>
-                    <th>Athlete</th>
-                    <th>Meet</th>
-                    <th>Event</th>
-                    <th>Result</th>
-                </tr>
-                {% for result in results %}
-                    <tr>
-                        <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
-                        <td>
-                            <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a>
-                        </td>
-                        <td>{{ result[3] }}</td>
-                        <td>{{ result[4] }}</td>
-                    </tr>
-                {% endfor %}
-            </table>
-        {% else %}
-            <p>No results available for {{ team_name }}.</p>
-        {% endif %}
-        <br>
-        <a href="{{ url_for('home') }}" class="home-button">Home</a>
-        <div class="logo-form">
-            <form method="POST" action="{{ url_for('team.update_team_logo', team_name=team_name) }}">
+        <!-- Results Section -->
+        <div class="stats-section">
+            <div class="section-header">
+                <h2>📊 All Results</h2>
+            </div>
+            
+            {% if results %}
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Athlete</th>
+                                <th>Meet</th>
+                                <th>Event</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in results %}
+                                <tr>
+                                    <td>{{ result[0] }}</td>
+                                    <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
+                                    <td>
+                                        <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a>
+                                    </td>
+                                    <td>{{ result[3] }}</td>
+                                    <td><strong>{{ result[4] }}</strong></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No results available for {{ team_name }}.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Logo Management Section -->
+        <div class="logo-form-section">
+            <h3>⚙️ Team Logo Settings</h3>
+            <form method="POST" action="{{ url_for('team.update_team_logo', team_name=team_name) }}" class="logo-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="logo_url" placeholder="Enter team logo URL" value="{{ team_info.logo_url if team_info and team_info.logo_url else '' }}">
-                <button type="submit">Update Logo</button>
+                <input type="text" 
+                       name="logo_url" 
+                       placeholder="Enter team logo URL (e.g., https://example.com/logo.png)" 
+                       value="{{ team_info.logo_url if team_info and team_info.logo_url else '' }}">
+                <button type="submit">💾 Update Logo</button>
             </form>
         </div>
-
     </div>
+
+    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
 </body>
 </html>

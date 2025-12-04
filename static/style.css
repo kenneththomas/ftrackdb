@@ -470,6 +470,10 @@ table td:empty::before {
     pointer-events: none;
 }
 
+#loadingIndicator {
+    display: none;
+}
+
 .loading::after {
     content: '';
     position: absolute;
