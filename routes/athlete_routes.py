@@ -134,7 +134,7 @@ def search():
         with conn:
             cur = conn.cursor()
             
-            cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', 
+            cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', 
                        ('%' + form.athlete.data + '%',))
             results = cur.fetchall()
         return render_template('search.html', form=form, results=results)
