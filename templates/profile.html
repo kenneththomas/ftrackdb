@@ -380,13 +380,26 @@
 
     .ranking-badge {
         display: inline-block;
-        background: #617394;
+        background: linear-gradient(135deg, #14c2b3, #0e8c7b);
         color: white;
-        padding: 1px 4px;
-        border-radius: 3px;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        margin-left: 8px;
+        font-weight: 600;
+        vertical-align: middle;
+        box-shadow: 0 2px 4px rgba(20, 194, 179, 0.3);
+    }
+
+    .pr-indicator {
+        display: inline-block;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
         font-size: 0.7em;
         margin-left: 6px;
-        font-weight: bold;
+        font-weight: 600;
         vertical-align: middle;
     }
     </style>
@@ -436,12 +449,12 @@
             <h2>All-Time Personal Records</h2>
             <div class="pr-grid">
                 {% for event, result in prs.items() %}
-                <div class="pr-item">
+                <div class="pr-item" data-event="{{ event }}">
                     <span class="pr-event">{{ event }}</span>
                     <span class="pr-result">
                         {{ result }}
                         {% if rankings.get(event) %}
-                            <span class="ranking-badge">#{{ rankings[event] }}</span>
+                            <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
                         {% endif %}
                     </span>
                 </div>
@@ -482,16 +495,21 @@
                 </thead>
                 <tbody>
                     {% for result in results %}
-                    <tr data-result-id="{{ result[5] }}">
+                    <tr data-result-id="{{ result[5] }}" data-event="{{ result[2] }}">
                         <td class="editable" data-field="date">{{ result[0] }}</td>
                         <td class="editable" data-field="meet">
                             <a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
                         <td class="editable" data-field="event">{{ result[2] }}</td>
                         <td class="editable" data-field="result">
-                            {{ result[3] }}
-                            {% if rankings.get(result[2]) and result[3] == prs.get(result[2]) %}
-                                <span class="ranking-badge">#{{ rankings[result[2]] }}</span>
+                            <span class="result-value">{{ result[3] }}</span>
+                            {% set event = result[2] %}
+                            {% set is_pr = result[6] if result|length > 6 else False %}
+                            {% if is_pr %}
+                                <span class="pr-indicator" title="Personal Record">PR</span>
+                            {% endif %}
+                            {% if rankings.get(event) and is_pr %}
+                                <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
                             {% endif %}
                         </td>
                         <td class="editable team-cell" data-field="team">
@@ -853,7 +871,12 @@
     });
 
     // JavaScript to handle calculate rankings button
-    document.getElementById('calculate-rankings').addEventListener('click', function() {
+    const calculateRankingsBtn = document.getElementById('calculate-rankings');
+    calculateRankingsBtn.addEventListener('click', function() {
+        const originalText = this.textContent;
+        this.textContent = 'Calculating...';
+        this.disabled = true;
+        
         const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
         fetch(`/athlete/{{ name }}/calculate_rankings`, {
@@ -865,16 +888,58 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Reload the page to show updated rankings
-                window.location.reload();
+            if (data.success && data.rankings) {
+                // Update ranking badges in PR sections
+                Object.keys(data.rankings).forEach(event => {
+                    const ranking = data.rankings[event];
+                    // Update PR section badges
+                    const prBadges = document.querySelectorAll(`.pr-item[data-event="${event}"] .ranking-badge`);
+                    prBadges.forEach(badge => {
+                        badge.textContent = `#${ranking}`;
+                        badge.title = `Ranked #${ranking} in this event`;
+                    });
+                    
+                    // Update results table badges
+                    const resultRows = document.querySelectorAll(`tr[data-event="${event}"]`);
+                    resultRows.forEach(row => {
+                        const resultCell = row.querySelector('td[data-field="result"]');
+                        if (resultCell) {
+                            const existingBadge = resultCell.querySelector('.ranking-badge');
+                            const prIndicator = resultCell.querySelector('.pr-indicator');
+                            if (prIndicator && !existingBadge) {
+                                // Add ranking badge if this is a PR
+                                const badge = document.createElement('span');
+                                badge.className = 'ranking-badge';
+                                badge.textContent = `#${ranking}`;
+                                badge.title = `Ranked #${ranking} in this event`;
+                                resultCell.appendChild(badge);
+                            } else if (existingBadge) {
+                                existingBadge.textContent = `#${ranking}`;
+                                existingBadge.title = `Ranked #${ranking} in this event`;
+                            }
+                        }
+                    });
+                });
+                
+                // Show success message
+                this.textContent = '✓ Rankings Updated';
+                this.style.background = '#28a745';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                    this.style.background = '';
+                    this.disabled = false;
+                }, 2000);
             } else {
                 alert('Error calculating rankings');
+                this.textContent = originalText;
+                this.disabled = false;
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('Error calculating rankings');
+            this.textContent = originalText;
+            this.disabled = false;
         });
     });
     </script>
