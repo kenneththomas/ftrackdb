@@ -402,6 +402,32 @@
         font-weight: 600;
         vertical-align: middle;
     }
+
+    .result-cell {
+        white-space: nowrap;
+    }
+
+    .result-content {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .result-content input {
+        width: auto;
+        min-width: 100px;
+        padding: 5px;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+        background: #23272a;
+        color: #e0e0e0;
+        font-family: inherit;
+    }
+
+    .result-badges {
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 8px;
+    }
     </style>
 </head>
 <body>
@@ -501,16 +527,20 @@
                             <a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
                         <td class="editable" data-field="event">{{ result[2] }}</td>
-                        <td class="editable" data-field="result">
-                            <span class="result-value">{{ result[3] }}</span>
-                            {% set event = result[2] %}
-                            {% set is_pr = result[6] if result|length > 6 else False %}
-                            {% if is_pr %}
-                                <span class="pr-indicator" title="Personal Record">PR</span>
-                            {% endif %}
-                            {% if rankings.get(event) and is_pr %}
-                                <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
-                            {% endif %}
+                        <td class="editable result-cell" data-field="result">
+                            <div class="result-content">
+                                <span class="result-value">{{ result[3] }}</span>
+                            </div>
+                            <div class="result-badges">
+                                {% set event = result[2] %}
+                                {% set is_pr = result[6] if result|length > 6 else False %}
+                                {% if is_pr %}
+                                    <span class="pr-indicator" title="Personal Record">PR</span>
+                                {% endif %}
+                                {% if rankings.get(event) and is_pr %}
+                                    <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td class="editable team-cell" data-field="team">
                             {% if team_logos.get(result[4]) %}
@@ -520,9 +550,9 @@
                         </td>
                         <td>
                             <button class="edit-btn" title="Edit">✎</button>
-                            <button class="save-btn" style="display: none;" title="Save">✓</button>
-                            <button class="cancel-btn" style="display: none;" title="Cancel">✗</button>
-                            <button class="delete-btn" data-result-id="{{ result[5] }}" title="Delete">×</button>
+                            <button class="save-btn" style="display: none;" title="Save Changes">✓</button>
+                            <button class="cancel-btn" style="display: none;" title="Cancel Edit">✗</button>
+                            <button class="delete-btn" data-result-id="{{ result[5] }}" title="Delete Result">×</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -728,10 +758,11 @@
             const row = this.closest('tr');
             const resultId = row.dataset.resultId;
             
-            // Show save/cancel buttons, hide edit button
+            // Show save/cancel buttons, hide edit and delete buttons
             row.querySelector('.edit-btn').style.display = 'none';
             row.querySelector('.save-btn').style.display = 'inline';
             row.querySelector('.cancel-btn').style.display = 'inline';
+            row.querySelector('.delete-btn').style.display = 'none';
             
             // Store original values and make cells editable
             row.querySelectorAll('.editable').forEach(cell => {
@@ -741,20 +772,10 @@
                 // Store original HTML content for proper restoration
                 cell.dataset.originalHtml = cell.innerHTML;
                 
-                // For result field, exclude ranking badge content
+                // For result field, get value from result-content, keep badges visible
                 if (field === 'result') {
-                    // Get only the text content, excluding the ranking badge
-                    const rankingBadge = cell.querySelector('.ranking-badge');
-                    if (rankingBadge) {
-                        // Actually remove the ranking badge temporarily to get clean text
-                        const badgeParent = rankingBadge.parentNode;
-                        badgeParent.removeChild(rankingBadge);
-                        originalText = cell.textContent.trim();
-                        // Restore the ranking badge
-                        badgeParent.appendChild(rankingBadge);
-                    } else {
-                        originalText = cell.textContent.trim();
-                    }
+                    const resultContent = cell.querySelector('.result-content');
+                    originalText = resultContent ? resultContent.textContent.trim() : cell.textContent.trim();
                 } else {
                     originalText = cell.textContent.trim();
                 }
@@ -766,9 +787,21 @@
                 input.type = field === 'date' ? 'date' : 'text';
                 input.value = originalText;
                 
-                // Clear cell and add input
-                cell.textContent = '';
-                cell.appendChild(input);
+                // For result field, replace only the result-content, keep badges
+                if (field === 'result') {
+                    const resultContent = cell.querySelector('.result-content');
+                    if (resultContent) {
+                        resultContent.innerHTML = '';
+                        resultContent.appendChild(input);
+                    } else {
+                        cell.textContent = '';
+                        cell.appendChild(input);
+                    }
+                } else {
+                    // Clear cell and add input
+                    cell.textContent = '';
+                    cell.appendChild(input);
+                }
                 cell.classList.add('editing');
             });
         });
@@ -789,6 +822,7 @@
             row.querySelector('.edit-btn').style.display = 'inline';
             row.querySelector('.save-btn').style.display = 'none';
             row.querySelector('.cancel-btn').style.display = 'none';
+            row.querySelector('.delete-btn').style.display = 'inline';
         });
     });
 
@@ -801,8 +835,13 @@
             // Collect updated values
             row.querySelectorAll('.editable').forEach(cell => {
                 const field = cell.dataset.field;
-                const input = cell.querySelector('input');
-                updates[field] = input.value;
+                // For result field, input is inside result-content
+                const input = field === 'result' 
+                    ? cell.querySelector('.result-content input') || cell.querySelector('input')
+                    : cell.querySelector('input');
+                if (input) {
+                    updates[field] = input.value;
+                }
             });
             
             const csrf_token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
