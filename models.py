@@ -475,17 +475,37 @@ class AthleteRanking:
             for event in events:
                 # For time events (lower is better)
                 if 'm' in event or 'Mile' in event:
+                    # Convert time strings to numeric values for proper sorting
                     cur.execute('''
-                        WITH RankedResults AS (
+                        WITH BestResults AS (
                             SELECT 
                                 Athlete,
                                 Result,
-                                ROW_NUMBER() OVER (ORDER BY Result ASC) as rank
+                                CASE 
+                                    WHEN Result LIKE '%:%' THEN
+                                        CAST(SUBSTR(Result, 1, INSTR(Result, ':') - 1) AS REAL) * 60 +
+                                        CAST(SUBSTR(Result, INSTR(Result, ':') + 1) AS REAL)
+                                    ELSE
+                                        CAST(Result AS REAL)
+                                END as numeric_result
                             FROM Results 
                             WHERE Event = ? 
                             AND Date >= ?
+                        ),
+                        AthletePRs AS (
+                            SELECT 
+                                Athlete,
+                                MIN(numeric_result) as best_result,
+                                MIN(Result) as best_result_str
+                            FROM BestResults
                             GROUP BY Athlete
-                            HAVING Result = MIN(Result)
+                        ),
+                        RankedResults AS (
+                            SELECT 
+                                Athlete,
+                                best_result_str as Result,
+                                ROW_NUMBER() OVER (ORDER BY best_result ASC) as rank
+                            FROM AthletePRs
                         )
                         SELECT rank 
                         FROM RankedResults
@@ -494,16 +514,30 @@ class AthleteRanking:
                 # For field events (higher is better)
                 else:
                     cur.execute('''
-                        WITH RankedResults AS (
+                        WITH BestResults AS (
                             SELECT 
                                 Athlete,
                                 Result,
-                                ROW_NUMBER() OVER (ORDER BY Result DESC) as rank
+                                CAST(Result AS REAL) as numeric_result
                             FROM Results 
                             WHERE Event = ? 
                             AND Date >= ?
+                            AND Result GLOB '[0-9]*.[0-9]*'
+                        ),
+                        AthletePRs AS (
+                            SELECT 
+                                Athlete,
+                                MAX(numeric_result) as best_result,
+                                MAX(Result) as best_result_str
+                            FROM BestResults
                             GROUP BY Athlete
-                            HAVING Result = MAX(Result)
+                        ),
+                        RankedResults AS (
+                            SELECT 
+                                Athlete,
+                                best_result_str as Result,
+                                ROW_NUMBER() OVER (ORDER BY best_result DESC) as rank
+                            FROM AthletePRs
                         )
                         SELECT rank 
                         FROM RankedResults

@@ -1,43 +1,517 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Search Results</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Athletes - Track and Field Results</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .search-hero {
+            background: linear-gradient(135deg, #14c2b3 0%, #0e8c7b 100%);
+            padding: 60px 20px;
+            margin: -20px -20px 40px -20px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 20px rgba(20, 194, 179, 0.3);
+        }
+
+        .search-hero h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-hero p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+
+        .search-form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .search-form-wrapper {
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 8px;
+            border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .search-form-wrapper input {
+            flex: 1;
+            border: none;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .search-form-wrapper input::placeholder {
+            color: #999;
+        }
+
+        .search-form-wrapper button {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            border: none;
+            color: white;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .search-form-wrapper button:hover {
+            background: linear-gradient(135deg, #16355a, #214378);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 60, 114, 0.4);
+        }
+
+        .search-stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 25px;
+            display: inline-block;
+            margin-top: 20px;
+            font-size: 1rem;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-count {
+            font-size: 1.1rem;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .results-count strong {
+            color: #14c2b3;
+            font-size: 1.3rem;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-controls input,
+        .filter-controls select {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .filter-controls input:focus,
+        .filter-controls select:focus {
+            outline: none;
+            border-color: #14c2b3;
+            box-shadow: 0 0 0 3px rgba(20, 194, 179, 0.1);
+        }
+
+        .search-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .search-results-table thead {
+            background: linear-gradient(135deg, #14c2b3, #0e8c7b);
+        }
+
+        .search-results-table th {
+            padding: 18px 15px;
+            text-align: left;
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .search-results-table td {
+            padding: 16px 15px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #2d3748;
+        }
+
+        .search-results-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .search-results-table tbody tr:hover {
+            background-color: rgba(20, 194, 179, 0.08);
+            transform: scale(1.01);
+        }
+
+        .search-results-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .search-results-table a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .search-results-table a:hover {
+            color: #14c2b3;
+            text-decoration: underline;
+        }
+
+        .result-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #f0f9ff;
+            color: #0369a1;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            color: #475569;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .no-results {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .no-results h3 {
+            color: #92400e;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .no-results p {
+            color: #78350f;
+            margin: 0;
+        }
+
+        .search-suggestions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border-left: 4px solid #14c2b3;
+        }
+
+        .search-suggestions h4 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .search-suggestions ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .search-suggestions li {
+            padding: 8px 0;
+            color: #64748b;
+        }
+
+        .search-suggestions li:before {
+            content: "💡 ";
+            margin-right: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .search-hero {
+                padding: 40px 15px;
+            }
+
+            .search-hero h1 {
+                font-size: 2rem;
+            }
+
+            .search-form-wrapper {
+                flex-direction: column;
+                border-radius: 15px;
+            }
+
+            .search-form-wrapper input,
+            .search-form-wrapper button {
+                border-radius: 10px;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .filter-controls {
+                width: 100%;
+            }
+
+            .filter-controls input,
+            .filter-controls select {
+                width: 100%;
+            }
+
+            .search-results-table {
+                font-size: 0.9rem;
+            }
+
+            .search-results-table th,
+            .search-results-table td {
+                padding: 12px 10px;
+            }
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
+    {% include 'navbar.html' %}
     <div class="container">
-        <h1>Search Results</h1>
-        <form method="POST">
-            {{ form.csrf_token }}
-            {{ form.athlete }}
-            <input type="submit" value="Search">
-        </form>
+        <div class="search-hero">
+            <h1><i class="fas fa-search"></i> Search Athletes</h1>
+            <p>Find track and field results by athlete name</p>
+            <form method="POST" class="search-form-container">
+                {{ form.csrf_token }}
+                <div class="search-form-wrapper">
+                    {{ form.athlete(class="form-control", placeholder="Enter athlete name...", autofocus=true, **{"aria-label": "Search for athlete"}) }}
+                    <button type="submit" aria-label="Submit search">
+                        <i class="fas fa-search"></i>
+                        <span>Search</span>
+                    </button>
+                </div>
+            </form>
+            {% if results %}
+            <div class="search-stats">
+                <i class="fas fa-chart-line"></i> Found <strong>{{ results|length }}</strong> result{{ 's' if results|length != 1 else '' }}
+            </div>
+            {% endif %}
+        </div>
+
         {% if results %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Athlete</th>
-                        <th>Event</th>
-                        <th>Result</th>
-                        <th>Team</th>
-                    </tr>
-                </thead>
-                {% for result in results %}
-                    <tr>
-                        <td>{{ result[0] }}</td>
-                        <td><a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}">{{ result[1] }}</a></td>
-                        <td><a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">{{ result[2] }}</a></td>
-                        <td>{{ result[3] }}</td>
-                        <td><a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
-                    </tr>
-                {% endfor %}
-            </table>
+        <div class="results-section">
+            <div class="results-header">
+                <div class="results-count">
+                    Showing <strong>{{ results|length }}</strong> result{{ 's' if results|length != 1 else '' }}
+                </div>
+                <div class="filter-controls">
+                    <input type="text" id="eventFilter" placeholder="Filter by event..." aria-label="Filter by event">
+                    <input type="text" id="teamFilter" placeholder="Filter by team..." aria-label="Filter by team">
+                    <input type="text" id="meetFilter" placeholder="Filter by meet..." aria-label="Filter by meet">
+                    <select id="sortBy" aria-label="Sort results">
+                        <option value="date-desc">Date (Newest)</option>
+                        <option value="date-asc">Date (Oldest)</option>
+                        <option value="athlete-asc">Athlete (A-Z)</option>
+                        <option value="athlete-desc">Athlete (Z-A)</option>
+                        <option value="result-asc">Result (Best)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="search-results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-calendar"></i> Date</th>
+                            <th><i class="fas fa-user"></i> Athlete</th>
+                            <th><i class="fas fa-map-marker-alt"></i> Meet</th>
+                            <th><i class="fas fa-trophy"></i> Event</th>
+                            <th><i class="fas fa-stopwatch"></i> Result</th>
+                            <th><i class="fas fa-users"></i> Team</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr data-event="{{ result[3] }}" data-team="{{ result[5] }}" data-date="{{ result[0] }}" data-athlete="{{ result[1] }}" data-result="{{ result[4] }}" data-meet="{{ result[2] }}">
+                            <td>
+                                <span class="result-badge">{{ result[0] }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" aria-label="View {{ result[1] }}'s profile">
+                                    <strong>{{ result[1] }}</strong>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}" aria-label="View results for {{ result[2] }} meet">
+                                    {{ result[2] }}
+                                </a>
+                            </td>
+                            <td>
+                                <strong>{{ result[3] }}</strong>
+                            </td>
+                            <td>
+                                <strong>{{ result[4] }}</strong>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('team.team_results', team_name=result[5]) }}" aria-label="View {{ result[5] }} team results">
+                                    {{ result[5] }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% elif request.method == 'POST' %}
+        <div class="no-results">
+            <h3>
+                <i class="fas fa-exclamation-triangle"></i>
+                No Results Found
+            </h3>
+            <p>We couldn't find any results matching your search. Try adjusting your search terms or check the spelling.</p>
+        </div>
         {% else %}
-            <p>No results found.</p>
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-search-location"></i>
+            </div>
+            <h3>Start Your Search</h3>
+            <p>Enter an athlete's name in the search box above to find their track and field results, personal records, and competition history.</p>
+            
+            <div class="search-suggestions">
+                <h4><i class="fas fa-lightbulb"></i> Search Tips</h4>
+                <ul>
+                    <li>You can search by first name, last name, or full name</li>
+                    <li>Partial matches are supported (e.g., "John" will find "John Smith")</li>
+                    <li>Results are sorted by date, with the most recent first</li>
+                    <li>Click on any athlete, meet, or team name to view more details</li>
+                </ul>
+            </div>
+        </div>
         {% endif %}
-        <br>
-        <a href="{{ url_for('home') }}" class="home-button">Home</a>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="{{ url_for('home') }}" class="home-button">
+                <i class="fas fa-home"></i> Back to Home
+            </a>
+        </div>
     </div>
+
+    <script>
+        // Client-side filtering and sorting
+        document.addEventListener('DOMContentLoaded', function() {
+            const eventFilter = document.getElementById('eventFilter');
+            const teamFilter = document.getElementById('teamFilter');
+            const meetFilter = document.getElementById('meetFilter');
+            const sortBy = document.getElementById('sortBy');
+            const table = document.getElementById('resultsTable');
+            
+            if (!table) return;
+
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            function filterAndSort() {
+                const eventValue = eventFilter.value.toLowerCase().trim();
+                const teamValue = teamFilter.value.toLowerCase().trim();
+                const meetValue = meetFilter ? meetFilter.value.toLowerCase().trim() : '';
+                const sortValue = sortBy.value;
+
+                // Filter rows
+                rows.forEach(row => {
+                    const event = row.dataset.event.toLowerCase();
+                    const team = row.dataset.team.toLowerCase();
+                    const meet = row.dataset.meet ? row.dataset.meet.toLowerCase() : '';
+                    
+                    const eventMatch = !eventValue || event.includes(eventValue);
+                    const teamMatch = !teamValue || team.includes(teamValue);
+                    const meetMatch = !meetValue || meet.includes(meetValue);
+                    
+                    row.style.display = (eventMatch && teamMatch && meetMatch) ? '' : 'none';
+                });
+
+                // Sort visible rows
+                const visibleRows = rows.filter(row => row.style.display !== 'none');
+                
+                visibleRows.sort((a, b) => {
+                    switch(sortValue) {
+                        case 'date-desc':
+                            return new Date(b.dataset.date) - new Date(a.dataset.date);
+                        case 'date-asc':
+                            return new Date(a.dataset.date) - new Date(b.dataset.date);
+                        case 'athlete-asc':
+                            return a.dataset.athlete.localeCompare(b.dataset.athlete);
+                        case 'athlete-desc':
+                            return b.dataset.athlete.localeCompare(a.dataset.athlete);
+                        case 'result-asc':
+                            // Simple numeric comparison - may need adjustment based on result format
+                            return parseFloat(a.dataset.result) - parseFloat(b.dataset.result);
+                        default:
+                            return 0;
+                    }
+                });
+
+                // Reorder in DOM
+                visibleRows.forEach(row => tbody.appendChild(row));
+            }
+
+            if (eventFilter) eventFilter.addEventListener('input', filterAndSort);
+            if (teamFilter) teamFilter.addEventListener('input', filterAndSort);
+            if (meetFilter) meetFilter.addEventListener('input', filterAndSort);
+            if (sortBy) sortBy.addEventListener('change', filterAndSort);
+        });
+    </script>
 </body>
 </html>

@@ -106,9 +106,35 @@ def athlete_profile(name):
     # Get current rankings for the athlete
     rankings = AthleteRanking.calculate_athlete_rankings(name)
     
+    # Create a set of PR results for quick lookup (normalize for comparison)
+    def normalize_result(result_str):
+        """Normalize result string for comparison"""
+        if not result_str:
+            return None
+        # Remove leading/trailing whitespace
+        result_str = result_str.strip()
+        # For times with colons, keep as is for now
+        return result_str
+    
+    # Create a mapping of (event, normalized_result) -> True for PRs
+    pr_results_set = set()
+    for event, pr_result in prs.items():
+        normalized = normalize_result(pr_result)
+        if normalized:
+            pr_results_set.add((event, normalized))
+    
+    # Pre-process results to mark which ones are PRs
+    results_with_pr_flag = []
+    for result in results:
+        event = result[2]
+        result_value = result[3]
+        normalized = normalize_result(result_value)
+        is_pr = normalized and (event, normalized) in pr_results_set
+        results_with_pr_flag.append((*result, is_pr))
+    
     return render_template('profile.html', 
                          name=name, 
-                         results=results, 
+                         results=results_with_pr_flag, 
                          prs=prs,
                          annual_prs=annual_prs,
                          team=team, 
@@ -134,7 +160,7 @@ def search():
         with conn:
             cur = conn.cursor()
             
-            cur.execute('SELECT Date, Athlete, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', 
+            cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result, Team FROM Results WHERE Athlete LIKE ? ORDER BY Date DESC', 
                        ('%' + form.athlete.data + '%',))
             results = cur.fetchall()
         return render_template('search.html', form=form, results=results)
