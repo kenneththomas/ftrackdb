@@ -4,92 +4,281 @@
     <title>Leaderboard</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .event-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            padding: 20px 0;
-        }
-        .event-card {
-            background: white;
+        .filter-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
             border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
         }
-        .event-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
-        .event-card a {
-            text-decoration: none;
-            color: inherit;
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
         }
-        .event-card h3 {
-            margin: 0 0 10px 0;
+        .filter-section select {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+            min-width: 200px;
+            background: white;
+        }
+        .filter-section select:focus {
+            outline: none;
+            border-color: #14c2b3;
+            box-shadow: 0 0 0 3px rgba(20, 194, 179, 0.1);
+        }
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toggle-switch label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
             color: #2c3e50;
         }
-        .event-card p {
-            margin: 0;
+        .toggle-switch input[type="checkbox"] {
+            width: 40px;
+            height: 20px;
+            appearance: none;
+            background: #ccc;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle-switch input[type="checkbox"]:checked {
+            background: #14c2b3;
+        }
+        .toggle-switch input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+        .toggle-switch input[type="checkbox"]:checked::before {
+            left: 22px;
+        }
+        .team-logo {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .team-cell {
+            display: flex;
+            align-items: center;
+        }
+        .meet-info {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 4px;
+        }
+        .meet-link {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .meet-link:hover {
+            text-decoration: underline;
+        }
+        .relay-split {
+            display: inline-block;
+            margin-right: 15px;
+            font-size: 0.9em;
             color: #666;
         }
-        .relay-section {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #eee;
+        .team-members {
+            margin-bottom: 8px;
         }
-        .relay-section h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
         }
-        .relay-card {
-            background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
-            border-left: 4px solid #3498db;
+        .no-event-selected {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 1.2em;
         }
-        .relay-card h3 {
-            color: #2980b9;
+        .filter-button {
+            padding: 8px 20px;
+            background: #14c2b3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .filter-button:hover {
+            background: #0e8c7b;
         }
     </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     <div class="container">
-        <h1>Track & Field Events</h1>
+        <h1>Leaderboard</h1>
         
-        <!-- Individual Events -->
-        <div class="event-list">
-            {% for event, count in event_data %}
-                {% if not event.startswith('4x') %}
-                    <div class="event-card">
-                        <a href="{{ url_for('leaderboard.event_leaderboard', event=event) }}">
-                            <h3>{{ event }}</h3>
-                            <p>{{ count }} Athletes</p>
-                        </a>
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-
-        <!-- Relay Events -->
-        <div class="relay-section">
-            <h2>Relay Events</h2>
-            <div class="event-list">
-                {% for event, count in event_data %}
-                    {% if event.startswith('4x') %}
-                        <div class="event-card relay-card">
-                            <a href="{{ url_for('leaderboard.event_leaderboard', event=event) }}">
-                                <h3>{{ event }}</h3>
-                                <p>{{ count }} Teams</p>
-                            </a>
-                        </div>
-                    {% endif %}
-                {% endfor %}
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="eventSelect">Event</label>
+                <select id="eventSelect" onchange="updateFilters()">
+                    <option value="">Select an event...</option>
+                    {% for event in all_events %}
+                        <option value="{{ event }}" {% if selected_event == event %}selected{% endif %}>
+                            {{ event }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="yearFilter">Time Period</label>
+                <select id="yearFilter" onchange="updateFilters()">
+                    <option value="all" {% if year_filter == 'all' %}selected{% endif %}>All Time</option>
+                    <option value="last_year" {% if year_filter == 'last_year' %}selected{% endif %}>Last Year</option>
+                </select>
+            </div>
+            
+            <div class="toggle-switch">
+                <input type="checkbox" id="bestOnlyToggle" {% if best_only %}checked{% endif %} onchange="updateFilters()">
+                <label for="bestOnlyToggle">Best Performance Only</label>
             </div>
         </div>
+
+        {% if selected_event %}
+            {% if results %}
+                <h2>{{ event_name }} Leaderboard</h2>
+                <table>
+                    <tr>
+                        <th>Place</th>
+                        {% if is_relay %}
+                            <th>Team</th>
+                            <th>Result</th>
+                            <th>Team Members & Splits</th>
+                            <th>Meet</th>
+                        {% else %}
+                            <th>Athlete</th>
+                            <th>Result</th>
+                            <th>Team</th>
+                            {% if not best_only %}
+                                <th>Date</th>
+                                <th>Meet</th>
+                            {% endif %}
+                        {% endif %}
+                    </tr>
+                    {% for result in results %}
+                        <tr>
+                            <td>{{ loop.index + (page - 1) * per_page }}</td>
+                            {% if is_relay %}
+                                <td class="team-cell">
+                                    {% if team_logos.get(result.team) %}
+                                        <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
+                                    {% endif %}
+                                    <a href="{{ url_for('team.team_results', team_name=result.team) }}">
+                                        {{ result.team }}
+                                    </a>
+                                </td>
+                                <td>{{ result.result }}</td>
+                                <td>
+                                    <div class="team-members">
+                                        {% for athlete, split in result.splits %}
+                                            <div class="relay-split">
+                                                <a href="{{ url_for('athlete.athlete_profile', name=athlete) }}">{{ athlete }}</a>: {{ split }}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('meet.meet_results', meet_name=result.meet) }}" class="meet-link">
+                                        {{ result.meet }}
+                                    </a>
+                                    <div class="meet-info">{{ result.date }}</div>
+                                </td>
+                            {% else %}
+                                <td><a href="{{ url_for('athlete.athlete_profile', name=result[0]) }}">{{ result[0] }}</a></td>
+                                <td>{{ result[1] }}</td>
+                                <td><a href="{{ url_for('team.team_results', team_name=result[2]) }}">{{ result[2] }}</a></td>
+                                {% if not best_only %}
+                                    <td>{{ result[3] }}</td>
+                                    <td>
+                                        {% if result[4] %}
+                                            <a href="{{ url_for('meet.meet_results', meet_name=result[4]) }}" class="meet-link">
+                                                {{ result[4] }}
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </table>
+                
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                    <div class="pagination">
+                        {% if page > 1 %}
+                            <a href="?event={{ selected_event }}&year={{ year_filter }}&best_only={{ 'true' if best_only else 'false' }}&page={{ page - 1 }}">&laquo; Previous</a>
+                        {% endif %}
+                        
+                        <span>Page {{ page }} of {{ total_pages }}</span>
+                        
+                        {% if page < total_pages %}
+                            <a href="?event={{ selected_event }}&year={{ year_filter }}&best_only={{ 'true' if best_only else 'false' }}&page={{ page + 1 }}">Next &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="no-results">
+                    <p>No results found for {{ event_name }}.</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="no-event-selected">
+                <p>Please select an event from the dropdown above to view the leaderboard.</p>
+            </div>
+        {% endif %}
         
         <br>
         <a href="{{ url_for('home') }}" class="home-button">Home</a>
     </div>
+
+    <script>
+        function updateFilters() {
+            const event = document.getElementById('eventSelect').value;
+            const year = document.getElementById('yearFilter').value;
+            const bestOnly = document.getElementById('bestOnlyToggle').checked;
+            
+            const params = new URLSearchParams();
+            if (event) params.set('event', event);
+            params.set('year', year);
+            params.set('best_only', bestOnly ? 'true' : 'false');
+            
+            window.location.href = '{{ url_for("leaderboard.leaderboard") }}?' + params.toString();
+        }
+    </script>
 </body>
-</html>
 </html>
