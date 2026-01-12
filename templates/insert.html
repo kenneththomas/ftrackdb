@@ -31,6 +31,57 @@
             container.appendChild(newForm);
         }
 
+        function addResultForAthlete(athleteName) {
+            const container = document.getElementById('results-container');
+            const lastForm = container.lastElementChild;
+            
+            // Check if the last form is empty (no athlete entered)
+            const lastAthlete = lastForm.querySelector('input[name="athlete[]"]').value.trim();
+            
+            let targetForm;
+            if (lastAthlete === '') {
+                // Use the existing empty form
+                targetForm = lastForm;
+            } else {
+                // Create a new form
+                const newForm = lastForm.cloneNode(true);
+                container.appendChild(newForm);
+                targetForm = newForm;
+            }
+            
+            // Find the last form with an athlete filled in to copy meet/event values from
+            const forms = Array.from(container.querySelectorAll('.result-form'));
+            let sourceForm = forms[0]; // Default to first form
+            for (let i = forms.length - 1; i >= 0; i--) {
+                const athleteInput = forms[i].querySelector('input[name="athlete[]"]');
+                if (athleteInput && athleteInput.value.trim() !== '') {
+                    sourceForm = forms[i];
+                    break;
+                }
+            }
+            
+            // Get meet and event values from source form
+            const dateValue = sourceForm.querySelector('input[name="date[]"]').value;
+            const meetValue = sourceForm.querySelector('input[name="meet[]"]').value;
+            const eventValue = sourceForm.querySelector('input[name="event[]"]').value;
+            
+            // Populate the target form
+            targetForm.querySelector('input[name="athlete[]"]').value = athleteName;
+            targetForm.querySelector('input[name="date[]"]').value = dateValue || '{{ today }}';
+            targetForm.querySelector('input[name="meet[]"]').value = meetValue;
+            targetForm.querySelector('input[name="event[]"]').value = eventValue;
+            
+            // Clear result field
+            targetForm.querySelector('input[name="result[]"]').value = '';
+            
+            // Look up team for the athlete
+            const athleteInput = targetForm.querySelector('input[name="athlete[]"]');
+            lookupTeam(athleteInput);
+            
+            // Scroll to the form
+            targetForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
         function lookupTeam(athleteInput) {
             const athleteName = athleteInput.value;
             // Find the parent result-form div and then find the team input within it
@@ -178,6 +229,23 @@
         .pr-lookup-btn:active {
             background: #3d8b40;
         }
+        .add-result-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.2s;
+            margin-left: 8px;
+        }
+        .add-result-btn:hover {
+            background: #0b7dda;
+        }
+        .add-result-btn:active {
+            background: #0a6bc2;
+        }
     </style>
 
     <script>
@@ -190,12 +258,17 @@
                 .then(response => response.json())
                 .then(data => {
                     const list = document.getElementById('team-members-list');
-                    list.innerHTML = data.members.map(member => 
-                        `<div>
+                    list.innerHTML = data.members.map(member => {
+                        // Escape single quotes and backslashes for use in onclick attribute
+                        const escapedMember = member.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        return `<div>
                             <span>${member}</span>
-                            <button class="pr-lookup-btn" onclick="lookupAthletePRs('${member}')">View PRs</button>
-                        </div>`
-                    ).join('');
+                            <div>
+                                <button class="pr-lookup-btn" onclick="lookupAthletePRs('${escapedMember}')">View PRs</button>
+                                <button class="add-result-btn" onclick="addResultForAthlete('${escapedMember}')">Add Result</button>
+                            </div>
+                        </div>`;
+                    }).join('');
                 });
         }
 
