@@ -19,9 +19,18 @@
             const eventValue = lastForm.querySelector('input[name="event[]"]').value;
             
             // Set values in the new form
-            newForm.querySelector('input[name="date[]"]').value = dateValue || '{{ today }}';
+            const newDateInput = newForm.querySelector('input[name="date[]"]');
+            newDateInput.value = dateValue || '{{ today }}';
             newForm.querySelector('input[name="meet[]"]').value = meetValue;
             newForm.querySelector('input[name="event[]"]').value = eventValue;
+            
+            // Add event listeners to the new date input
+            newDateInput.addEventListener('change', function() {
+                autoFillMeetName(this);
+            });
+            newDateInput.addEventListener('input', function() {
+                autoFillMeetName(this);
+            });
             
             // Clear other fields
             newForm.querySelector('input[name="athlete[]"]').value = '';
@@ -67,9 +76,13 @@
             
             // Populate the target form
             targetForm.querySelector('input[name="athlete[]"]').value = athleteName;
-            targetForm.querySelector('input[name="date[]"]').value = dateValue || '{{ today }}';
+            const dateInput = targetForm.querySelector('input[name="date[]"]');
+            dateInput.value = dateValue || '{{ today }}';
             targetForm.querySelector('input[name="meet[]"]').value = meetValue;
             targetForm.querySelector('input[name="event[]"]').value = eventValue;
+            
+            // Auto-fill meet name if empty
+            autoFillMeetName(dateInput);
             
             // Clear result field
             targetForm.querySelector('input[name="result[]"]').value = '';
@@ -96,6 +109,48 @@
                     }
                 });
         }
+
+        function autoFillMeetName(dateInput) {
+            const resultForm = dateInput.closest('.result-form');
+            const meetInput = resultForm.querySelector('input[name="meet[]"]');
+            const dateValue = dateInput.value;
+            
+            // Only auto-fill if meet field is empty and date is provided
+            if (meetInput && (!meetInput.value || meetInput.value.trim() === '') && dateValue) {
+                // Convert date from YYYY-MM-DD to YYYYMMDD
+                const dateFormatted = dateValue.replace(/-/g, '');
+                meetInput.value = dateFormatted;
+            }
+        }
+
+        // Add event listeners to all date inputs
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add listeners to existing date inputs
+            document.querySelectorAll('input[name="date[]"]').forEach(function(dateInput) {
+                dateInput.addEventListener('change', function() {
+                    autoFillMeetName(this);
+                });
+                dateInput.addEventListener('input', function() {
+                    autoFillMeetName(this);
+                });
+            });
+            
+            // Auto-fill meet names before form submission
+            const form = document.getElementById('results-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    // Auto-fill any empty meet names before submission
+                    document.querySelectorAll('.result-form').forEach(function(resultForm) {
+                        const dateInput = resultForm.querySelector('input[name="date[]"]');
+                        const meetInput = resultForm.querySelector('input[name="meet[]"]');
+                        if (dateInput && meetInput && (!meetInput.value || meetInput.value.trim() === '') && dateInput.value) {
+                            const dateFormatted = dateInput.value.replace(/-/g, '');
+                            meetInput.value = dateFormatted;
+                        }
+                    });
+                });
+            }
+        });
     </script>
 </head>
 <body>
@@ -135,7 +190,7 @@
                 <div class="result-form">
                     <div class="form-group">
                         <label for="date">Date:</label>
-                        <input type="date" name="date[]" required value="{{ today }}">
+                        <input type="date" name="date[]" required value="{{ today }}" onchange="autoFillMeetName(this)" oninput="autoFillMeetName(this)">
                     </div>
                     <div class="form-group">
                         <label for="athlete">Athlete:</label>
@@ -166,6 +221,24 @@
         <div class="helper-section">
             <h3>Helper Tools</h3>
             <div class="helper-tools">
+                <div class="random-name-helper">
+                    <h4>Random Name (test data)</h4>
+                    <p class="helper-desc">Generate a random name via <a href="https://namey.muffinlabs.com/" target="_blank" rel="noopener">Namey</a> and fill the next empty athlete field.</p>
+                    <div class="random-name-controls">
+                        <select id="namey-type">
+                            <option value="">Any gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                        <select id="namey-frequency">
+                            <option value="common">Common</option>
+                            <option value="rare">Rare</option>
+                            <option value="all">All</option>
+                        </select>
+                        <button type="button" id="generate-name-btn" class="generate-name-btn">Generate name</button>
+                    </div>
+                    <div id="generated-name-display" class="generated-name-display" aria-live="polite"></div>
+                </div>
                 <div class="team-lookup">
                     <h4>Team Members Lookup</h4>
                     <input type="text" id="team-lookup" placeholder="Enter team name" onkeyup="lookupTeamMembers(this.value)">
@@ -189,14 +262,51 @@
         }
         .helper-tools {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 2rem;
         }
-        .team-lookup, .athlete-prs {
+        .team-lookup, .athlete-prs, .random-name-helper {
             padding: 1rem;
             background: white;
             border-radius: 4px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .helper-desc {
+            font-size: 0.9em;
+            color: #555;
+            margin: 0.5rem 0;
+        }
+        .random-name-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .random-name-controls select {
+            padding: 0.35rem 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .generate-name-btn {
+            background: #9c27b0;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+        .generate-name-btn:hover {
+            background: #7b1fa2;
+        }
+        .generate-name-btn:disabled {
+            background: #b0b0b0;
+            cursor: not-allowed;
+        }
+        .generated-name-display {
+            margin-top: 0.75rem;
+            min-height: 1.5em;
+            font-size: 0.95em;
         }
         .results-list {
             margin-top: 1rem;
@@ -289,6 +399,64 @@
                     ).join('');
                 });
         }
+
+        function generateRandomName() {
+            const btn = document.getElementById('generate-name-btn');
+            const display = document.getElementById('generated-name-display');
+            const type = document.getElementById('namey-type').value;
+            const frequency = document.getElementById('namey-frequency').value;
+
+            btn.disabled = true;
+            display.textContent = '…';
+
+            const params = new URLSearchParams({
+                count: 1,
+                with_surname: 'true',
+                frequency: frequency
+            });
+            if (type) params.set('type', type);
+
+            fetch('https://namey.muffinlabs.com/name.json?' + params.toString(), { mode: 'cors' })
+                .then(response => response.json())
+                .then(function(names) {
+                    btn.disabled = false;
+                    if (!names || !names.length) {
+                        display.textContent = 'No name returned.';
+                        return;
+                    }
+                    const name = names[0];
+                    display.textContent = 'Generated: ' + name;
+
+                    const athleteInputs = document.querySelectorAll('input[name="athlete[]"]');
+                    let filled = false;
+                    for (let i = 0; i < athleteInputs.length; i++) {
+                        if (!athleteInputs[i].value.trim()) {
+                            athleteInputs[i].value = name;
+                            athleteInputs[i].focus();
+                            lookupTeam(athleteInputs[i]);
+                            filled = true;
+                            break;
+                        }
+                    }
+                    if (!filled) {
+                        addResultForm();
+                        const newForm = document.getElementById('results-container').lastElementChild;
+                        const newAthleteInput = newForm.querySelector('input[name="athlete[]"]');
+                        newAthleteInput.value = name;
+                        newAthleteInput.focus();
+                        lookupTeam(newAthleteInput);
+                        newForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                })
+                .catch(function(err) {
+                    btn.disabled = false;
+                    display.textContent = 'Error: ' + (err.message || 'Could not fetch name.');
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('generate-name-btn').addEventListener('click', generateRandomName);
+        });
     </script>
 </body>
 </html>

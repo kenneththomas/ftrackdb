@@ -280,8 +280,12 @@ def rename_meet(old_name):
             cur.execute('''
                 UPDATE Results 
                 SET Meet_Name = ? 
-                WHERE Meet_Name = ? AND Date = ?
+                WHERE Meet_Name = ? AND DATE(Date) = DATE(?)
             ''', (new_name, old_name, meet_date))
+            rows_affected = cur.rowcount
+            if rows_affected == 0:
+                flash(f'No results found for meet "{old_name}" on date {meet_date}. No changes made.', 'warning')
+                return redirect(url_for('meet.meet_results', meet_name=old_name))
         else:
             # Otherwise rename all results for this meet
             cur.execute('''
@@ -289,11 +293,47 @@ def rename_meet(old_name):
                 SET Meet_Name = ? 
                 WHERE Meet_Name = ?
             ''', (new_name, old_name))
+            rows_affected = cur.rowcount
         
         conn.commit()
     
-    flash(f'Meet renamed successfully to {new_name}', 'success')
+    flash(f'Meet renamed successfully to {new_name} ({rows_affected} results updated)', 'success')
     return redirect(url_for('meet.meet_results', meet_name=new_name))
+
+@meet_bp.route('/meet/<meet_name>/sync_dates', methods=['POST'])
+def sync_meet_dates(meet_name):
+    """Sync all dates for a meet to a single date"""
+    sync_date = request.form.get('sync_date')
+    confirm_sync = request.form.get('confirm_sync')
+    
+    if not sync_date:
+        flash('Date is required', 'error')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+    
+    if not confirm_sync:
+        flash('Please confirm that you want to change all dates', 'error')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+    
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        
+        # Update all dates for this meet to the sync_date
+        cur.execute('''
+            UPDATE Results 
+            SET Date = ? 
+            WHERE Meet_Name = ?
+        ''', (sync_date, meet_name))
+        rows_affected = cur.rowcount
+        
+        if rows_affected == 0:
+            flash(f'No results found for meet "{meet_name}". No changes made.', 'warning')
+            return redirect(url_for('meet.meet_results', meet_name=meet_name))
+        
+        conn.commit()
+    
+    flash(f'All dates synced to {sync_date} ({rows_affected} results updated)', 'success')
+    return redirect(url_for('meet.meet_results', meet_name=meet_name))
 
 @meet_bp.route('/meet/<meet_name>/calculate_scores', methods=['POST'])
 def calculate_meet_scores(meet_name):

@@ -326,42 +326,342 @@
     /* Mobile styles */
     @media screen and (max-width: 768px) {
         .container {
-            padding: 20px;
+            padding: 15px;
+            max-width: 100%;
+        }
+
+        .container h1 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+
+        .container h2 {
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 20px;
         }
 
         .profile-header {
             flex-direction: column;
             text-align: center;
+            padding: 15px;
         }
 
         .team-logo {
             margin: 0 auto 15px auto;
+            width: 48px;
+            height: 48px;
         }
 
         .profile-header h1 {
             text-align: center;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .profile-header-content {
+            width: 100%;
+        }
+
+        .athlete-team, .athlete-class, .athlete-gender {
+            font-size: 0.95em;
+            margin: 8px 0;
+        }
+
+        /* Button improvements for mobile */
+        .bio-btn {
+            width: 100%;
+            margin: 8px 0;
+            padding: 12px 20px;
+            font-size: 0.95em;
+        }
+
+        #toggle-gender, #calculate-rankings {
+            width: 100%;
+            margin: 8px 0;
+            margin-left: 0 !important;
+        }
+
+        .bio-buttons {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .bio-section {
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .bio-section h3 {
+            font-size: 1.1em;
+        }
+
+        #bio-display {
+            min-height: 80px;
+            padding: 12px;
+            font-size: 0.95em;
+        }
+
+        #bio-textarea {
+            min-height: 120px;
+            padding: 12px;
+            font-size: 16px; /* Prevent zoom on mobile */
         }
 
         .pr-grid {
             grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .pr-item {
+            padding: 12px;
+        }
+
+        .pr-event {
+            font-size: 0.85em;
+        }
+
+        .pr-result {
+            font-size: 1.1em;
+        }
+
+        /* Results table mobile improvements */
+        .results {
+            padding: 15px;
+            overflow-x: hidden;
         }
 
         .results-table {
             display: block;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 0.9em;
+        }
+
+        .results-table thead {
+            display: none;
+        }
+
+        .results-table tbody {
+            display: block;
+        }
+
+        .results-table tr {
+            display: block;
+            margin-bottom: 15px;
+            background: #2c2f33;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .results-table td {
+            display: block;
+            padding: 8px 0;
+            text-align: left;
+            border-bottom: 1px solid #444;
+            background: transparent;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .results-table td:last-child {
+            border-bottom: none;
+        }
+
+        .results-table td a {
+            word-break: break-word;
+        }
+
+        /* Add labels for mobile table using data-field */
+        .results-table td[data-field="date"]:before {
+            content: "Date: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .results-table td[data-field="meet"]:before {
+            content: "Meet: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .results-table td[data-field="event"]:before {
+            content: "Event: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .results-table td[data-field="result"]:before {
+            content: "Result: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .results-table td[data-field="team"]:before {
+            content: "Team: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .results-table td:last-child:before {
+            content: "Actions: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
+        .result-cell {
+            white-space: normal;
+        }
+
+        .result-content {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .result-badges {
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .team-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .team-cell .team-logo {
+            width: 24px;
+            height: 24px;
+            margin: 0;
+        }
+
+        /* Action buttons in table */
+        .results-table td:last-child {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-start;
+            padding-top: 10px;
+        }
+
+        .edit-btn, .save-btn, .cancel-btn, .delete-btn {
+            font-size: 1.2em;
+            padding: 10px 14px;
+            min-width: 44px;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+
+        /* Filter input */
+        #filterInput {
+            padding: 12px;
+            font-size: 16px; /* Prevent zoom on mobile */
+            margin-bottom: 20px;
+        }
+
+        /* Form improvements */
+        .form-group {
+            margin-bottom: 15px;
         }
 
         .form-group input {
             font-size: 16px; /* Prevent zoom on mobile */
+            padding: 12px;
         }
 
-        .bio-buttons {
-            flex-direction: column;
+        .form-group label {
+            font-size: 0.95em;
+            margin-bottom: 8px;
         }
 
-        .bio-btn {
+        .result-form {
+            padding: 15px;
+        }
+
+        .show-quick-insert-btn, .submit-btn, .home-button {
             width: 100%;
-            margin: 5px 0;
+            padding: 14px 24px;
+            font-size: 1em;
+            margin: 10px 0;
+        }
+
+        .quick-insert {
+            padding: 15px;
+        }
+
+        /* Ranking badges on mobile */
+        .ranking-badge {
+            font-size: 0.7em;
+            padding: 2px 6px;
+        }
+
+        .pr-indicator {
+            font-size: 0.65em;
+            padding: 2px 5px;
+        }
+
+        /* Relay results table */
+        .relay-results {
+            padding: 15px;
+        }
+
+        .relay-results .results-table {
+            font-size: 0.85em;
+        }
+
+        /* Section spacing */
+        .personal-records {
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    }
+
+    /* Extra small devices */
+    @media screen and (max-width: 480px) {
+        .container {
+            padding: 10px;
+        }
+
+        .container h1 {
+            font-size: 1.5em;
+        }
+
+        .container h2 {
+            font-size: 1.2em;
+        }
+
+        .profile-header {
+            padding: 12px;
+        }
+
+        .profile-header h1 {
+            font-size: 1.5em;
+        }
+
+        .results-table {
+            font-size: 0.85em;
+        }
+
+        .pr-item {
+            padding: 10px;
         }
     }
 

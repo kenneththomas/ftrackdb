@@ -24,10 +24,16 @@ def insert_result():
             
             # Insert each result
             for i in range(len(dates)):
+                # Auto-fill meet name with date in YYYYMMDD format if empty
+                meet_name = meets[i].strip() if meets[i] else ''
+                if not meet_name and dates[i]:
+                    # Convert date from YYYY-MM-DD to YYYYMMDD
+                    meet_name = dates[i].replace('-', '')
+                
                 data = {
                     'date': dates[i],
                     'athlete': athletes[i],
-                    'meet': meets[i],
+                    'meet': meet_name,
                     'event': events[i],
                     'result': results[i],
                     'team': teams[i]
