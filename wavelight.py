@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_wtf import CSRFProtect
 from forms import ResultForm, SearchForm
@@ -26,6 +29,10 @@ app.register_blueprint(meet_bp)
 app.register_blueprint(leaderboard_bp)
 app.register_blueprint(comment_bp)
 app.register_blueprint(football_bp)
+
+# Exempt API endpoint from CSRF (JSON POST; no form)
+if 'result.fill_result_blanks' in app.view_functions:
+    csrf.exempt(app.view_functions['result.fill_result_blanks'])
 
 # Add a custom Jinja filter to convert Markdown to HTML
 app.jinja_env.filters['markdown_to_html'] = markdown_to_html

@@ -110,6 +110,27 @@
                 });
         }
 
+        function tryFillPrFromDb(input) {
+            if (!document.getElementById('use-pr-for-existing-athletes').checked) return;
+            const resultForm = input.closest('.result-form');
+            if (!resultForm) return;
+            const athleteInput = resultForm.querySelector('input[name="athlete[]"]');
+            const eventInput = resultForm.querySelector('input[name="event[]"]');
+            const resultInput = resultForm.querySelector('input[name="result[]"]');
+            const athlete = (athleteInput && athleteInput.value || '').trim();
+            const eventName = (eventInput && eventInput.value || '').trim();
+            if (!athlete || !eventName || !resultInput) return;
+            fetch('/get_athlete_prs/' + encodeURIComponent(athlete))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    const prs = data.prs || [];
+                    const match = prs.find(function(p) { return p.event === eventName; });
+                    if (match && match.pr) {
+                        resultInput.value = match.pr;
+                    }
+                });
+        }
+
         function autoFillMeetName(dateInput) {
             const resultForm = dateInput.closest('.result-form');
             const meetInput = resultForm.querySelector('input[name="meet[]"]');
@@ -149,6 +170,16 @@
                         }
                     });
                 });
+            }
+            // When "Use PRs for existing athletes" is on, fill result from PR on blur of athlete or event
+            const container = document.getElementById('results-container');
+            if (container) {
+                container.addEventListener('blur', function(e) {
+                    const el = e.target;
+                    if (el.matches('input[name="athlete[]"]') || el.matches('input[name="event[]"]')) {
+                        tryFillPrFromDb(el);
+                    }
+                }, true);
             }
         });
     </script>
@@ -221,6 +252,17 @@
         <div class="helper-section">
             <h3>Helper Tools</h3>
             <div class="helper-tools">
+                <div class="ai-fill-helper">
+                    <h4>AI Fill Blanks (OpenRouter)</h4>
+                    <p class="helper-desc">Send current rows to an LLM with full context to fill in empty fields with plausible track &amp; field test data. Set <code>OPENROUTER_API_KEY</code> in the environment.</p>
+                    <button type="button" id="ai-fill-blanks-btn" class="generate-name-btn ai-fill-btn">Fill blanks with AI</button>
+                    <div id="ai-fill-status" class="generated-name-display" aria-live="polite"></div>
+                    <label class="pr-fill-option">
+                        <input type="checkbox" id="use-pr-for-existing-athletes">
+                        Fill result from PR when athlete exists in database
+                    </label>
+                    <p class="helper-desc form-option-desc">When enabled, leaving the athlete or event field will auto-fill the result with that athlete's PR for that event (if they have one in the database).</p>
+                </div>
                 <div class="random-name-helper">
                     <h4>Random Name (test data)</h4>
                     <p class="helper-desc">Generate a random name via <a href="https://namey.muffinlabs.com/" target="_blank" rel="noopener">Namey</a> and fill the next empty athlete field.</p>
@@ -265,11 +307,27 @@
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 2rem;
         }
-        .team-lookup, .athlete-prs, .random-name-helper {
+        .team-lookup, .athlete-prs, .random-name-helper, .ai-fill-helper {
             padding: 1rem;
             background: white;
             border-radius: 4px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .ai-fill-btn {
+            background: #1976d2;
+        }
+        .ai-fill-btn:hover {
+            background: #1565c0;
+        }
+        .ai-fill-btn:disabled {
+            background: #b0b0b0;
+            cursor: wait;
+        }
+        .helper-desc code {
+            font-size: 0.85em;
+            background: #eee;
+            padding: 0.1em 0.35em;
+            border-radius: 3px;
         }
         .helper-desc {
             font-size: 0.9em;
@@ -355,6 +413,22 @@
         }
         .add-result-btn:active {
             background: #0a6bc2;
+        }
+        .pr-fill-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        .pr-fill-option input[type="checkbox"] {
+            margin: 0;
+        }
+        .form-option-desc {
+            margin: 0.35rem 0 0 0;
+            font-size: 0.9em;
+            color: #555;
         }
     </style>
 
@@ -454,8 +528,79 @@
                 });
         }
 
+        function fillBlanksWithAI() {
+            const btn = document.getElementById('ai-fill-blanks-btn');
+            const status = document.getElementById('ai-fill-status');
+            const forms = document.querySelectorAll('#results-container .result-form');
+            if (!forms.length) {
+                status.textContent = 'No rows to fill.';
+                return;
+            }
+            const rows = Array.from(forms).map(function(f) {
+                return {
+                    date: (f.querySelector('input[name="date[]"]') || {}).value || '',
+                    athlete: (f.querySelector('input[name="athlete[]"]') || {}).value || '',
+                    meet: (f.querySelector('input[name="meet[]"]') || {}).value || '',
+                    event: (f.querySelector('input[name="event[]"]') || {}).value || '',
+                    result: (f.querySelector('input[name="result[]"]') || {}).value || '',
+                    team: (f.querySelector('input[name="team[]"]') || {}).value || ''
+                };
+            });
+            const hasBlank = rows.some(function(r) {
+                return !r.date.trim() || !r.athlete.trim() || !r.meet.trim() || !r.event.trim() || !r.result.trim() || !r.team.trim();
+            });
+            if (!hasBlank) {
+                status.textContent = 'No blanks to fill.';
+                return;
+            }
+            btn.disabled = true;
+            status.textContent = 'Calling OpenRouter…';
+            var csrfInput = document.querySelector('input[name="csrf_token"]');
+            var headers = { 'Content-Type': 'application/json' };
+            if (csrfInput) headers['X-CSRFToken'] = csrfInput.value;
+            fetch('{{ url_for("result.fill_result_blanks") }}', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ rows: rows })
+            })
+                .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+                .then(function(result) {
+                    var ok = result.ok, data = result.data;
+                    btn.disabled = false;
+                    if (!ok) {
+                        status.textContent = 'Error: ' + (data.error || 'Unknown error');
+                        return;
+                    }
+                    var filled = data.rows || [];
+                    forms.forEach(function(f, i) {
+                        var row = filled[i];
+                        if (!row) return;
+                        var dateIn = f.querySelector('input[name="date[]"]');
+                        var athleteIn = f.querySelector('input[name="athlete[]"]');
+                        var meetIn = f.querySelector('input[name="meet[]"]');
+                        var eventIn = f.querySelector('input[name="event[]"]');
+                        var resultIn = f.querySelector('input[name="result[]"]');
+                        var teamIn = f.querySelector('input[name="team[]"]');
+                        if (dateIn && row.date) dateIn.value = row.date;
+                        if (athleteIn && row.athlete) athleteIn.value = row.athlete;
+                        if (meetIn && row.meet) meetIn.value = row.meet;
+                        if (eventIn && row.event) eventIn.value = row.event;
+                        if (resultIn && row.result) resultIn.value = row.result;
+                        if (teamIn && row.team) teamIn.value = row.team;
+                        if (athleteIn && row.athlete) lookupTeam(athleteIn);
+                    });
+                    status.textContent = 'Filled ' + filled.length + ' row(s).';
+                })
+                .catch(function(err) {
+                    btn.disabled = false;
+                    status.textContent = 'Error: ' + (err.message || 'Request failed');
+                });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('generate-name-btn').addEventListener('click', generateRandomName);
+            var aiBtn = document.getElementById('ai-fill-blanks-btn');
+            if (aiBtn) aiBtn.addEventListener('click', fillBlanksWithAI);
         });
     </script>
 </body>

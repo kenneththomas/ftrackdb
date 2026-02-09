@@ -5,6 +5,26 @@ from forms import ResultForm
 # Create blueprint
 result_bp = Blueprint('result', __name__)
 
+
+@result_bp.route('/api/fill_result_blanks', methods=['POST'])
+def fill_result_blanks():
+    """Accept current result rows (with possible blanks), call OpenRouter LLM to fill blanks, return filled rows."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        rows = data.get('rows') or []
+        if not isinstance(rows, list):
+            return jsonify({'success': False, 'error': 'rows must be an array'}), 400
+        from utils.openrouter import fill_result_blanks as llm_fill
+        filled = llm_fill(rows)
+        return jsonify({'success': True, 'rows': filled})
+    except ValueError as e:
+        err = str(e)
+        if 'OPENROUTER_API_KEY' in err:
+            return jsonify({'success': False, 'error': err}), 503
+        return jsonify({'success': False, 'error': err}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @result_bp.route('/insert', methods=['GET', 'POST'])
 def insert_result():
     form = ResultForm()
