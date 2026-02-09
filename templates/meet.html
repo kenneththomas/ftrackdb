@@ -155,6 +155,16 @@
         text-transform: uppercase;
     }
 
+    .debut-flag {
+        display: inline-block;
+        color: #666;
+        font-size: 0.7em;
+        margin-left: 8px;
+        font-weight: normal;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
     .new-flag {
         display: inline-block;
         background: #2196F3;
@@ -373,7 +383,9 @@
                                                     <span class="new-flag">NEW</span>
                                                     <span class="ranking-badge">#{{ result.ranking_after }}</span>
                                                 {% endif %}
-                                                {% if result.is_pr %}
+                                                {% if result.is_debut %}
+                                                    <span class="debut-flag">DEBUT</span>
+                                                {% elif result.is_pr %}
                                                     <span class="pr-flag">PR</span>
                                                 {% endif %}
                                             </div>

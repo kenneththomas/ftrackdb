@@ -7,12 +7,11 @@ from datetime import datetime, timedelta
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)
 
-def is_pr(athlete, event, result):
-    """Check if a result is a PR for the athlete"""
+def is_pr_and_debut(athlete, event, result):
+    """Return (is_pr, is_debut) for the athlete's result in this event."""
     conn = Database.get_connection()
     with conn:
         cur = conn.cursor()
-        # Get all results for this athlete and event
         cur.execute('''
             SELECT Result 
             FROM Results 
@@ -22,14 +21,15 @@ def is_pr(athlete, event, result):
         all_results = [row[0] for row in cur.fetchall()]
         
         if not all_results:
-            return True  # First time running this event
+            return True, True  # First time running this event
         
+        is_debut = len(all_results) == 1
         # For time events, lower is better
         if 'm' in event or 'Mile' in event:
-            return result == min(all_results)
-        # For field events, higher is better
+            is_pr = result == min(all_results)
         else:
-            return result == max(all_results)
+            is_pr = result == max(all_results)
+        return is_pr, is_debut
 
 @meet_bp.route('/meet/<meet_name>', methods=['GET', 'POST'])
 def meet_results(meet_name):
@@ -177,11 +177,13 @@ def meet_results(meet_name):
             ranking_key = (event, date, athlete)
             rankings = rankings_dict.get(ranking_key, {})
             
+            pr_debut = is_pr_and_debut(athlete, event, result)
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
                 'team': team,
-                'is_pr': is_pr(athlete, event, result),
+                'is_pr': pr_debut[0],
+                'is_debut': pr_debut[1],
                 'ranking_before': rankings.get('ranking_before'),
                 'ranking_after': rankings.get('ranking_after')
             })
@@ -194,11 +196,13 @@ def meet_results(meet_name):
             ranking_key = (event, date, athlete)
             rankings = rankings_dict.get(ranking_key, {})
             
+            pr_debut = is_pr_and_debut(athlete, event, result)
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
                 'team': team,
-                'is_pr': is_pr(athlete, event, result),
+                'is_pr': pr_debut[0],
+                'is_debut': pr_debut[1],
                 'ranking_before': rankings.get('ranking_before'),
                 'ranking_after': rankings.get('ranking_after')
             })
