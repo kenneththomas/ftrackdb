@@ -82,12 +82,10 @@
                             <td data-label="Event">{{ result[3] }}</td>
                             <td data-label="Result">{{ result[4] }}</td>
                             <td class="team-cell" data-label="Team">
-                                {% if team_logos.get(result[5]) %}
-                                    <img src="{{ team_logos[result[5]] }}" 
-                                         alt="{{ result[5] }} logo" 
-                                         class="team-logo"
-                                         loading="lazy">
-                                {% endif %}
+                                <img src="{{ team_logos.get(result[5]) or url_for('static', filename='default-team.svg') }}" 
+                                     alt="{{ result[5] }} logo" 
+                                     class="team-logo"
+                                     loading="lazy">
                                 <a href="{{ url_for('team.team_results', team_name=result[5]) }}" 
                                    aria-label="View {{ result[5] }} team results">
                                     {{ result[5] }}

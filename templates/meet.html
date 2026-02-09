@@ -317,9 +317,7 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                 {% for team, score in sorted_teams %}
                 <div class="team-score-card" style="background: #23272a; padding: 15px; border-radius: 5px; display: flex; align-items: center; gap: 15px;">
-                    {% if team_logos.get(team) %}
-                        <img src="{{ team_logos[team] }}" alt="{{ team }} logo" style="width: 40px; height: 40px; object-fit: contain;">
-                    {% endif %}
+                    <img src="{{ team_logos.get(team) or url_for('static', filename='default-team.svg') }}" alt="{{ team }} logo" style="width: 40px; height: 40px; object-fit: contain;">
                     <div>
                         <div style="font-weight: bold; font-size: 1.1em;">{{ team }}</div>
                         <div style="color: #617394; font-size: 1.2em;">{{ "%.1f"|format(score) }} pts</div>
@@ -349,9 +347,7 @@
                             <td class="athlete-cell">
                                 <div class="athlete-row">
                                     <span class="place-num">{{ result.place }}</span>
-                                    {% if team_logos.get(result.team) %}
-                                        <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
-                                    {% endif %}
+                                    <img src="{{ team_logos.get(result.team) or url_for('static', filename='default-team.svg') }}" alt="{{ result.team }} logo" class="team-logo">
                                     <span class="athlete-info">
                                         <div style="display: flex; align-items: center;">
                                             <div>

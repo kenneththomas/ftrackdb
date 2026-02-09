@@ -843,9 +843,7 @@
                             </div>
                         </td>
                         <td class="editable team-cell" data-field="team">
-                            {% if team_logos.get(result[4]) %}
-                                <img src="{{ team_logos[result[4]] }}" alt="{{ result[4] }} logo" class="team-logo">
-                            {% endif %}
+                            <img src="{{ team_logos.get(result[4]) or url_for('static', filename='default-team.svg') }}" alt="{{ result[4] }} logo" class="team-logo">
                             <a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
                         <td>
