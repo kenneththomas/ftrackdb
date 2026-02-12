@@ -430,6 +430,51 @@
             font-size: 0.9em;
             color: #555;
         }
+
+        /* Mobile-friendly helper section */
+        @media (max-width: 768px) {
+            .helper-section {
+                margin-top: 1.5rem;
+                padding: 0.75rem;
+            }
+            .helper-tools {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+            .team-lookup, .athlete-prs, .random-name-helper, .ai-fill-helper {
+                padding: 0.85rem;
+            }
+            .random-name-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .random-name-controls select {
+                min-height: 44px;
+                font-size: 16px;
+            }
+            .generate-name-btn {
+                min-height: 44px;
+                padding: 0.65rem 1rem;
+            }
+            .results-list {
+                max-height: 180px;
+            }
+            .results-list div {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                padding: 0.6rem;
+                min-height: 44px;
+            }
+            .pr-lookup-btn, .add-result-btn {
+                min-height: 40px;
+                padding: 8px 12px;
+            }
+            #team-lookup, #athlete-lookup {
+                min-height: 44px;
+                font-size: 16px;
+                padding: 0.6rem 0.75rem;
+            }
+        }
     </style>
 
     <script>
