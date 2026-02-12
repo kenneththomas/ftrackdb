@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-  <circle cx="20" cy="20" r="18" fill="#3a3d41" stroke="#5a5d61" stroke-width="1"/>
-  <text x="20" y="26" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#8a8d91" text-anchor="middle">T</text>
+  <circle cx="20" cy="20" r="18" fill="#2a2d33" stroke="#14c2b3" stroke-width="1.5"/>
+  <text x="20" y="26" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#14c2b3" text-anchor="middle">T</text>
 </svg>
