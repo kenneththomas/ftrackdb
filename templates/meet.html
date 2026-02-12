@@ -367,21 +367,17 @@
                                                     {% endfor %}
                                                 {% else %}
                                                     <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
-                                                    {% if result.ranking_before %}
-                                                        <span class="ranking-badge">#{{ result.ranking_before }}</span>
-                                                    {% endif %}
                                                 {% endif %}
                                                 <span class="inline-result">{{ result.result }}</span>
-                                                {% if result.ranking_before and result.ranking_after %}
-                                                    {% if result.ranking_after < result.ranking_before %}
-                                                        <span class="ranking-arrow up">↑</span>
-                                                    {% elif result.ranking_after > result.ranking_before %}
-                                                        <span class="ranking-arrow down">↓</span>
+                                                {% if result.ranking_after or result.ranking_before %}
+                                                    {% if result.ranking_before and result.ranking_after %}
+                                                        {% if result.ranking_after < result.ranking_before %}
+                                                            <span class="ranking-arrow up">↑</span>
+                                                        {% elif result.ranking_after > result.ranking_before %}
+                                                            <span class="ranking-arrow down">↓</span>
+                                                        {% endif %}
                                                     {% endif %}
-                                                    <span class="ranking-badge">#{{ result.ranking_after }}</span>
-                                                {% elif result.ranking_after %}
-                                                    <span class="new-flag">NEW</span>
-                                                    <span class="ranking-badge">#{{ result.ranking_after }}</span>
+                                                    <span class="ranking-badge">#{{ result.ranking_after or result.ranking_before }}</span>
                                                 {% endif %}
                                                 {% if result.is_debut %}
                                                     <span class="debut-flag">DEBUT</span>
