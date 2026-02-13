@@ -31,7 +31,15 @@ def insert_result():
     if request.method == 'GET':
         from datetime import date
         today = date.today().strftime('%Y-%m-%d')
-        return render_template('insert.html', form=form, today=today)
+        last_meet = ''
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT Meet_Name FROM Results ORDER BY Result_ID DESC LIMIT 1')
+            row = cur.fetchone()
+            if row:
+                last_meet = row['Meet_Name'] or ''
+        return render_template('insert.html', form=form, today=today, last_meet=last_meet)
     if request.method == 'POST':
         try:
             # Get all the arrays from the form
@@ -73,8 +81,18 @@ def insert_result():
             if request.headers.get('Accept') == 'application/json':
                 return jsonify({'success': False, 'error': str(e)}), 500
             flash(f'Error adding results: {str(e)}', 'error')
-            
-    return render_template('insert.html', form=form)
+    
+    from datetime import date
+    today = date.today().strftime('%Y-%m-%d')
+    last_meet = ''
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('SELECT Meet_Name FROM Results ORDER BY Result_ID DESC LIMIT 1')
+        row = cur.fetchone()
+        if row:
+            last_meet = row['Meet_Name'] or ''
+    return render_template('insert.html', form=form, today=today, last_meet=last_meet)
 
 @result_bp.route('/delete', methods=['GET', 'POST'])
 def delete_result():
