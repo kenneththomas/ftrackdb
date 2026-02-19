@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Data Quality</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .dq-table { font-size: 0.9rem; }
+        .dq-table th { white-space: nowrap; }
+        .dq-table .result-cell { font-family: ui-monospace, monospace; }
+        .issue-badge { font-size: 0.75rem; }
+        .suggested { color: #0a0; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container mt-4">
+        <h1>Data quality</h1>
+        <p class="text-muted">Results that don’t parse correctly or have fixable suffixes (e.g. <code>59.24q</code> → <code>59.24</code>). Scanned {{ scanned }} most recent results.</p>
+
+        {% if not issues %}
+        <p class="alert alert-success">No issues found.</p>
+        {% else %}
+        <p class="alert alert-info">{{ issues|length }} issue(s) found.</p>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered dq-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Athlete</th>
+                        <th>Event</th>
+                        <th>Result</th>
+                        <th>Issue</th>
+                        <th>Suggested</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in issues %}
+                    <tr data-result-id="{{ r.Result_ID }}">
+                        <td>{{ r.Date }}</td>
+                        <td>{{ r.Athlete }}</td>
+                        <td>{{ r.Event }}</td>
+                        <td class="result-cell">{{ r.Result }}</td>
+                        <td><span class="badge badge-warning issue-badge">{{ r.issue }}</span></td>
+                        <td class="result-cell suggested">{% if r.suggested_result %}{{ r.suggested_result }}{% else %}—{% endif %}</td>
+                        <td>
+                            {% if r.suggested_result %}
+                            <button type="button" class="btn btn-sm btn-outline-primary apply-fix" data-id="{{ r.Result_ID }}" data-result="{{ r.suggested_result }}">Apply fix</button>
+                            {% endif %}
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-row" data-id="{{ r.Result_ID }}">Delete</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    <script>
+(function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content;
+    function csrfHeader() {
+        const t = document.querySelector('meta[name="csrf-token"]');
+        return t ? { 'X-CSRFToken': t.content } : {};
+    }
+    function applyFix(id, suggestedResult) {
+        fetch('{{ url_for("result.update_result", result_id=0) }}'.replace('0', id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...csrfHeader() },
+            body: JSON.stringify({ result: suggestedResult })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.querySelector('tr[data-result-id="' + id + '"]');
+                if (row) row.remove();
+            } else alert(data.error || 'Update failed');
+        })
+        .catch(() => alert('Request failed'));
+    }
+    function deleteRow(id) {
+        if (!confirm('Delete this result?')) return;
+        fetch('{{ url_for("result.delete_athlete_result", result_id=0) }}'.replace('0', id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...csrfHeader() },
+            body: '{}'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.querySelector('tr[data-result-id="' + id + '"]');
+                if (row) row.remove();
+            } else alert(data.error || 'Delete failed');
+        })
+        .catch(() => alert('Request failed'));
+    }
+    document.querySelectorAll('.apply-fix').forEach(function(btn) {
+        btn.addEventListener('click', function() { applyFix(parseInt(this.dataset.id), this.dataset.result); });
+    });
+    document.querySelectorAll('.delete-row').forEach(function(btn) {
+        btn.addEventListener('click', function() { deleteRow(parseInt(this.dataset.id)); });
+    });
+})();
+    </script>
+</body>
+</html>

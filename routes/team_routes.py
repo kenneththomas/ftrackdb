@@ -20,8 +20,11 @@ def teams():
             ORDER BY Team ASC
         ''')
         teams = cur.fetchall()
+        # Get team logos for display
+        cur.execute('SELECT team_name, logo_url FROM Teams')
+        team_logos = dict(cur.fetchall())
     
-    return render_template('teams.html', teams=teams)
+    return render_template('teams.html', teams=teams, team_logos=team_logos)
 
 @team_bp.route('/team/<team_name>')
 def team_results(team_name):

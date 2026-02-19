@@ -34,23 +34,19 @@
                         <tr role="row">
                             <td role="cell" data-label="Date">{{ game[3] }}</td>
                             <td class="team-cell" role="cell" data-label="Away Team">
-                                {% if team_logos.get(game[2]) %}
-                                    <img src="{{ team_logos[game[2]] }}" 
-                                         alt="{{ game[2] }} logo" 
-                                         class="team-logo"
-                                         loading="lazy">
-                                {% endif %}
+                                <img src="{{ team_logos.get(game[2]) or url_for('static', filename='default-team.svg') }}" 
+                                     alt="{{ game[2] }} logo" 
+                                     class="team-logo"
+                                     loading="lazy">
                                 <a href="{{ url_for('football.view_team', team_name=game[2]) }}">
                                     {{ game[2] }}
                                 </a>
                             </td>
                             <td class="team-cell" role="cell" data-label="Home Team">
-                                {% if team_logos.get(game[1]) %}
-                                    <img src="{{ team_logos[game[1]] }}" 
-                                         alt="{{ game[1] }} logo" 
-                                         class="team-logo"
-                                         loading="lazy">
-                                {% endif %}
+                                <img src="{{ team_logos.get(game[1]) or url_for('static', filename='default-team.svg') }}" 
+                                     alt="{{ game[1] }} logo" 
+                                     class="team-logo"
+                                     loading="lazy">
                                 <a href="{{ url_for('football.view_team', team_name=game[1]) }}">
                                     {{ game[1] }}
                                 </a>

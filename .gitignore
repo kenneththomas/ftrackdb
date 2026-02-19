@@ -3,3 +3,4 @@ results_csv.csv
 *.ods
 *lock*
 *.pyc
+.env

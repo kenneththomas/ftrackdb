@@ -155,6 +155,16 @@
         text-transform: uppercase;
     }
 
+    .debut-flag {
+        display: inline-block;
+        color: #666;
+        font-size: 0.7em;
+        margin-left: 8px;
+        font-weight: normal;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
     .new-flag {
         display: inline-block;
         background: #2196F3;
@@ -317,9 +327,7 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                 {% for team, score in sorted_teams %}
                 <div class="team-score-card" style="background: #23272a; padding: 15px; border-radius: 5px; display: flex; align-items: center; gap: 15px;">
-                    {% if team_logos.get(team) %}
-                        <img src="{{ team_logos[team] }}" alt="{{ team }} logo" style="width: 40px; height: 40px; object-fit: contain;">
-                    {% endif %}
+                    <img src="{{ team_logos.get(team) or url_for('static', filename='default-team.svg') }}" alt="{{ team }} logo" style="width: 40px; height: 40px; object-fit: contain;">
                     <div>
                         <div style="font-weight: bold; font-size: 1.1em;">{{ team }}</div>
                         <div style="color: #617394; font-size: 1.2em;">{{ "%.1f"|format(score) }} pts</div>
@@ -349,9 +357,7 @@
                             <td class="athlete-cell">
                                 <div class="athlete-row">
                                     <span class="place-num">{{ result.place }}</span>
-                                    {% if team_logos.get(result.team) %}
-                                        <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
-                                    {% endif %}
+                                    <img src="{{ team_logos.get(result.team) or url_for('static', filename='default-team.svg') }}" alt="{{ result.team }} logo" class="team-logo">
                                     <span class="athlete-info">
                                         <div style="display: flex; align-items: center;">
                                             <div>
@@ -361,23 +367,21 @@
                                                     {% endfor %}
                                                 {% else %}
                                                     <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
-                                                    {% if result.ranking_before %}
-                                                        <span class="ranking-badge">#{{ result.ranking_before }}</span>
-                                                    {% endif %}
                                                 {% endif %}
                                                 <span class="inline-result">{{ result.result }}</span>
-                                                {% if result.ranking_before and result.ranking_after %}
-                                                    {% if result.ranking_after < result.ranking_before %}
-                                                        <span class="ranking-arrow up">↑</span>
-                                                    {% elif result.ranking_after > result.ranking_before %}
-                                                        <span class="ranking-arrow down">↓</span>
+                                                {% if result.ranking_after or result.ranking_before %}
+                                                    {% if result.ranking_before and result.ranking_after %}
+                                                        {% if result.ranking_after < result.ranking_before %}
+                                                            <span class="ranking-arrow up">↑</span>
+                                                        {% elif result.ranking_after > result.ranking_before %}
+                                                            <span class="ranking-arrow down">↓</span>
+                                                        {% endif %}
                                                     {% endif %}
-                                                    <span class="ranking-badge">#{{ result.ranking_after }}</span>
-                                                {% elif result.ranking_after %}
-                                                    <span class="new-flag">NEW</span>
-                                                    <span class="ranking-badge">#{{ result.ranking_after }}</span>
+                                                    <span class="ranking-badge">#{{ result.ranking_after or result.ranking_before }}</span>
                                                 {% endif %}
-                                                {% if result.is_pr %}
+                                                {% if result.is_debut %}
+                                                    <span class="debut-flag">DEBUT</span>
+                                                {% elif result.is_pr %}
                                                     <span class="pr-flag">PR</span>
                                                 {% endif %}
                                             </div>
@@ -434,6 +438,7 @@
         
         <div class="rename-section" style="margin: 30px 0; padding: 20px; background: #2a2d30; border-radius: 5px;">
             <h3 style="margin-top: 0;">Rename Meet</h3>
+            <p style="color: #999; font-size: 0.9em; margin-bottom: 15px;">Rename the meet name. Use the date field to filter which results to rename (for multi-day meets).</p>
             <form method="post" action="{{ url_for('meet.rename_meet', old_name=meet_name) }}" style="display: flex; gap: 10px; align-items: flex-end;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group" style="flex: 1;">
@@ -441,10 +446,28 @@
                     <input type="text" id="new_name" name="new_name" class="form-control" required>
                 </div>
                 <div class="form-group" style="flex: 1;">
-                    <label for="meet_date">Meet Date (optional):</label>
+                    <label for="meet_date">Filter by Date (optional):</label>
                     <input type="date" id="meet_date" name="meet_date" class="form-control">
+                    <small style="color: #999; font-size: 0.85em;">Only rename results on this date</small>
                 </div>
                 <button type="submit" class="btn">Rename Meet</button>
+            </form>
+        </div>
+
+        <div class="sync-dates-section" style="margin: 30px 0; padding: 20px; background: #2a2d30; border-radius: 5px;">
+            <h3 style="margin-top: 0;">Sync Dates</h3>
+            <p style="color: #999; font-size: 0.9em; margin-bottom: 15px;">Change all dates for this meet to a single date (useful when dates are incorrect). Leave unchecked to preserve multi-day meets.</p>
+            <form method="post" action="{{ url_for('meet.sync_meet_dates', meet_name=meet_name) }}" style="display: flex; gap: 10px; align-items: flex-end;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="flex: 1;">
+                    <label for="sync_date">Change all dates to:</label>
+                    <input type="date" id="sync_date" name="sync_date" class="form-control" required>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px; padding-top: 24px;">
+                    <input type="checkbox" id="confirm_sync" name="confirm_sync" required>
+                    <label for="confirm_sync" style="margin: 0; color: #e0e0e0;">I want to change all dates</label>
+                </div>
+                <button type="submit" class="btn" style="background: #d32f2f;">Sync Dates</button>
             </form>
         </div>
 

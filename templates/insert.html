@@ -19,9 +19,18 @@
             const eventValue = lastForm.querySelector('input[name="event[]"]').value;
             
             // Set values in the new form
-            newForm.querySelector('input[name="date[]"]').value = dateValue || '{{ today }}';
+            const newDateInput = newForm.querySelector('input[name="date[]"]');
+            newDateInput.value = dateValue || '{{ today }}';
             newForm.querySelector('input[name="meet[]"]').value = meetValue;
             newForm.querySelector('input[name="event[]"]').value = eventValue;
+            
+            // Add event listeners to the new date input
+            newDateInput.addEventListener('change', function() {
+                autoFillMeetName(this);
+            });
+            newDateInput.addEventListener('input', function() {
+                autoFillMeetName(this);
+            });
             
             // Clear other fields
             newForm.querySelector('input[name="athlete[]"]').value = '';
@@ -29,6 +38,61 @@
             newForm.querySelector('input[name="team[]"]').value = '';
             
             container.appendChild(newForm);
+        }
+
+        function addResultForAthlete(athleteName) {
+            const container = document.getElementById('results-container');
+            const lastForm = container.lastElementChild;
+            
+            // Check if the last form is empty (no athlete entered)
+            const lastAthlete = lastForm.querySelector('input[name="athlete[]"]').value.trim();
+            
+            let targetForm;
+            if (lastAthlete === '') {
+                // Use the existing empty form
+                targetForm = lastForm;
+            } else {
+                // Create a new form
+                const newForm = lastForm.cloneNode(true);
+                container.appendChild(newForm);
+                targetForm = newForm;
+            }
+            
+            // Find the last form with an athlete filled in to copy meet/event values from
+            const forms = Array.from(container.querySelectorAll('.result-form'));
+            let sourceForm = forms[0]; // Default to first form
+            for (let i = forms.length - 1; i >= 0; i--) {
+                const athleteInput = forms[i].querySelector('input[name="athlete[]"]');
+                if (athleteInput && athleteInput.value.trim() !== '') {
+                    sourceForm = forms[i];
+                    break;
+                }
+            }
+            
+            // Get meet and event values from source form
+            const dateValue = sourceForm.querySelector('input[name="date[]"]').value;
+            const meetValue = sourceForm.querySelector('input[name="meet[]"]').value;
+            const eventValue = sourceForm.querySelector('input[name="event[]"]').value;
+            
+            // Populate the target form
+            targetForm.querySelector('input[name="athlete[]"]').value = athleteName;
+            const dateInput = targetForm.querySelector('input[name="date[]"]');
+            dateInput.value = dateValue || '{{ today }}';
+            targetForm.querySelector('input[name="meet[]"]').value = meetValue;
+            targetForm.querySelector('input[name="event[]"]').value = eventValue;
+            
+            // Auto-fill meet name if empty
+            autoFillMeetName(dateInput);
+            
+            // Clear result field
+            targetForm.querySelector('input[name="result[]"]').value = '';
+            
+            // Look up team for the athlete
+            const athleteInput = targetForm.querySelector('input[name="athlete[]"]');
+            lookupTeam(athleteInput);
+            
+            // Scroll to the form
+            targetForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         function lookupTeam(athleteInput) {
@@ -45,6 +109,79 @@
                     }
                 });
         }
+
+        function tryFillPrFromDb(input) {
+            if (!document.getElementById('use-pr-for-existing-athletes').checked) return;
+            const resultForm = input.closest('.result-form');
+            if (!resultForm) return;
+            const athleteInput = resultForm.querySelector('input[name="athlete[]"]');
+            const eventInput = resultForm.querySelector('input[name="event[]"]');
+            const resultInput = resultForm.querySelector('input[name="result[]"]');
+            const athlete = (athleteInput && athleteInput.value || '').trim();
+            const eventName = (eventInput && eventInput.value || '').trim();
+            if (!athlete || !eventName || !resultInput) return;
+            fetch('/get_athlete_prs/' + encodeURIComponent(athlete))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    const prs = data.prs || [];
+                    const match = prs.find(function(p) { return p.event === eventName; });
+                    if (match && match.pr) {
+                        resultInput.value = match.pr;
+                    }
+                });
+        }
+
+        function autoFillMeetName(dateInput) {
+            const resultForm = dateInput.closest('.result-form');
+            const meetInput = resultForm.querySelector('input[name="meet[]"]');
+            const dateValue = dateInput.value;
+            
+            // Only auto-fill if meet field is empty and date is provided
+            if (meetInput && (!meetInput.value || meetInput.value.trim() === '') && dateValue) {
+                // Convert date from YYYY-MM-DD to YYYYMMDD
+                const dateFormatted = dateValue.replace(/-/g, '');
+                meetInput.value = dateFormatted;
+            }
+        }
+
+        // Add event listeners to all date inputs
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add listeners to existing date inputs
+            document.querySelectorAll('input[name="date[]"]').forEach(function(dateInput) {
+                dateInput.addEventListener('change', function() {
+                    autoFillMeetName(this);
+                });
+                dateInput.addEventListener('input', function() {
+                    autoFillMeetName(this);
+                });
+            });
+            
+            // Auto-fill meet names before form submission
+            const form = document.getElementById('results-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    // Auto-fill any empty meet names before submission
+                    document.querySelectorAll('.result-form').forEach(function(resultForm) {
+                        const dateInput = resultForm.querySelector('input[name="date[]"]');
+                        const meetInput = resultForm.querySelector('input[name="meet[]"]');
+                        if (dateInput && meetInput && (!meetInput.value || meetInput.value.trim() === '') && dateInput.value) {
+                            const dateFormatted = dateInput.value.replace(/-/g, '');
+                            meetInput.value = dateFormatted;
+                        }
+                    });
+                });
+            }
+            // When "Use PRs for existing athletes" is on, fill result from PR on blur of athlete or event
+            const container = document.getElementById('results-container');
+            if (container) {
+                container.addEventListener('blur', function(e) {
+                    const el = e.target;
+                    if (el.matches('input[name="athlete[]"]') || el.matches('input[name="event[]"]')) {
+                        tryFillPrFromDb(el);
+                    }
+                }, true);
+            }
+        });
     </script>
 </head>
 <body>
@@ -84,7 +221,7 @@
                 <div class="result-form">
                     <div class="form-group">
                         <label for="date">Date:</label>
-                        <input type="date" name="date[]" required value="{{ today }}">
+                        <input type="date" name="date[]" required value="{{ today }}" onchange="autoFillMeetName(this)" oninput="autoFillMeetName(this)">
                     </div>
                     <div class="form-group">
                         <label for="athlete">Athlete:</label>
@@ -92,7 +229,7 @@
                     </div>
                     <div class="form-group">
                         <label for="meet">Meet:</label>
-                        <input type="text" name="meet[]" required autocomplete="off">
+                        <input type="text" name="meet[]" required autocomplete="off" value="{{ last_meet or '' }}">
                     </div>
                     <div class="form-group">
                         <label for="event">Event:</label>
@@ -115,6 +252,35 @@
         <div class="helper-section">
             <h3>Helper Tools</h3>
             <div class="helper-tools">
+                <div class="ai-fill-helper">
+                    <h4>AI Fill Blanks (OpenRouter)</h4>
+                    <p class="helper-desc">Send current rows to an LLM with full context to fill in empty fields with plausible track &amp; field test data. Set <code>OPENROUTER_API_KEY</code> in the environment.</p>
+                    <button type="button" id="ai-fill-blanks-btn" class="generate-name-btn ai-fill-btn">Fill blanks with AI</button>
+                    <div id="ai-fill-status" class="generated-name-display" aria-live="polite"></div>
+                    <label class="pr-fill-option">
+                        <input type="checkbox" id="use-pr-for-existing-athletes">
+                        Fill result from PR when athlete exists in database
+                    </label>
+                    <p class="helper-desc form-option-desc">When enabled, leaving the athlete or event field will auto-fill the result with that athlete's PR for that event (if they have one in the database).</p>
+                </div>
+                <div class="random-name-helper">
+                    <h4>Random Name (test data)</h4>
+                    <p class="helper-desc">Generate a random name via <a href="https://namey.muffinlabs.com/" target="_blank" rel="noopener">Namey</a> and fill the next empty athlete field.</p>
+                    <div class="random-name-controls">
+                        <select id="namey-type">
+                            <option value="">Any gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                        <select id="namey-frequency">
+                            <option value="common">Common</option>
+                            <option value="rare">Rare</option>
+                            <option value="all">All</option>
+                        </select>
+                        <button type="button" id="generate-name-btn" class="generate-name-btn">Generate name</button>
+                    </div>
+                    <div id="generated-name-display" class="generated-name-display" aria-live="polite"></div>
+                </div>
                 <div class="team-lookup">
                     <h4>Team Members Lookup</h4>
                     <input type="text" id="team-lookup" placeholder="Enter team name" onkeyup="lookupTeamMembers(this.value)">
@@ -138,14 +304,67 @@
         }
         .helper-tools {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 2rem;
         }
-        .team-lookup, .athlete-prs {
+        .team-lookup, .athlete-prs, .random-name-helper, .ai-fill-helper {
             padding: 1rem;
             background: white;
             border-radius: 4px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .ai-fill-btn {
+            background: #1976d2;
+        }
+        .ai-fill-btn:hover {
+            background: #1565c0;
+        }
+        .ai-fill-btn:disabled {
+            background: #b0b0b0;
+            cursor: wait;
+        }
+        .helper-desc code {
+            font-size: 0.85em;
+            background: #eee;
+            padding: 0.1em 0.35em;
+            border-radius: 3px;
+        }
+        .helper-desc {
+            font-size: 0.9em;
+            color: #555;
+            margin: 0.5rem 0;
+        }
+        .random-name-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .random-name-controls select {
+            padding: 0.35rem 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .generate-name-btn {
+            background: #9c27b0;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+        .generate-name-btn:hover {
+            background: #7b1fa2;
+        }
+        .generate-name-btn:disabled {
+            background: #b0b0b0;
+            cursor: not-allowed;
+        }
+        .generated-name-display {
+            margin-top: 0.75rem;
+            min-height: 1.5em;
+            font-size: 0.95em;
         }
         .results-list {
             margin-top: 1rem;
@@ -178,6 +397,84 @@
         .pr-lookup-btn:active {
             background: #3d8b40;
         }
+        .add-result-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.2s;
+            margin-left: 8px;
+        }
+        .add-result-btn:hover {
+            background: #0b7dda;
+        }
+        .add-result-btn:active {
+            background: #0a6bc2;
+        }
+        .pr-fill-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        .pr-fill-option input[type="checkbox"] {
+            margin: 0;
+        }
+        .form-option-desc {
+            margin: 0.35rem 0 0 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        /* Mobile-friendly helper section */
+        @media (max-width: 768px) {
+            .helper-section {
+                margin-top: 1.5rem;
+                padding: 0.75rem;
+            }
+            .helper-tools {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+            .team-lookup, .athlete-prs, .random-name-helper, .ai-fill-helper {
+                padding: 0.85rem;
+            }
+            .random-name-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .random-name-controls select {
+                min-height: 44px;
+                font-size: 16px;
+            }
+            .generate-name-btn {
+                min-height: 44px;
+                padding: 0.65rem 1rem;
+            }
+            .results-list {
+                max-height: 180px;
+            }
+            .results-list div {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                padding: 0.6rem;
+                min-height: 44px;
+            }
+            .pr-lookup-btn, .add-result-btn {
+                min-height: 40px;
+                padding: 8px 12px;
+            }
+            #team-lookup, #athlete-lookup {
+                min-height: 44px;
+                font-size: 16px;
+                padding: 0.6rem 0.75rem;
+            }
+        }
     </style>
 
     <script>
@@ -190,12 +487,17 @@
                 .then(response => response.json())
                 .then(data => {
                     const list = document.getElementById('team-members-list');
-                    list.innerHTML = data.members.map(member => 
-                        `<div>
+                    list.innerHTML = data.members.map(member => {
+                        // Escape single quotes and backslashes for use in onclick attribute
+                        const escapedMember = member.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        return `<div>
                             <span>${member}</span>
-                            <button class="pr-lookup-btn" onclick="lookupAthletePRs('${member}')">View PRs</button>
-                        </div>`
-                    ).join('');
+                            <div>
+                                <button class="pr-lookup-btn" onclick="lookupAthletePRs('${escapedMember}')">View PRs</button>
+                                <button class="add-result-btn" onclick="addResultForAthlete('${escapedMember}')">Add Result</button>
+                            </div>
+                        </div>`;
+                    }).join('');
                 });
         }
 
@@ -216,6 +518,135 @@
                     ).join('');
                 });
         }
+
+        function generateRandomName() {
+            const btn = document.getElementById('generate-name-btn');
+            const display = document.getElementById('generated-name-display');
+            const type = document.getElementById('namey-type').value;
+            const frequency = document.getElementById('namey-frequency').value;
+
+            btn.disabled = true;
+            display.textContent = '…';
+
+            const params = new URLSearchParams({
+                count: 1,
+                with_surname: 'true',
+                frequency: frequency
+            });
+            if (type) params.set('type', type);
+
+            fetch('https://namey.muffinlabs.com/name.json?' + params.toString(), { mode: 'cors' })
+                .then(response => response.json())
+                .then(function(names) {
+                    btn.disabled = false;
+                    if (!names || !names.length) {
+                        display.textContent = 'No name returned.';
+                        return;
+                    }
+                    const name = names[0];
+                    display.textContent = 'Generated: ' + name;
+
+                    const athleteInputs = document.querySelectorAll('input[name="athlete[]"]');
+                    let filled = false;
+                    for (let i = 0; i < athleteInputs.length; i++) {
+                        if (!athleteInputs[i].value.trim()) {
+                            athleteInputs[i].value = name;
+                            athleteInputs[i].focus();
+                            lookupTeam(athleteInputs[i]);
+                            filled = true;
+                            break;
+                        }
+                    }
+                    if (!filled) {
+                        addResultForm();
+                        const newForm = document.getElementById('results-container').lastElementChild;
+                        const newAthleteInput = newForm.querySelector('input[name="athlete[]"]');
+                        newAthleteInput.value = name;
+                        newAthleteInput.focus();
+                        lookupTeam(newAthleteInput);
+                        newForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                })
+                .catch(function(err) {
+                    btn.disabled = false;
+                    display.textContent = 'Error: ' + (err.message || 'Could not fetch name.');
+                });
+        }
+
+        function fillBlanksWithAI() {
+            const btn = document.getElementById('ai-fill-blanks-btn');
+            const status = document.getElementById('ai-fill-status');
+            const forms = document.querySelectorAll('#results-container .result-form');
+            if (!forms.length) {
+                status.textContent = 'No rows to fill.';
+                return;
+            }
+            const rows = Array.from(forms).map(function(f) {
+                return {
+                    date: (f.querySelector('input[name="date[]"]') || {}).value || '',
+                    athlete: (f.querySelector('input[name="athlete[]"]') || {}).value || '',
+                    meet: (f.querySelector('input[name="meet[]"]') || {}).value || '',
+                    event: (f.querySelector('input[name="event[]"]') || {}).value || '',
+                    result: (f.querySelector('input[name="result[]"]') || {}).value || '',
+                    team: (f.querySelector('input[name="team[]"]') || {}).value || ''
+                };
+            });
+            const hasBlank = rows.some(function(r) {
+                return !r.date.trim() || !r.athlete.trim() || !r.meet.trim() || !r.event.trim() || !r.result.trim() || !r.team.trim();
+            });
+            if (!hasBlank) {
+                status.textContent = 'No blanks to fill.';
+                return;
+            }
+            btn.disabled = true;
+            status.textContent = 'Calling OpenRouter…';
+            var csrfInput = document.querySelector('input[name="csrf_token"]');
+            var headers = { 'Content-Type': 'application/json' };
+            if (csrfInput) headers['X-CSRFToken'] = csrfInput.value;
+            fetch('{{ url_for("result.fill_result_blanks") }}', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ rows: rows })
+            })
+                .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+                .then(function(result) {
+                    var ok = result.ok, data = result.data;
+                    btn.disabled = false;
+                    if (!ok) {
+                        status.textContent = 'Error: ' + (data.error || 'Unknown error');
+                        return;
+                    }
+                    var filled = data.rows || [];
+                    forms.forEach(function(f, i) {
+                        var row = filled[i];
+                        if (!row) return;
+                        var dateIn = f.querySelector('input[name="date[]"]');
+                        var athleteIn = f.querySelector('input[name="athlete[]"]');
+                        var meetIn = f.querySelector('input[name="meet[]"]');
+                        var eventIn = f.querySelector('input[name="event[]"]');
+                        var resultIn = f.querySelector('input[name="result[]"]');
+                        var teamIn = f.querySelector('input[name="team[]"]');
+                        if (dateIn && row.date) dateIn.value = row.date;
+                        if (athleteIn && row.athlete) athleteIn.value = row.athlete;
+                        if (meetIn && row.meet) meetIn.value = row.meet;
+                        if (eventIn && row.event) eventIn.value = row.event;
+                        if (resultIn && row.result) resultIn.value = row.result;
+                        if (teamIn && row.team) teamIn.value = row.team;
+                        if (athleteIn && row.athlete) lookupTeam(athleteIn);
+                    });
+                    status.textContent = 'Filled ' + filled.length + ' row(s).';
+                })
+                .catch(function(err) {
+                    btn.disabled = false;
+                    status.textContent = 'Error: ' + (err.message || 'Request failed');
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('generate-name-btn').addEventListener('click', generateRandomName);
+            var aiBtn = document.getElementById('ai-fill-blanks-btn');
+            if (aiBtn) aiBtn.addEventListener('click', fillBlanksWithAI);
+        });
     </script>
 </body>
 </html>

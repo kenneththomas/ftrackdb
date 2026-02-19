@@ -471,18 +471,14 @@
             <h2>{{ game[3] }}</h2>
             <div class="game-score">
                 <div class="team-display">
-                    {% if team_logos.get(game[2]) %}
-                        <img src="{{ team_logos[game[2]] }}" alt="{{ game[2] }} logo">
-                    {% endif %}
+                    <img src="{{ team_logos.get(game[2]) or url_for('static', filename='default-team.svg') }}" alt="{{ game[2] }} logo" class="team-logo" style="width: 40px; height: 40px; object-fit: contain;">
                     <a href="{{ url_for('football.view_team', team_name=game[2]) }}" style="color: white;">
                         {{ game[2] }}
                     </a>
                     <span class="score-value">{{ game[5] }}</span>
                 </div>
                 <div class="team-display">
-                    {% if team_logos.get(game[1]) %}
-                        <img src="{{ team_logos[game[1]] }}" alt="{{ game[1] }} logo">
-                    {% endif %}
+                    <img src="{{ team_logos.get(game[1]) or url_for('static', filename='default-team.svg') }}" alt="{{ game[1] }} logo" class="team-logo" style="width: 40px; height: 40px; object-fit: contain;">
                     <a href="{{ url_for('football.view_team', team_name=game[1]) }}" style="color: white;">
                         {{ game[1] }}
                     </a>

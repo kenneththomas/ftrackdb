@@ -1,35 +1,37 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models import Result, Team, Database, TeamScore, AthleteRanking, Comment
 from utils.relay_utils import parse_time
+from utils.field_utils import parse_field_result, all_results_are_field_format
 from forms import MeetResultForm, CommentForm
 from datetime import datetime, timedelta
 
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)
 
-def is_pr(athlete, event, result):
-    """Check if a result is a PR for the athlete"""
+def is_pr_and_debut(athlete, event, result):
+    """Return (is_pr, is_debut) for the athlete's result in this event."""
     conn = Database.get_connection()
     with conn:
         cur = conn.cursor()
-        # Get all results for this athlete and event
         cur.execute('''
             SELECT Result 
             FROM Results 
             WHERE Athlete = ? AND Event = ?
-            ORDER BY Result ASC
         ''', (athlete, event))
         all_results = [row[0] for row in cur.fetchall()]
         
         if not all_results:
-            return True  # First time running this event
+            return True, True  # First time running this event
         
-        # For time events, lower is better
-        if 'm' in event or 'Mile' in event:
-            return result == min(all_results)
-        # For field events, higher is better
+        is_debut = len(all_results) == 1
+        # If all results for this event contain ' and " (e.g. 20'0"), higher is better
+        if all_results_are_field_format(all_results):
+            best_val = max(parse_field_result(r) for r in all_results)
+            is_pr = parse_field_result(result) >= best_val
         else:
-            return result == max(all_results)
+            best_val = min(parse_time(r) for r in all_results)
+            is_pr = parse_time(result) <= best_val
+        return is_pr, is_debut
 
 @meet_bp.route('/meet/<meet_name>', methods=['GET', 'POST'])
 def meet_results(meet_name):
@@ -177,11 +179,13 @@ def meet_results(meet_name):
             ranking_key = (event, date, athlete)
             rankings = rankings_dict.get(ranking_key, {})
             
+            pr_debut = is_pr_and_debut(athlete, event, result)
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
                 'team': team,
-                'is_pr': is_pr(athlete, event, result),
+                'is_pr': pr_debut[0],
+                'is_debut': pr_debut[1],
                 'ranking_before': rankings.get('ranking_before'),
                 'ranking_after': rankings.get('ranking_after')
             })
@@ -194,11 +198,13 @@ def meet_results(meet_name):
             ranking_key = (event, date, athlete)
             rankings = rankings_dict.get(ranking_key, {})
             
+            pr_debut = is_pr_and_debut(athlete, event, result)
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
                 'team': team,
-                'is_pr': is_pr(athlete, event, result),
+                'is_pr': pr_debut[0],
+                'is_debut': pr_debut[1],
                 'ranking_before': rankings.get('ranking_before'),
                 'ranking_after': rankings.get('ranking_after')
             })
@@ -240,10 +246,16 @@ def meet_results(meet_name):
             'relay_time_numeric': rr['relay_time_numeric']
         })
     
-    # Optional: for relay events, sort entries by the numeric relay time and assign places.
+    # Sort each event's results and assign places. Field events (results with ' and ") = higher is better.
     for event_key, records in events.items():
         if event_key[0] == "400m RS Relay":
             records.sort(key=lambda x: x.get('relay_time_numeric', float('inf')))
+        elif event_key[0] != "400m RS":
+            result_strs = [r.get('result') for r in records if r.get('result') is not None]
+            if all_results_are_field_format(result_strs):
+                records.sort(key=lambda x: parse_field_result(x.get('result') or ''), reverse=True)
+            else:
+                records.sort(key=lambda x: parse_time(x.get('result') or ''))
         # Assign rankings (place numbers)
         for place, record in enumerate(records, start=1):
             record['place'] = place
@@ -280,8 +292,12 @@ def rename_meet(old_name):
             cur.execute('''
                 UPDATE Results 
                 SET Meet_Name = ? 
-                WHERE Meet_Name = ? AND Date = ?
+                WHERE Meet_Name = ? AND DATE(Date) = DATE(?)
             ''', (new_name, old_name, meet_date))
+            rows_affected = cur.rowcount
+            if rows_affected == 0:
+                flash(f'No results found for meet "{old_name}" on date {meet_date}. No changes made.', 'warning')
+                return redirect(url_for('meet.meet_results', meet_name=old_name))
         else:
             # Otherwise rename all results for this meet
             cur.execute('''
@@ -289,11 +305,47 @@ def rename_meet(old_name):
                 SET Meet_Name = ? 
                 WHERE Meet_Name = ?
             ''', (new_name, old_name))
+            rows_affected = cur.rowcount
         
         conn.commit()
     
-    flash(f'Meet renamed successfully to {new_name}', 'success')
+    flash(f'Meet renamed successfully to {new_name} ({rows_affected} results updated)', 'success')
     return redirect(url_for('meet.meet_results', meet_name=new_name))
+
+@meet_bp.route('/meet/<meet_name>/sync_dates', methods=['POST'])
+def sync_meet_dates(meet_name):
+    """Sync all dates for a meet to a single date"""
+    sync_date = request.form.get('sync_date')
+    confirm_sync = request.form.get('confirm_sync')
+    
+    if not sync_date:
+        flash('Date is required', 'error')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+    
+    if not confirm_sync:
+        flash('Please confirm that you want to change all dates', 'error')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+    
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        
+        # Update all dates for this meet to the sync_date
+        cur.execute('''
+            UPDATE Results 
+            SET Date = ? 
+            WHERE Meet_Name = ?
+        ''', (sync_date, meet_name))
+        rows_affected = cur.rowcount
+        
+        if rows_affected == 0:
+            flash(f'No results found for meet "{meet_name}". No changes made.', 'warning')
+            return redirect(url_for('meet.meet_results', meet_name=meet_name))
+        
+        conn.commit()
+    
+    flash(f'All dates synced to {sync_date} ({rows_affected} results updated)', 'success')
+    return redirect(url_for('meet.meet_results', meet_name=meet_name))
 
 @meet_bp.route('/meet/<meet_name>/calculate_scores', methods=['POST'])
 def calculate_meet_scores(meet_name):
@@ -333,14 +385,21 @@ def calculate_meet_scores(meet_name):
             'team': team
         })
     
-    # Calculate places for each event
+    # Calculate places for each event. If all results contain ' and " (e.g. 20'0"), higher is better.
     for (event, date), results in events.items():
-        # For time events (lower is better)
-        if 'm' in event or 'Mile' in event:
+        result_strs = [r['result'] for r in results]
+        if all_results_are_field_format(result_strs):
+            results.sort(key=lambda x: parse_field_result(x['result']), reverse=True)
+        elif 'm' in event or 'Mile' in event:
             results.sort(key=lambda x: parse_time(x['result']))
-        # For field events (higher is better)
         else:
-            results.sort(key=lambda x: float(x['result']), reverse=True)
+            # Decimal field events (e.g. meters)
+            def _field_sort_key(x):
+                try:
+                    return float(x['result'])
+                except (ValueError, TypeError):
+                    return -1.0
+            results.sort(key=_field_sort_key, reverse=True)
         
         # Assign places
         current_place = 1

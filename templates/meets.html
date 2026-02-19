@@ -1,82 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Recent Meets</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recent Meets — Track & Field</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <style>
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        .pagination a {
-            color: #007bff;
-            padding: 8px 16px;
-            text-decoration: none;
-            border: 1px solid #dee2e6;
-            margin: 0 4px;
-            border-radius: 4px;
-        }
-        .pagination a:hover {
-            background-color: #e9ecef;
-        }
-        .pagination .active {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="meets-page">
     {% include 'navbar.html' %}
-    <div class="container">
-        <header class="profile-header">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>Recent Meets</h2>
-                <form method="get" action="{{ url_for('meets') }}" class="form-inline">
-                    <input type="text" name="search" class="form-control mr-2" placeholder="Search meets..." value="{{ search }}">
-                    <button type="submit" class="btn btn-primary">Search</button>
-                </form>
-            </div>
+    <div class="meets-container">
+        <header class="meets-header" role="banner">
+            <h1 class="meets-title">Recent Meets</h1>
+            <p class="meets-subtitle">Browse meets and view full results</p>
+            <form method="get" action="{{ url_for('meets') }}" class="meets-search" role="search" aria-label="Search meets">
+                <label for="meet-search-input" class="sr-only">Search meets by name</label>
+                <input type="text" id="meet-search-input" name="search" class="meets-search-input" placeholder="Search meets..." value="{{ search or '' }}" aria-label="Search meets by name">
+                <button type="submit" class="meets-search-btn" aria-label="Search">Search</button>
+            </form>
         </header>
-        <section class="results">
-            <div class="table-responsive">
-                <table class="results-table table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Meet Name</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for meet in results %}
-                        <tr>
-                            <td>{{ meet[1] }}</td>
-                            <td><a href="{{ url_for('meet.meet_results', meet_name=meet[0]) }}">{{ meet[0] }}</a></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+        <section class="meets-list" aria-label="List of meets">
+            {% if results %}
+            <div class="meets-grid">
+                {% for meet in results %}
+                <a href="{{ url_for('meet.meet_results', meet_name=meet[0]) }}" class="meet-card" aria-label="View results for {{ meet[0] }}">
+                    <span class="meet-card-date">{{ meet[1] }}</span>
+                    <h2 class="meet-card-name">{{ meet[0] }}</h2>
+                    <span class="meet-card-arrow" aria-hidden="true">→</span>
+                </a>
+                {% endfor %}
             </div>
-            <!-- Pagination -->
-            <div class="pagination">
+
+            {% if total_pages > 1 %}
+            <nav class="meets-pagination" role="navigation" aria-label="Meets pagination">
                 {% if page > 1 %}
-                    <a href="{{ url_for('meets', page=page-1, search=search) }}">&laquo; Previous</a>
+                    <a href="{{ url_for('meets', page=page-1, search=search or '') }}" class="meets-pagination-link" aria-label="Previous page">&laquo; Previous</a>
                 {% endif %}
                 {% set start_page = [1, page - 2]|max %}
                 {% set end_page = [total_pages, page + 2]|min %}
                 {% for p in range(start_page, end_page + 1) %}
-                    <a href="{{ url_for('meets', page=p, search=search) }}" class="{{ 'active' if p == page else '' }}">
-                        {{ p }}
-                    </a>
+                    <a href="{{ url_for('meets', page=p, search=search or '') }}" class="meets-pagination-link {{ 'meets-pagination-link--active' if p == page else '' }}" {% if p == page %}aria-current="page"{% endif %} aria-label="Page {{ p }}">{{ p }}</a>
                 {% endfor %}
                 {% if page < total_pages %}
-                    <a href="{{ url_for('meets', page=page+1, search=search) }}">Next &raquo;</a>
+                    <a href="{{ url_for('meets', page=page+1, search=search or '') }}" class="meets-pagination-link" aria-label="Next page">Next &raquo;</a>
+                {% endif %}
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="meets-empty" role="status">
+                <p class="meets-empty-text">No meets found.</p>
+                {% if search %}
+                <p class="meets-empty-hint">Try a different search or <a href="{{ url_for('meets') }}">clear search</a>.</p>
                 {% endif %}
             </div>
+            {% endif %}
         </section>
-        <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Home</a>
+
+        <footer class="meets-footer">
+            <a href="{{ url_for('home') }}" class="meets-back-link">← Back to Home</a>
+        </footer>
     </div>
 </body>
-</html> 
+</html>

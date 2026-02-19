@@ -88,9 +88,7 @@
                         <td>{{ loop.index + (page - 1) * 20 }}</td>
                         {% if is_relay %}
                             <td class="team-cell">
-                                {% if team_logos.get(result.team) %}
-                                    <img src="{{ team_logos[result.team] }}" alt="{{ result.team }} logo" class="team-logo">
-                                {% endif %}
+                                <img src="{{ team_logos.get(result.team) or url_for('static', filename='default-team.svg') }}" alt="{{ result.team }} logo" class="team-logo">
                                 <a href="{{ url_for('team.team_results', team_name=result.team) }}">
                                     {{ result.team }}
                                 </a>

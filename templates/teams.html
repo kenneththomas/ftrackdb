@@ -24,6 +24,7 @@
                 <div class="col-md-4 mb-4 team-card">
                     <div class="card">
                         <div class="card-body">
+                            <img src="{{ team_logos.get(team[0]) or url_for('static', filename='default-team.svg') }}" alt="{{ team[0] }} logo" class="team-logo" style="width: 48px; height: 48px; object-fit: contain; margin-bottom: 0.5rem;">
                             <h5 class="card-title">
                                 <a href="{{ url_for('team.team_results', team_name=team[0]) }}">{{ team[0] }}</a>
                             </h5>
