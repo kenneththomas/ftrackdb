@@ -94,20 +94,6 @@ def insert_result():
             last_meet = row['Meet_Name'] or ''
     return render_template('insert.html', form=form, today=today, last_meet=last_meet)
 
-@result_bp.route('/delete', methods=['GET', 'POST'])
-def delete_result():
-    conn = Database.get_connection()
-    with conn:
-        cur = conn.cursor()
-        if request.method == 'POST':
-            cur.execute('DELETE FROM Results WHERE Result_ID = ?', (request.form.get('result_id'),))
-            conn.commit()
-
-        cur.execute('SELECT Date, Athlete, Meet_Name, Event, Result, Team FROM Results ORDER BY Result_ID DESC LIMIT 20')
-        results = cur.fetchall()
-
-    return render_template('delete.html', results=results)
-
 @result_bp.route('/delete_result/<int:result_id>', methods=['POST'])
 def delete_athlete_result(result_id):
     try:

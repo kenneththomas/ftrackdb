@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models import Result, Team, Database, TeamScore, AthleteRanking, Comment
 from utils.relay_utils import parse_time
+from utils.field_utils import parse_field_result, all_results_are_field_format
 from forms import MeetResultForm, CommentForm
 from datetime import datetime, timedelta
 
@@ -16,7 +17,6 @@ def is_pr_and_debut(athlete, event, result):
             SELECT Result 
             FROM Results 
             WHERE Athlete = ? AND Event = ?
-            ORDER BY Result ASC
         ''', (athlete, event))
         all_results = [row[0] for row in cur.fetchall()]
         
@@ -24,11 +24,13 @@ def is_pr_and_debut(athlete, event, result):
             return True, True  # First time running this event
         
         is_debut = len(all_results) == 1
-        # For time events, lower is better
-        if 'm' in event or 'Mile' in event:
-            is_pr = result == min(all_results)
+        # If all results for this event contain ' and " (e.g. 20'0"), higher is better
+        if all_results_are_field_format(all_results):
+            best_val = max(parse_field_result(r) for r in all_results)
+            is_pr = parse_field_result(result) >= best_val
         else:
-            is_pr = result == max(all_results)
+            best_val = min(parse_time(r) for r in all_results)
+            is_pr = parse_time(result) <= best_val
         return is_pr, is_debut
 
 @meet_bp.route('/meet/<meet_name>', methods=['GET', 'POST'])
@@ -244,10 +246,16 @@ def meet_results(meet_name):
             'relay_time_numeric': rr['relay_time_numeric']
         })
     
-    # Optional: for relay events, sort entries by the numeric relay time and assign places.
+    # Sort each event's results and assign places. Field events (results with ' and ") = higher is better.
     for event_key, records in events.items():
         if event_key[0] == "400m RS Relay":
             records.sort(key=lambda x: x.get('relay_time_numeric', float('inf')))
+        elif event_key[0] != "400m RS":
+            result_strs = [r.get('result') for r in records if r.get('result') is not None]
+            if all_results_are_field_format(result_strs):
+                records.sort(key=lambda x: parse_field_result(x.get('result') or ''), reverse=True)
+            else:
+                records.sort(key=lambda x: parse_time(x.get('result') or ''))
         # Assign rankings (place numbers)
         for place, record in enumerate(records, start=1):
             record['place'] = place
@@ -377,14 +385,21 @@ def calculate_meet_scores(meet_name):
             'team': team
         })
     
-    # Calculate places for each event
+    # Calculate places for each event. If all results contain ' and " (e.g. 20'0"), higher is better.
     for (event, date), results in events.items():
-        # For time events (lower is better)
-        if 'm' in event or 'Mile' in event:
+        result_strs = [r['result'] for r in results]
+        if all_results_are_field_format(result_strs):
+            results.sort(key=lambda x: parse_field_result(x['result']), reverse=True)
+        elif 'm' in event or 'Mile' in event:
             results.sort(key=lambda x: parse_time(x['result']))
-        # For field events (higher is better)
         else:
-            results.sort(key=lambda x: float(x['result']), reverse=True)
+            # Decimal field events (e.g. meters)
+            def _field_sort_key(x):
+                try:
+                    return float(x['result'])
+                except (ValueError, TypeError):
+                    return -1.0
+            results.sort(key=_field_sort_key, reverse=True)
         
         # Assign places
         current_place = 1

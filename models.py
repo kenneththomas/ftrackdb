@@ -428,8 +428,23 @@ class AthleteRanking:
                     FROM RankedResults
                     ORDER BY rank
                 ''', (event, target_date, one_year_ago))
-            # For field events (higher is better)
+            # For field events (higher is better). Ft-in (e.g. 20'0") must be ranked in Python.
             else:
+                cur.execute('''
+                    SELECT Athlete, Result FROM Results
+                    WHERE Event = ? AND Date <= ? AND Date >= ?
+                ''', (event, target_date, one_year_ago))
+                rows = cur.fetchall()
+                result_strs = [r[1] for r in rows]
+                from utils.field_utils import all_results_are_field_format, parse_field_result
+                from collections import defaultdict
+                if result_strs and all_results_are_field_format(result_strs):
+                    by_athlete = defaultdict(list)
+                    for athlete, result in rows:
+                        by_athlete[athlete].append(result)
+                    best_per_athlete = [(athlete, max(results, key=parse_field_result)) for athlete, results in by_athlete.items()]
+                    best_per_athlete.sort(key=lambda x: parse_field_result(x[1]), reverse=True)
+                    return {athlete: rank for rank, (athlete, _) in enumerate(best_per_athlete, start=1)}
                 cur.execute('''
                     WITH RankedResults AS (
                         SELECT 
@@ -447,6 +462,7 @@ class AthleteRanking:
                     FROM RankedResults
                     ORDER BY rank
                 ''', (event, target_date, one_year_ago))
+                return dict(cur.fetchall())
             
             return dict(cur.fetchall())
 
