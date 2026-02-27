@@ -1,0 +1,48 @@
+{% if events %}
+    {% if leaderboard_results %}
+        <div class="table-responsive">
+            <table class="modern-table pb-table">
+                <thead>
+                    <tr>
+                        <th>Place</th>
+                        <th>Athlete</th>
+                        <th>Result</th>
+                        {% if not best_only %}
+                            <th>Date</th>
+                            <th>Meet</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in leaderboard_results %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><a href="{{ url_for('athlete.athlete_profile', name=row.athlete) }}">{{ row.athlete }}</a></td>
+                            <td>{{ row.result }}</td>
+                            {% if not best_only %}
+                                <td>{{ row.date }}</td>
+                                <td>
+                                    {% if row.meet %}
+                                        <a href="{{ url_for('meet.meet_results', meet_name=row.meet) }}">
+                                            {{ row.meet }}
+                                        </a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No results for {{ selected_event }} yet.</p>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="empty-state">
+        <p>No events recorded for {{ team_name }} yet.</p>
+    </div>
+{% endif %}

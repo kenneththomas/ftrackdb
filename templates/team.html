@@ -100,6 +100,61 @@
             font-size: 1.75rem;
         }
 
+        .leaderboard-filters {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .leaderboard-filters select {
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(148,163,184,0.6);
+            background: rgba(15,23,42,0.9);
+            color: #e2e8f0;
+            min-width: 180px;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #cbd5e0;
+            font-size: 0.9rem;
+        }
+
+        .toggle-switch input[type="checkbox"] {
+            width: 38px;
+            height: 20px;
+            appearance: none;
+            background: rgba(148,163,184,0.6);
+            border-radius: 999px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .toggle-switch input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-switch input[type="checkbox"]:checked {
+            background: #22c55e;
+        }
+
+        .toggle-switch input[type="checkbox"]:checked::before {
+            transform: translateX(18px);
+        }
+
         .logo-form-section {
             background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
             border-radius: 12px;
@@ -249,6 +304,14 @@
             opacity: 0.5;
         }
 
+        .leaderboard-content.loading {
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+        }
+
         @media (max-width: 768px) {
             .team-hero h1 {
                 font-size: 1.75rem;
@@ -285,44 +348,36 @@
             <h1>{{ team_name }}</h1>
         </div>
 
-        <!-- Personal Bests Section -->
+        <!-- Event Leaderboard Section -->
         <div class="stats-section">
             <div class="section-header">
-                <h2>🏆 Personal Bests</h2>
+                <h2>🏅 Event Leaderboard</h2>
+                {% if events %}
+                    <div class="leaderboard-filters">
+                        <select id="eventSelect" onchange="updateTeamLeaderboardFilters()">
+                            {% for event in events %}
+                                <option value="{{ event }}" {% if selected_event == event %}selected{% endif %}>
+                                    {{ event }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="bestOnlyToggle" {% if best_only %}checked{% endif %} onchange="updateTeamLeaderboardFilters()">
+                            <label for="bestOnlyToggle">Best performance only</label>
+                        </div>
+                    </div>
+                {% endif %}
             </div>
             
-            {% if athletes %}
-                <div class="table-responsive">
-                    <table class="modern-table pb-table">
-                        <thead>
-                            <tr>
-                                <th>Athlete</th>
-                                <th>100m</th>
-                                <th>200m</th>
-                                <th>400m</th>
-                                <th>800m</th>
-                                <th>1500m</th>
-                                <th>Mile</th>
-                                <th>3000m</th>
-                                <th>5000m</th>
-                                <th>10000m</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for athlete in athletes %}
-                                <tr>
-                                    <td><a href="{{ url_for('athlete.athlete_profile', name=athlete[0]) }}">{{ athlete[0] }}</a></td>
-                                    {% for event in ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m'] %}
-                                        <td>{{ team_pbs.get(athlete[0], {}).get(event, '') }}</td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            {% if events %}
+                <div id="leaderboardContent" class="leaderboard-content" data-leaderboard-url="{{ url_for('team.team_leaderboard', team_name=team_name) }}">
+                    {% include 'partials/team_leaderboard_content.html' %}
                 </div>
             {% else %}
-                <div class="empty-state">
-                    <p>No personal bests recorded yet.</p>
+                <div id="leaderboardContent" class="leaderboard-content">
+                    <div class="empty-state">
+                        <p>No events recorded for {{ team_name }} yet.</p>
+                    </div>
                 </div>
             {% endif %}
         </div>
@@ -382,5 +437,41 @@
     </div>
 
     <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
+    <script>
+        function updateTeamLeaderboardFilters() {
+            const container = document.getElementById('leaderboardContent');
+            const leaderboardUrl = container && container.getAttribute('data-leaderboard-url');
+            if (!leaderboardUrl) return;
+
+            const eventSelect = document.getElementById('eventSelect');
+            const bestOnlyToggle = document.getElementById('bestOnlyToggle');
+            const params = new URLSearchParams();
+            if (eventSelect && eventSelect.value) {
+                params.set('event', eventSelect.value);
+            }
+            params.set('best_only', bestOnlyToggle && bestOnlyToggle.checked ? 'true' : 'false');
+
+            const url = leaderboardUrl + (params.toString() ? '?' + params.toString() : '');
+            container.classList.add('loading');
+            container.innerHTML = '<p>Loading…</p>';
+
+            fetch(url)
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(function (html) {
+                    container.innerHTML = html;
+                    container.classList.remove('loading');
+                    const baseUrl = window.location.pathname;
+                    const newUrl = params.toString() ? baseUrl + '?' + params.toString() : baseUrl;
+                    history.replaceState(null, '', newUrl);
+                })
+                .catch(function () {
+                    container.classList.remove('loading');
+                    container.innerHTML = '<div class="empty-state"><p>Could not load leaderboard. Please try again.</p></div>';
+                });
+        }
+    </script>
 </body>
 </html>
