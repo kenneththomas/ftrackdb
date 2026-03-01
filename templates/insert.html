@@ -573,6 +573,23 @@
                 });
         }
 
+        function fetchNameFromNamey() {
+            // Namey API: Male / All (used for AI Fill Blanks athlete names)
+            var params = new URLSearchParams({
+                count: 1,
+                with_surname: 'true',
+                frequency: 'all',
+                type: 'male'
+            });
+            return fetch('https://namey.muffinlabs.com/name.json?' + params.toString(), { mode: 'cors' })
+                .then(function(response) { return response.json(); })
+                .then(function(names) {
+                    if (names && names.length) return names[0];
+                    return '';
+                })
+                .catch(function() { return ''; });
+        }
+
         function fillBlanksWithAI() {
             const btn = document.getElementById('ai-fill-blanks-btn');
             const status = document.getElementById('ai-fill-status');
@@ -599,15 +616,33 @@
                 return;
             }
             btn.disabled = true;
-            status.textContent = 'Calling OpenRouter…';
-            var csrfInput = document.querySelector('input[name="csrf_token"]');
-            var headers = { 'Content-Type': 'application/json' };
-            if (csrfInput) headers['X-CSRFToken'] = csrfInput.value;
-            fetch('{{ url_for("result.fill_result_blanks") }}', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ rows: rows })
-            })
+            var blankAthleteIndices = [];
+            rows.forEach(function(row, i) {
+                if (!(row.athlete && row.athlete.trim())) blankAthleteIndices.push(i);
+            });
+            if (blankAthleteIndices.length) {
+                status.textContent = 'Filling athlete names…';
+            } else {
+                status.textContent = 'Calling OpenRouter…';
+            }
+            var nameyPromises = blankAthleteIndices.map(function() { return fetchNameFromNamey(); });
+            Promise.all(nameyPromises)
+                .then(function(names) {
+                    names.forEach(function(name, j) {
+                        if (name && blankAthleteIndices[j] !== undefined) {
+                            rows[blankAthleteIndices[j]].athlete = name;
+                        }
+                    });
+                    status.textContent = 'Calling OpenRouter…';
+                    var csrfInput = document.querySelector('input[name="csrf_token"]');
+                    var headers = { 'Content-Type': 'application/json' };
+                    if (csrfInput) headers['X-CSRFToken'] = csrfInput.value;
+                    return fetch('{{ url_for("result.fill_result_blanks") }}', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ rows: rows })
+                    });
+                })
                 .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
                 .then(function(result) {
                     var ok = result.ok, data = result.data;
