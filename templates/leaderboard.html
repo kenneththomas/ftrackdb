@@ -163,6 +163,14 @@
                 </select>
             </div>
             
+            <div class="filter-group">
+                <label for="sortBy">Sort by</label>
+                <select id="sortBy" onchange="updateFilters()">
+                    <option value="performance" {% if sort_by == 'performance' %}selected{% endif %}>Best performance</option>
+                    <option value="stagger" {% if sort_by == 'stagger' %}selected{% endif %}>Stagger rank</option>
+                </select>
+            </div>
+            
             <div class="toggle-switch">
                 <input type="checkbox" id="bestOnlyToggle" {% if best_only %}checked{% endif %} onchange="updateFilters()">
                 <label for="bestOnlyToggle">Best Performance Only</label>
@@ -184,6 +192,9 @@
                             <th>Athlete</th>
                             <th>Result</th>
                             <th>Team</th>
+                            {% if sort_by_stagger %}
+                                <th>Stagger</th>
+                            {% endif %}
                             {% if not best_only %}
                                 <th>Date</th>
                                 <th>Meet</th>
@@ -220,6 +231,9 @@
                                 <td><a href="{{ url_for('athlete.athlete_profile', name=result[0]) }}">{{ result[0] }}</a></td>
                                 <td>{{ result[1] }}</td>
                                 <td><a href="{{ url_for('team.team_results', team_name=result[2]) }}">{{ result[2] }}</a></td>
+                                {% if sort_by_stagger %}
+                                    <td><strong>{{ "%.0f"|format(result[5]) }}</strong></td>
+                                {% endif %}
                                 {% if not best_only %}
                                     <td>{{ result[3] }}</td>
                                     <td>
@@ -239,13 +253,13 @@
                 {% if total_pages > 1 %}
                     <div class="pagination">
                         {% if page > 1 %}
-                            <a href="?event={{ selected_event }}&year={{ year_filter }}&best_only={{ 'true' if best_only else 'false' }}&page={{ page - 1 }}">&laquo; Previous</a>
+                            <a href="?event={{ selected_event }}&year={{ year_filter }}&best_only={{ 'true' if best_only else 'false' }}&sort_by={{ sort_by }}&page={{ page - 1 }}">&laquo; Previous</a>
                         {% endif %}
                         
                         <span>Page {{ page }} of {{ total_pages }}</span>
                         
                         {% if page < total_pages %}
-                            <a href="?event={{ selected_event }}&year={{ year_filter }}&best_only={{ 'true' if best_only else 'false' }}&page={{ page + 1 }}">Next &raquo;</a>
+                            <a href="?event={{ selected_event }}&year={{ year_filter }}&best_only={{ 'true' if best_only else 'false' }}&sort_by={{ sort_by }}&page={{ page + 1 }}">Next &raquo;</a>
                         {% endif %}
                     </div>
                 {% endif %}
@@ -269,11 +283,13 @@
             const event = document.getElementById('eventSelect').value;
             const year = document.getElementById('yearFilter').value;
             const bestOnly = document.getElementById('bestOnlyToggle').checked;
+            const sortBy = document.getElementById('sortBy').value;
             
             const params = new URLSearchParams();
             if (event) params.set('event', event);
             params.set('year', year);
             params.set('best_only', bestOnly ? 'true' : 'false');
+            params.set('sort_by', sortBy);
             
             window.location.href = '{{ url_for("leaderboard.leaderboard") }}?' + params.toString();
         }

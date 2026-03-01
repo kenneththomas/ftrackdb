@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for
-from models import Database, Team
+from models import Database, Team, StaggerScore
 from utils.relay_utils import calculate_relay_results, parse_time
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from collections import defaultdict
@@ -18,6 +18,7 @@ def leaderboard():
     selected_event = request.args.get('event', '')
     year_filter = request.args.get('year', 'all')
     best_only = request.args.get('best_only', 'true') == 'true'
+    sort_by = request.args.get('sort_by', 'performance')  # 'performance' (default) or 'stagger'
     page = request.args.get('page', 1, type=int)
     per_page = 50
     offset = (page - 1) * per_page
@@ -61,11 +62,75 @@ def leaderboard():
         is_relay = False
         team_logos = {}
         event_name = selected_event if selected_event else None
-        
+        sort_by_stagger = False
+
         if selected_event:
             is_relay = selected_event.startswith('4x')
             
-            if is_relay:
+            # Sort by Stagger rank (non-relay only, ignores year_filter for stagger list)
+            if sort_by == 'stagger' and not is_relay:
+                sort_by_stagger = True
+                conn2 = Database.get_connection()
+                with conn2:
+                    cur2 = conn2.cursor()
+                    cur2.execute(
+                        'SELECT athlete, score FROM StaggerScores WHERE event = ? ORDER BY score DESC',
+                        (selected_event,)
+                    )
+                    stagger_rows = cur2.fetchall()
+                total_results = len(stagger_rows)
+                total_pages = (total_results + per_page - 1) // per_page if total_results else 0
+                page_slice = stagger_rows[offset:offset + per_page]
+                if page_slice:
+                    athletes = [r[0] for r in page_slice]
+                    conn2 = Database.get_connection()
+                    with conn2:
+                        cur2 = conn2.cursor()
+                        cur2.execute(
+                            'SELECT Athlete, Result, Team, Date, Meet_Name FROM Results WHERE Event = ? AND Athlete IN (' + ','.join(['?'] * len(athletes)) + ')',
+                            [selected_event] + athletes
+                        )
+                        result_rows = cur2.fetchall()
+                    if date_filter:
+                        result_rows = [r for r in result_rows if r[3] >= date_filter]
+                    by_athlete = defaultdict(list)
+                    for row in result_rows:
+                        by_athlete[row[0]].append(row)
+                    if is_time_event(selected_event):
+                        def best_time(rows):
+                            return min(rows, key=lambda r: parse_time(r[1]))
+                        best_fn = best_time
+                    else:
+                        result_strs = [r[1] for r in result_rows if r[1]]
+                        if result_strs and all_results_are_field_format(result_strs):
+                            def best_field_ftin(rows):
+                                return max(rows, key=lambda r: parse_field_result(r[1] or ''))
+                            best_fn = best_field_ftin
+                        else:
+                            def best_field_num(rows):
+                                def num_val(r):
+                                    try:
+                                        return float(r[1])
+                                    except (ValueError, TypeError):
+                                        return -1.0
+                                return max(rows, key=num_val)
+                            best_fn = best_field_num
+                    results = []
+                    for athlete, score in page_slice:
+                        rows = by_athlete.get(athlete, [])
+                        if not rows:
+                            results.append((athlete, '—', '—', '', '', score))
+                            continue
+                        best_row = best_fn(rows)
+                        results.append((best_row[0], best_row[1], best_row[2], best_row[3], best_row[4], score))
+                    teams = set(r[2] for r in results if r[2] and r[2] != '—')
+                    for team in teams:
+                        team_info = Team.get_team_info(team)
+                        if team_info and team_info.get('logo_url'):
+                            team_logos[team] = team_info['logo_url']
+                else:
+                    results = []
+            elif is_relay:
                 # Handle relay events
                 query = '''
                     SELECT Date, Meet_Name, Team, Athlete, Result
@@ -365,6 +430,8 @@ def leaderboard():
                         total_pages=total_pages,
                         year_filter=year_filter,
                         best_only=best_only,
+                        sort_by=sort_by,
+                        sort_by_stagger=sort_by_stagger,
                         is_relay=is_relay,
                         team_logos=team_logos,
                         event_name=event_name)
@@ -374,5 +441,5 @@ def event_leaderboard_redirect(event):
     """Redirect old event-specific leaderboard URLs to the unified leaderboard"""
     year = request.args.get('year', 'all')
     page = request.args.get('page', 1)
-    # Default to best_only=true for backward compatibility
-    return redirect(url_for('leaderboard.leaderboard', event=event, year=year, page=page, best_only='true')) 
+    sort_by = request.args.get('sort_by', 'performance')
+    return redirect(url_for('leaderboard.leaderboard', event=event, year=year, page=page, best_only='true', sort_by=sort_by)) 

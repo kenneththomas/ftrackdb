@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from models import Result, Database, Athlete, Team, AthleteRanking
+from models import Result, Database, Athlete, Team, AthleteRanking, StaggerScore
 from forms import SearchForm
 from utils.relay_utils import calculate_relay_results
 
@@ -106,6 +106,19 @@ def athlete_profile(name):
     # Get current rankings for the athlete
     rankings = AthleteRanking.calculate_athlete_rankings(name)
     
+    # Stagger scores per event (for display near PRs)
+    stagger_scores = StaggerScore.get_scores_for_athlete(name)
+
+    # Stagger delta by meet for this athlete: (meet_name, event, date) -> delta
+    with conn:
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT meet_name, event, date, delta
+            FROM StaggerHistory
+            WHERE athlete = ?
+        ''', (name,))
+        stagger_deltas = {(row[0], row[1], row[2]): float(row[3]) for row in cur.fetchall()}
+    
     # Create a set of PR results for quick lookup (normalize for comparison)
     def normalize_result(result_str):
         """Normalize result string for comparison"""
@@ -130,7 +143,14 @@ def athlete_profile(name):
         result_value = result[3]
         normalized = normalize_result(result_value)
         is_pr = normalized and (event, normalized) in pr_results_set
-        results_with_pr_flag.append((*result, is_pr))
+        # Match StaggerHistory date format (YYYY-MM-DD). Results.Date may include time in some DBs.
+        date_str = (result[0] or '')
+        if isinstance(date_str, str) and len(date_str) >= 10:
+            date_key = date_str[:10]
+        else:
+            date_key = date_str
+        delta = stagger_deltas.get((result[1], event, date_key))
+        results_with_pr_flag.append((*result, is_pr, delta))
     
     return render_template('profile.html', 
                          name=name, 
@@ -144,7 +164,8 @@ def athlete_profile(name):
                          is_female=is_female,
                          team_logo=team_logo,
                          team_logos=team_logos,
-                         rankings=rankings)
+                         rankings=rankings,
+                         stagger_scores=stagger_scores)
 
 @athlete_bp.route('/athlete/<name>/calculate_rankings', methods=['POST'])
 def calculate_athlete_rankings(name):

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import Result, Team, Database, TeamScore, AthleteRanking, Comment
+from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, StaggerScore, compute_stagger_deltas_for_meet
 from utils.relay_utils import parse_time
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from forms import MeetResultForm, CommentForm
@@ -7,6 +7,89 @@ from datetime import datetime, timedelta
 
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)
+
+def get_meet_placements(meet_name):
+    """Build (event, date) -> list of {athlete, place} for stagger. Skips 400m RS and relay team events."""
+    raw = Result.get_meet_results(meet_name)
+    events = {}
+    relay_by_team = {}
+    for row in raw:
+        date, athlete, event, result, team = row
+        if event == "400m RS":
+            relay_key = (team, date)
+            if relay_key not in relay_by_team:
+                relay_by_team[relay_key] = []
+            relay_by_team[relay_key].append({'athlete': athlete, 'result': result})
+            continue
+        if event == "400m RS Relay":
+            continue  # team event, skip for stagger
+        key = (event, date)
+        if key not in events:
+            events[key] = []
+        events[key].append({'athlete': athlete, 'result': result})
+
+    # Add combined relay results (one entry per team - we skip these for stagger)
+    for (team, group_date), splits in relay_by_team.items():
+        if len(splits) < 4:
+            continue
+        sorted_splits = sorted(splits, key=lambda x: parse_time(x['result']))
+        best = sorted_splits[:4]
+        total = sum(parse_time(s['result']) for s in best)
+        key = ("400m RS Relay", group_date)
+        if key not in events:
+            events[key] = []
+        events[key].append({
+            'athlete': ', '.join(s['athlete'] for s in best),
+            'result': total,
+            'relay_time_numeric': total
+        })
+
+    # Sort and assign places (skip relay for stagger). De-duplicate athletes within event/date.
+    out = {}
+    for (event, date), records in events.items():
+        if event == "400m RS Relay":
+            continue
+        result_strs = [r.get('result') for r in records if r.get('result') is not None]
+        is_ft_in = all_results_are_field_format(result_strs)
+
+        # Pick one performance per athlete (best by the same rules the meet page uses)
+        best_by_athlete = {}
+        for rec in records:
+            a = rec['athlete']
+            r = rec.get('result') or ''
+            if a not in best_by_athlete:
+                best_by_athlete[a] = rec
+                continue
+            prev = best_by_athlete[a].get('result') or ''
+            if is_ft_in:
+                if parse_field_result(r) > parse_field_result(prev):
+                    best_by_athlete[a] = rec
+            else:
+                if parse_time(r) < parse_time(prev):
+                    best_by_athlete[a] = rec
+
+        deduped = list(best_by_athlete.values())
+
+        # Sort for placement
+        if is_ft_in:
+            deduped.sort(key=lambda x: parse_field_result(x.get('result') or ''), reverse=True)
+            perf_key = lambda x: parse_field_result(x.get('result') or '')
+        else:
+            deduped.sort(key=lambda x: parse_time(x.get('result') or ''))
+            perf_key = lambda x: parse_time(x.get('result') or '')
+
+        # Assign places; ties get the same place (based on parsed performance)
+        place = 1
+        prev_key = None
+        for i, rec in enumerate(deduped):
+            k = perf_key(rec)
+            if prev_key is not None and k != prev_key:
+                place = i + 1
+            rec['place'] = place
+            prev_key = k
+
+        out[(event, date)] = [{'athlete': r['athlete'], 'place': r['place']} for r in deduped]
+    return out
 
 def is_pr_and_debut(athlete, event, result):
     """Return (is_pr, is_debut) for the athlete's result in this event."""
@@ -155,6 +238,8 @@ def meet_results(meet_name):
                 'ranking_after': ranking_after
             }
 
+    stagger_score_cache = {}
+
     for row in raw_results:
         date, athlete, event, result, team = row
         # For relay splits, process them twice:
@@ -187,7 +272,8 @@ def meet_results(meet_name):
                 'is_pr': pr_debut[0],
                 'is_debut': pr_debut[1],
                 'ranking_before': rankings.get('ranking_before'),
-                'ranking_after': rankings.get('ranking_after')
+                'ranking_after': rankings.get('ranking_after'),
+                'stagger_score_current': None
             })
         else:
             event_key = (event, date)
@@ -199,6 +285,9 @@ def meet_results(meet_name):
             rankings = rankings_dict.get(ranking_key, {})
             
             pr_debut = is_pr_and_debut(athlete, event, result)
+            score_key = (athlete, event)
+            if score_key not in stagger_score_cache:
+                stagger_score_cache[score_key] = StaggerScore.get_score_if_exists(athlete, event)
             events[event_key].append({
                 'athlete': athlete,
                 'result': result,
@@ -206,7 +295,8 @@ def meet_results(meet_name):
                 'is_pr': pr_debut[0],
                 'is_debut': pr_debut[1],
                 'ranking_before': rankings.get('ranking_before'),
-                'ranking_after': rankings.get('ranking_after')
+                'ranking_after': rankings.get('ranking_after'),
+                'stagger_score_current': stagger_score_cache[score_key]
             })
     
     # Process relay splits: for each team and date grouping, if there are at least 4 splits,
@@ -264,6 +354,10 @@ def meet_results(meet_name):
     comments = Comment.get_comments('meet', meet_name)
     comment_count = Comment.get_comment_count('meet', meet_name)
 
+    stagger_history = StaggerScore.get_meet_history(meet_name)
+    meet_is_staggered = len(stagger_history) > 0
+    stagger_changes = [{'event': row[0], 'date': row[1], 'athlete': row[2], 'delta': row[3]} for row in stagger_history]
+
     return render_template('meet.html', 
                          meet_name=meet_name, 
                          events=events, 
@@ -272,7 +366,9 @@ def meet_results(meet_name):
                          sorted_teams=sorted_teams,
                          comment_form=comment_form,
                          comments=comments,
-                         comment_count=comment_count)
+                         comment_count=comment_count,
+                         meet_is_staggered=meet_is_staggered,
+                         stagger_changes=stagger_changes)
 
 @meet_bp.route('/meet/<old_name>/rename', methods=['POST'])
 def rename_meet(old_name):
@@ -507,6 +603,22 @@ def calculate_rankings(meet_name):
     AthleteRanking.update_meet_rankings(meet_name, rankings_data)
     
     flash('Athlete rankings have been calculated and cached!', 'success')
+    return redirect(url_for('meet.meet_results', meet_name=meet_name))
+
+@meet_bp.route('/meet/<meet_name>/stagger_rank', methods=['POST'])
+def stagger_rank_meet(meet_name):
+    """Rank this meet with Stagger (ELO-style placement). Overwrites any previous stagger for this meet."""
+    placements = get_meet_placements(meet_name)
+    if not placements:
+        flash('No individual events to rank for this meet.', 'warning')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+    StaggerScore.revert_meet(meet_name)
+    all_deltas, _ = compute_stagger_deltas_for_meet(meet_name, get_meet_placements)
+    if not all_deltas:
+        flash('No Stagger changes computed for this meet.', 'info')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+    StaggerScore.apply_meet_deltas(meet_name, all_deltas)
+    flash('Meet Stagger-ranked. Score changes applied.', 'success')
     return redirect(url_for('meet.meet_results', meet_name=meet_name)) 
 
  

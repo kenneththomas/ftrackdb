@@ -7,7 +7,8 @@ class Database:
     def get_connection():
         conn = None
         try:
-            conn = sqlite3.connect(current_app.config['DATABASE'])
+            # timeout helps prevent "database is locked" on rapid successive writes
+            conn = sqlite3.connect(current_app.config['DATABASE'], timeout=30)
             conn.row_factory = sqlite3.Row
             # Initialize tables on connection
             Database.initialize_tables(conn)
@@ -79,6 +80,27 @@ class Database:
                     parent_id INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (parent_id) REFERENCES Comments(comment_id) ON DELETE CASCADE
+                )
+            ''')
+            
+            # Stagger (ELO-style placement ranking): one score per athlete per event
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS StaggerScores (
+                    athlete TEXT,
+                    event TEXT,
+                    score REAL NOT NULL DEFAULT 1000,
+                    PRIMARY KEY (athlete, event)
+                )
+            ''')
+            # Deltas applied per meet so we can revert and re-rank
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS StaggerHistory (
+                    meet_name TEXT,
+                    event TEXT,
+                    date TEXT,
+                    athlete TEXT,
+                    delta REAL NOT NULL,
+                    PRIMARY KEY (meet_name, event, date, athlete)
                 )
             ''')
             
@@ -638,3 +660,240 @@ class Comment:
                 WHERE page_type = ? AND page_id = ?
             ''', (page_type, page_id))
             return cur.fetchone()[0]
+
+
+# --- Stagger (ELO-style placement ranking) ---
+STAGGER_K = 24
+STAGGER_FLOOR = 200
+STAGGER_CEILING = 2000
+STAGGER_INITIAL = 1000
+
+
+def _stagger_expected(rating_winner, rating_loser):
+    """Expected score for the winner (0-1). Winner has rating_winner, loser has rating_loser."""
+    return 1.0 / (1.0 + 10.0 ** ((rating_loser - rating_winner) / 400.0))
+
+
+def _stagger_dampen(rating, delta):
+    """Clamp new rating to [STAGGER_FLOOR, STAGGER_CEILING]."""
+    new_r = rating + delta
+    return max(STAGGER_FLOOR, min(STAGGER_CEILING, new_r))
+
+
+class StaggerScore:
+    @staticmethod
+    def get_score(athlete, event):
+        """Return current stagger score for (athlete, event), or STAGGER_INITIAL if none."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute(
+                'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
+                (athlete, event)
+            )
+            row = cur.fetchone()
+            return float(row[0]) if row else STAGGER_INITIAL
+
+    @staticmethod
+    def get_score_if_exists(athlete, event):
+        """Return current stagger score for (athlete, event), or None if no score exists yet."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute(
+                'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
+                (athlete, event)
+            )
+            row = cur.fetchone()
+            return float(row[0]) if row else None
+
+    @staticmethod
+    def get_scores_for_athlete(athlete):
+        """Return dict event -> score for an athlete."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute(
+                'SELECT event, score FROM StaggerScores WHERE athlete = ?',
+                (athlete,)
+            )
+            return {row[0]: float(row[1]) for row in cur.fetchall()}
+
+    @staticmethod
+    def set_score(athlete, event, score):
+        """Insert or update a single (athlete, event) score."""
+        conn = Database.get_connection()
+        try:
+            with conn:
+                cur = conn.cursor()
+                clamped = max(STAGGER_FLOOR, min(STAGGER_CEILING, score))
+                cur.execute('''
+                    INSERT INTO StaggerScores (athlete, event, score)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(athlete, event) DO UPDATE SET score = excluded.score
+                ''', (athlete, event, clamped))
+                conn.commit()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    @staticmethod
+    def get_meet_history(meet_name):
+        """Return list of (event, date, athlete, delta) for a meet."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT event, date, athlete, delta
+                FROM StaggerHistory
+                WHERE meet_name = ?
+                ORDER BY event, date, athlete
+            ''', (meet_name,))
+            return cur.fetchall()
+
+    @staticmethod
+    def revert_meet(meet_name):
+        """Subtract stored deltas from StaggerScores and delete StaggerHistory for this meet."""
+        conn = Database.get_connection()
+        try:
+            with conn:
+                cur = conn.cursor()
+                # Acquire write lock early to avoid partial updates
+                cur.execute('BEGIN IMMEDIATE')
+                cur.execute(
+                    'SELECT event, athlete, delta FROM StaggerHistory WHERE meet_name = ?',
+                    (meet_name,)
+                )
+                rows = cur.fetchall()
+                for event, athlete, delta in rows:
+                    cur.execute(
+                        'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
+                        (athlete, event)
+                    )
+                    row = cur.fetchone()
+                    current = float(row[0]) if row else STAGGER_INITIAL
+                    new_score = max(STAGGER_FLOOR, min(STAGGER_CEILING, current - float(delta)))
+                    cur.execute('''
+                        INSERT INTO StaggerScores (athlete, event, score)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(athlete, event) DO UPDATE SET score = excluded.score
+                    ''', (athlete, event, new_score))
+                cur.execute('DELETE FROM StaggerHistory WHERE meet_name = ?', (meet_name,))
+                conn.commit()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    @staticmethod
+    def apply_meet_deltas(meet_name, deltas):
+        """deltas = list of (event, date, athlete, delta). Update StaggerScores and insert StaggerHistory."""
+        conn = Database.get_connection()
+        try:
+            with conn:
+                cur = conn.cursor()
+                # Acquire write lock early to avoid partial updates
+                cur.execute('BEGIN IMMEDIATE')
+                for event, date, athlete, delta in deltas:
+                    cur.execute(
+                        'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
+                        (athlete, event)
+                    )
+                    row = cur.fetchone()
+                    current = float(row[0]) if row else STAGGER_INITIAL
+                    new_score = _stagger_dampen(current, float(delta))
+                    cur.execute('''
+                        INSERT INTO StaggerScores (athlete, event, score)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(athlete, event) DO UPDATE SET score = excluded.score
+                    ''', (athlete, event, new_score))
+                    # Use INSERT OR REPLACE for safety (PK prevents duplicates anyway)
+                    cur.execute('''
+                        INSERT OR REPLACE INTO StaggerHistory (meet_name, event, date, athlete, delta)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (meet_name, event, date, athlete, delta))
+                conn.commit()
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def compute_stagger_deltas_for_meet(meet_name, get_placements_fn):
+    """
+    get_placements_fn(meet_name) -> dict: (event, date) -> list of dicts with 'athlete', 'place'.
+    Returns (all_deltas, display_changes). all_deltas = list of (event, date, athlete, delta).
+    display_changes = list of (event, date, athlete, delta, new_score) for UI.
+    """
+    placements_by_key = get_placements_fn(meet_name)
+    all_deltas = []
+    display_changes = []
+
+    # Use one connection for all rating lookups to avoid excessive connections / lock contention
+    conn = Database.get_connection()
+    try:
+        with conn:
+            cur = conn.cursor()
+            for (event, date), records in placements_by_key.items():
+                if not records:
+                    continue
+                # Ensure each athlete only appears once per event/date
+                seen = set()
+                unique_records = []
+                for r in records:
+                    a = r['athlete']
+                    if a in seen:
+                        continue
+                    seen.add(a)
+                    unique_records.append(r)
+                athletes = [r['athlete'] for r in unique_records]
+
+                ratings = {}
+                for a in athletes:
+                    cur.execute('SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?', (a, event))
+                    row = cur.fetchone()
+                    ratings[a] = float(row[0]) if row else STAGGER_INITIAL
+
+                deltas = {a: 0.0 for a in athletes}
+                n = len(unique_records)
+                for i in range(n):
+                    for j in range(n):
+                        if i == j:
+                            continue
+                        place_i = unique_records[i]['place']
+                        place_j = unique_records[j]['place']
+                        ai = unique_records[i]['athlete']
+                        aj = unique_records[j]['athlete']
+                        ri = ratings[ai]
+                        rj = ratings[aj]
+                        if place_i < place_j:
+                            e_i = _stagger_expected(ri, rj)
+                            e_j = 1.0 - e_i
+                            deltas[ai] += STAGGER_K * (1.0 - e_i)
+                            deltas[aj] += STAGGER_K * (0.0 - e_j)
+                        elif place_i > place_j:
+                            e_j = _stagger_expected(rj, ri)
+                            e_i = 1.0 - e_j
+                            deltas[aj] += STAGGER_K * (1.0 - e_j)
+                            deltas[ai] += STAGGER_K * (0.0 - e_i)
+                        else:
+                            e_i = _stagger_expected(ri, rj)
+                            e_j = 1.0 - e_i
+                            deltas[ai] += STAGGER_K * (0.5 - e_i)
+                            deltas[aj] += STAGGER_K * (0.5 - e_j)
+
+                for athlete, delta in deltas.items():
+                    all_deltas.append((event, date, athlete, delta))
+                    new_score = _stagger_dampen(ratings[athlete], delta)
+                    display_changes.append((event, date, athlete, delta, new_score))
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    return all_deltas, display_changes

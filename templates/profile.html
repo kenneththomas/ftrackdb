@@ -691,6 +691,26 @@
         box-shadow: 0 2px 4px rgba(20, 194, 179, 0.3);
     }
 
+    .stagger-badge {
+        display: inline-block;
+        background: #9c27b0;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-size: 0.75em;
+        margin-left: 6px;
+        font-weight: 600;
+        vertical-align: middle;
+    }
+
+    .stagger-badge.up {
+        background: #4CAF50;
+    }
+
+    .stagger-badge.down {
+        background: #f44336;
+    }
+
     .pr-indicator {
         display: inline-block;
         background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -782,6 +802,9 @@
                         {% if rankings.get(event) %}
                             <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
                         {% endif %}
+                        {% if stagger_scores.get(event) %}
+                            <span class="stagger-badge" title="Stagger placement score (starts at 1000)">{{ stagger_scores[event]|int }}</span>
+                        {% endif %}
                     </span>
                 </div>
                 {% endfor %}
@@ -798,6 +821,9 @@
                         {{ result }}
                         {% if rankings.get(event) %}
                             <span class="ranking-badge">#{{ rankings[event] }}</span>
+                        {% endif %}
+                        {% if stagger_scores.get(event) %}
+                            <span class="stagger-badge" title="Stagger placement score">{{ stagger_scores[event]|int }}</span>
                         {% endif %}
                     </span>
                 </div>
@@ -834,11 +860,17 @@
                             <div class="result-badges">
                                 {% set event = result[2] %}
                                 {% set is_pr = result[6] if result|length > 6 else False %}
+                                {% set stagger_delta = result[7] if result|length > 7 else None %}
                                 {% if is_pr %}
                                     <span class="pr-indicator" title="Personal Record">PR</span>
                                 {% endif %}
                                 {% if rankings.get(event) and is_pr %}
                                     <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
+                                {% endif %}
+                                {% if stagger_delta is not none %}
+                                    <span class="stagger-badge {% if stagger_delta >= 0 %}up{% else %}down{% endif %}" title="Stagger change from this meet">
+                                        {% if stagger_delta >= 0 %}+{% endif %}{{ "%.1f"|format(stagger_delta) }}
+                                    </span>
                                 {% endif %}
                             </div>
                         </td>
