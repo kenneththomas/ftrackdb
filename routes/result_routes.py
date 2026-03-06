@@ -14,8 +14,9 @@ def fill_result_blanks():
         rows = data.get('rows') or []
         if not isinstance(rows, list):
             return jsonify({'success': False, 'error': 'rows must be an array'}), 400
+        suggestions = (data.get('suggestions') or '').strip() or None
         from utils.openrouter import fill_result_blanks as llm_fill
-        filled = llm_fill(rows)
+        filled = llm_fill(rows, suggestions=suggestions)
         return jsonify({'success': True, 'rows': filled})
     except ValueError as e:
         err = str(e)

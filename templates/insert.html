@@ -255,6 +255,8 @@
                 <div class="ai-fill-helper">
                     <h4>AI Fill Blanks (OpenRouter)</h4>
                     <p class="helper-desc">Send current rows to an LLM with full context to fill in empty fields with plausible track &amp; field test data. Set <code>OPENROUTER_API_KEY</code> in the environment.</p>
+                    <label for="ai-fill-suggestions" class="ai-suggestions-label">Suggestions for the AI (optional):</label>
+                    <textarea id="ai-fill-suggestions" name="ai-fill-suggestions" class="ai-suggestions-input" rows="2" placeholder="e.g. pick d3 teams in NY, or fill results with 400m times between 47.00 and 49.26"></textarea>
                     <button type="button" id="ai-fill-blanks-btn" class="generate-name-btn ai-fill-btn">Fill blanks with AI</button>
                     <div id="ai-fill-status" class="generated-name-display" aria-live="polite"></div>
                     <label class="pr-fill-option">
@@ -430,6 +432,25 @@
             font-size: 0.9em;
             color: #555;
         }
+        .ai-suggestions-label {
+            display: block;
+            font-weight: 500;
+            margin: 0.75rem 0 0.35rem 0;
+        }
+        .ai-suggestions-input {
+            width: 100%;
+            min-height: 2.5em;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.95em;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .ai-suggestions-input::placeholder {
+            color: #888;
+        }
 
         /* Mobile-friendly helper section */
         @media (max-width: 768px) {
@@ -473,6 +494,10 @@
                 min-height: 44px;
                 font-size: 16px;
                 padding: 0.6rem 0.75rem;
+            }
+            .ai-suggestions-input {
+                min-height: 3.5em;
+                font-size: 16px;
             }
         }
     </style>
@@ -637,10 +662,12 @@
                     var csrfInput = document.querySelector('input[name="csrf_token"]');
                     var headers = { 'Content-Type': 'application/json' };
                     if (csrfInput) headers['X-CSRFToken'] = csrfInput.value;
+                    var suggestionsEl = document.getElementById('ai-fill-suggestions');
+                    var suggestions = (suggestionsEl && suggestionsEl.value) ? suggestionsEl.value.trim() : '';
                     return fetch('{{ url_for("result.fill_result_blanks") }}', {
                         method: 'POST',
                         headers: headers,
-                        body: JSON.stringify({ rows: rows })
+                        body: JSON.stringify({ rows: rows, suggestions: suggestions })
                     });
                 })
                 .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })

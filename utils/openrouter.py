@@ -59,13 +59,15 @@ def _parse_json_from_response(content: str) -> list:
     return json.loads(content)
 
 
-def fill_result_blanks(rows: list[dict]) -> list[dict]:
+def fill_result_blanks(rows: list[dict], suggestions: str | None = None) -> list[dict]:
     """
     Given a list of result rows (each with date, athlete, meet, event, result, team),
     send full context to OpenRouter and return the same list with blank fields filled in
     by the LLM with plausible track & field test data.
 
     Empty or whitespace-only string values are treated as blanks to fill.
+    If suggestions is provided, the LLM is instructed to follow those preferences
+    (e.g. "pick d3 teams in NY", "fill results with 400m times between 47.00 and 49.26").
     """
     api_key = _get_api_key()
     if not api_key:
@@ -105,6 +107,8 @@ def fill_result_blanks(rows: list[dict]) -> list[dict]:
         "Current result rows (replace [BLANK] with plausible values; keep non-blank values exactly as-is):\n\n"
         + context
     )
+    if suggestions:
+        user += "\n\nUser preferences (follow these when filling blanks): " + suggestions
 
     response_text = _call_openrouter(
         [
