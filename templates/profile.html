@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ name }} - Athlete Profile</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='athlete.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
     body {
@@ -14,9 +13,9 @@
         color: #e0e0e0;
     }
 
-    .container {
-        background: #23272a;
-        color: #e0e0e0;
+    .container.profile-dark {
+        background: #23272a !important;
+        color: #e0e0e0 !important;
         box-shadow: 0 2px 16px rgba(0,0,0,0.5);
         max-width: 1200px;
         margin: 0 auto;
@@ -156,21 +155,33 @@
     }
 
     .team-logo {
-        width: 32px;
-        height: 32px;
+        width: 48px;
+        height: 48px;
         object-fit: contain;
         vertical-align: middle;
-        margin-right: 8px;
+        margin-right: 12px;
         opacity: 0.95;
     }
 
-    .profile-header {
+    .profile-nav-top {
+        margin-bottom: 20px;
+    }
+
+    .profile-nav-top .home-button {
+        display: inline-block;
+        margin: 0;
+        padding: 8px 16px;
+        font-size: 0.95em;
+    }
+
+    .profile-dark .profile-header {
         display: flex;
         align-items: center;
-        margin-bottom: 20px;
-        background: #2c2f33;
+        margin-bottom: 0;
+        background: #2c2f33 !important;
+        color: #e0e0e0 !important;
         padding: 20px;
-        border-radius: 8px;
+        border-radius: 8px 8px 0 0;
     }
 
     .profile-header-content {
@@ -178,9 +189,82 @@
     }
 
     .profile-header h1 {
-        margin: 0 0 10px 0;
+        margin: 0 0 8px 0;
         text-align: left;
         border-bottom: none;
+        font-size: 2.2em;
+        font-weight: 700;
+    }
+
+    .profile-metadata {
+        color: #888;
+        font-size: 0.95em;
+        margin: 0;
+    }
+
+    .profile-metadata span + span::before {
+        content: " · ";
+        color: #555;
+    }
+
+    .profile-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        background: #2c2f33;
+        padding: 16px 20px;
+        border-radius: 0 0 8px 8px;
+        border-top: 1px solid #444;
+        margin-bottom: 24px;
+    }
+
+    .profile-actions .bio-btn {
+        margin: 0;
+    }
+
+    #calculate-rankings {
+        background: #617394;
+    }
+
+    #calculate-rankings:hover {
+        background: #6d7fa0;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .bio-section-wrapper {
+        margin-bottom: 30px;
+    }
+
+    .bio-section-wrapper .bio-section {
+        margin: 0;
+    }
+
+    .results-section {
+        margin-bottom: 30px;
+    }
+
+    .results-section .results-section-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .results-section label[for="filterInput"] {
+        color: #888;
+        font-size: 0.9em;
+    }
+
+    .pr-section-label {
+        color: #888;
+        font-size: 0.85em;
+        font-weight: normal;
+        margin-top: 4px;
     }
 
     .athlete-team, .athlete-class, .athlete-gender {
@@ -341,6 +425,10 @@
             margin-bottom: 20px;
         }
 
+        .profile-nav-top .home-button {
+            width: auto;
+        }
+
         .profile-header {
             flex-direction: column;
             text-align: center;
@@ -363,23 +451,35 @@
             width: 100%;
         }
 
+        .profile-metadata {
+            text-align: center;
+        }
+
+        .profile-actions {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 15px;
+        }
+
+        .profile-actions .bio-btn,
+        #toggle-gender,
+        #calculate-rankings,
+        #showQuickInsert {
+            width: 100%;
+            margin: 0 !important;
+        }
+
         .athlete-team, .athlete-class, .athlete-gender {
             font-size: 0.95em;
             margin: 8px 0;
         }
 
         /* Button improvements for mobile */
-        .bio-btn {
-            width: 100%;
+        .bio-buttons .bio-btn {
+            width: auto;
             margin: 8px 0;
             padding: 12px 20px;
             font-size: 0.95em;
-        }
-
-        #toggle-gender, #calculate-rankings {
-            width: 100%;
-            margin: 8px 0;
-            margin-left: 0 !important;
         }
 
         .bio-buttons {
@@ -666,12 +766,49 @@
     }
 
     .profile-dark > section,
-    .profile-dark > .personal-records {
+    .profile-dark > .personal-records,
+    .profile-dark .results-section,
+    .profile-dark .relay-results {
         background: #23272a !important;
         color: #e0e0e0 !important;
         border-radius: 10px;
         box-shadow: 0 2px 16px rgba(0,0,0,0.2);
         border: none;
+    }
+
+    .profile-dark .profile-actions {
+        background: #2c2f33 !important;
+        color: #e0e0e0 !important;
+    }
+
+    .profile-dark .pr-item {
+        background: #2c2f33 !important;
+        color: #e0e0e0 !important;
+    }
+
+    .profile-dark .results-table th {
+        background: #617394 !important;
+        color: #fff !important;
+    }
+
+    .profile-dark .results-table td {
+        background: #23272a !important;
+        color: #e0e0e0 !important;
+    }
+
+    .profile-dark .results-table tr:nth-child(even) td {
+        background: #202225 !important;
+    }
+
+    .profile-dark #filterInput {
+        background: #181a1b !important;
+        color: #e0e0e0 !important;
+        border-color: #444 !important;
+    }
+
+    .profile-dark .quick-insert {
+        background: #2c2f33 !important;
+        color: #e0e0e0 !important;
     }
 
     .ranking-arrow.down {
@@ -753,46 +890,49 @@
 <body>
     {% include 'navbar.html' %}
     <div class="container profile-dark">
+        <main>
+        <div class="profile-nav-top">
+            <a href="{{ url_for('home') }}" class="home-button">← Back to Home</a>
+        </div>
         <header class="profile-header">
             {% if team_logo %}
                 <img src="{{ team_logo }}" alt="{{ team }} logo" class="team-logo">
             {% endif %}
             <div class="profile-header-content">
-                <!-- Conditionally add the class "female-text" to display the name in pink -->
                 <h1 class="{% if is_female %}female-text{% endif %}">{{ name }}</h1>
-                <p class="athlete-team">Team: {{ team }}</p>
-                <p class="athlete-class">Class: {{ athlete_class }}</p>
-                
-                <!-- New gender display and toggle control -->
-                <p class="athlete-gender">Gender: <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></p>
-                <button id="toggle-gender" class="bio-btn">
-                    Mark as {% if is_female %}Male{% else %}Female{% endif %}
-                </button>
-                
-                <!-- Calculate rankings button -->
-                <button id="calculate-rankings" class="bio-btn" style="background: #617394; margin-left: 10px;">
-                    Calculate Rankings
-                </button>
-                
-                <!-- Existing bio section -->
-                <div class="bio-section">
-                    <h3>About</h3>
-                    <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
-                        {{ (bio or "No bio available. Click to add one.") | markdown_to_html }}
-                    </div>
-                    <div id="bio-edit" style="display: none;">
-                        <textarea id="bio-textarea" placeholder="Write something about this athlete...">{{ bio or "" }}</textarea>
-                        <div class="bio-buttons">
-                            <button id="save-bio" class="bio-btn save">Save</button>
-                            <button id="cancel-bio" class="bio-btn cancel">Cancel</button>
-                        </div>
+                <p class="profile-metadata">
+                    <span>Team: {{ team }}</span>
+                    <span>Class: {{ athlete_class }}</span>
+                    <span>Gender: <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></span>
+                </p>
+            </div>
+        </header>
+        <div class="profile-actions">
+            <button id="toggle-gender" class="bio-btn" title="Toggle athlete gender">
+                Mark as {% if is_female %}Male{% else %}Female{% endif %}
+            </button>
+            <button id="calculate-rankings" class="bio-btn" title="Recalculate rankings for this athlete">Calculate Rankings</button>
+            <button id="showQuickInsert" class="show-quick-insert-btn bio-btn" title="Add a new result">Add New Result</button>
+        </div>
+        <section class="bio-section-wrapper" aria-labelledby="about-heading">
+            <div class="bio-section">
+                <h3 id="about-heading">About</h3>
+                <div id="bio-display" {% if not bio %}class="empty-bio"{% endif %}>
+                    {{ (bio or "No bio available. Click to add one.") | markdown_to_html }}
+                </div>
+                <div id="bio-edit" class="hidden">
+                    <textarea id="bio-textarea" placeholder="Write something about this athlete...">{{ bio or "" }}</textarea>
+                    <div class="bio-buttons">
+                        <button id="save-bio" class="bio-btn save">Save</button>
+                        <button id="cancel-bio" class="bio-btn cancel">Cancel</button>
                     </div>
                 </div>
             </div>
-        </header>
+        </section>
         
-        <section class="personal-records">
-            <h2>All-Time Personal Records</h2>
+        <section class="personal-records" aria-labelledby="pr-alltime-heading">
+            <h2 id="pr-alltime-heading">Personal Records</h2>
+            <p class="pr-section-label">All-Time</p>
             <div class="pr-grid">
                 {% for event, result in prs.items() %}
                 <div class="pr-item" data-event="{{ event }}">
@@ -811,11 +951,12 @@
             </div>
         </section>
 
-        <section class="personal-records">
-            <h2>Season Bests</h2>
+        <section class="personal-records" aria-labelledby="pr-season-heading">
+            <h2 id="pr-season-heading">Season Bests</h2>
+            <p class="pr-section-label">This Season</p>
             <div class="pr-grid">
                 {% for event, result in annual_prs.items() %}
-                <div class="pr-item">
+                <div class="pr-item" data-event="{{ event }}">
                     <span class="pr-event">{{ event }}</span>
                     <span class="pr-result">
                         {{ result }}
@@ -831,10 +972,13 @@
             </div>
         </section>
         
-        <section class="results">
-            <h2>Results</h2>   
-            <input type="text" id="filterInput" placeholder="Filter results...">             
-            <table class="results-table">
+        <section class="results results-section" aria-labelledby="results-heading">
+            <h2 id="results-heading">Results</h2>
+            <div class="results-section-header">
+                <label for="filterInput" id="filterLabel">Filter results</label>
+                <input type="text" id="filterInput" placeholder="Filter results..." aria-labelledby="filterLabel">             
+            </div>
+            <table class="results-table" aria-describedby="filterLabel">
                 <thead>
                 <tr>
                     <th>Date</th>
@@ -880,8 +1024,8 @@
                         </td>
                         <td>
                             <button class="edit-btn" title="Edit">✎</button>
-                            <button class="save-btn" style="display: none;" title="Save Changes">✓</button>
-                            <button class="cancel-btn" style="display: none;" title="Cancel Edit">✗</button>
+                            <button class="save-btn hidden" title="Save Changes">✓</button>
+                            <button class="cancel-btn hidden" title="Cancel Edit">✗</button>
                             <button class="delete-btn" data-result-id="{{ result[5] }}" title="Delete Result">×</button>
                         </td>
                     </tr>
@@ -930,8 +1074,7 @@
         </section>
         {% endif %}
 
-        <button id="showQuickInsert" class="show-quick-insert-btn">Add New Result</button>
-        <section class="quick-insert" style="display: none;">
+        <section class="quick-insert hidden" id="quickInsertSection">
             <h2>Add New Result</h2>
             <form id="quick-insert-form" class="result-form">
                 <input type="hidden" name="athlete[]" value="{{ name }}">
@@ -958,18 +1101,14 @@
         </section>
         
         <a href="{{ url_for('home') }}" class="home-button">Back to Home</a>
+        </main>
     </div>
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
     <script>
     document.getElementById('showQuickInsert').addEventListener('click', function() {
-        const quickInsertSection = document.querySelector('.quick-insert');
-        if (quickInsertSection.style.display === 'none') {
-            quickInsertSection.style.display = 'block';
-            this.textContent = 'Hide Form';
-        } else {
-            quickInsertSection.style.display = 'none';
-            this.textContent = 'Add New Result';
-        }
+        const quickInsertSection = document.getElementById('quickInsertSection');
+        quickInsertSection.classList.toggle('hidden');
+        this.textContent = quickInsertSection.classList.contains('hidden') ? 'Add New Result' : 'Hide Form';
     });
 
     document.querySelectorAll('.delete-btn').forEach(button => {
@@ -1038,8 +1177,8 @@
 
     // When the bio display is clicked, hide it and show the editable markdown editor
     document.getElementById('bio-display').addEventListener('click', function() {
-        document.getElementById('bio-display').style.display = 'none';
-        document.getElementById('bio-edit').style.display = 'block';
+        document.getElementById('bio-display').classList.add('hidden');
+        document.getElementById('bio-edit').classList.remove('hidden');
         if (!bioEditor) {
             bioEditor = new SimpleMDE({ 
                 element: document.getElementById("bio-textarea"),
@@ -1051,8 +1190,8 @@
 
     // Cancel button: Hide the editor and show the display again
     document.getElementById('cancel-bio').addEventListener('click', function() {
-        document.getElementById('bio-edit').style.display = 'none';
-        document.getElementById('bio-display').style.display = 'block';
+        document.getElementById('bio-edit').classList.add('hidden');
+        document.getElementById('bio-display').classList.remove('hidden');
     });
 
     // Save button: Get the updated bio (in Markdown) from the editor and submit it to the backend
@@ -1089,10 +1228,10 @@
             const resultId = row.dataset.resultId;
             
             // Show save/cancel buttons, hide edit and delete buttons
-            row.querySelector('.edit-btn').style.display = 'none';
-            row.querySelector('.save-btn').style.display = 'inline';
-            row.querySelector('.cancel-btn').style.display = 'inline';
-            row.querySelector('.delete-btn').style.display = 'none';
+            row.querySelector('.edit-btn').classList.add('hidden');
+            row.querySelector('.save-btn').classList.remove('hidden');
+            row.querySelector('.cancel-btn').classList.remove('hidden');
+            row.querySelector('.delete-btn').classList.add('hidden');
             
             // Store original values and make cells editable
             row.querySelectorAll('.editable').forEach(cell => {
@@ -1149,10 +1288,10 @@
             });
             
             // Reset buttons
-            row.querySelector('.edit-btn').style.display = 'inline';
-            row.querySelector('.save-btn').style.display = 'none';
-            row.querySelector('.cancel-btn').style.display = 'none';
-            row.querySelector('.delete-btn').style.display = 'inline';
+            row.querySelector('.edit-btn').classList.remove('hidden');
+            row.querySelector('.save-btn').classList.add('hidden');
+            row.querySelector('.cancel-btn').classList.add('hidden');
+            row.querySelector('.delete-btn').classList.remove('hidden');
         });
     });
 
