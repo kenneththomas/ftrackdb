@@ -367,7 +367,10 @@
             {% for (event, date), results in events.items() %}
                 <div class="event-header">
                     <span class="event-name">{{ event }}</span>
-                    <span class="event-date">{{ date }}</span>
+                    <span class="event-date">
+                        {{ date }}
+                        <button type="button" class="gen-btn" data-event="{{ event }}" data-date="{{ date }}" onclick="openGenerateModal(this)" title="Generate additional results">✨</button>
+                    </span>
                 </div>
                 <table class="results-table">
                     <thead>
@@ -504,8 +507,387 @@
     <!-- Comments Section -->
     {% from 'comments_simple.html' import render_comments %}
     {{ render_comments(comments, comment_form, 'meet', meet_name) }}
-    
+
+    <!-- Message board for this meet -->
+    {% include 'board_section.html' %}
+
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
+
+    <!-- Generate Results Modal -->
+    <div id="gen-modal-overlay" class="gen-modal-overlay" style="display:none;">
+        <div class="gen-modal">
+            <div class="gen-modal-header">
+                <h3 id="gen-modal-title">Generate Results</h3>
+                <button type="button" class="gen-modal-close" onclick="closeGenerateModal()">&times;</button>
+            </div>
+            <div id="gen-modal-config" class="gen-modal-body">
+                <label class="gen-label">How many results to generate?</label>
+                <input type="number" id="gen-count" class="gen-input" value="10" min="1" max="100">
+                <label class="gen-label">Gender for new athletes</label>
+                <select id="gen-gender" class="gen-input">
+                    <option value="">Any gender</option>
+                    <option value="male" selected>Male</option>
+                    <option value="female">Female</option>
+                </select>
+                <label class="gen-label">Steering instructions (optional)</label>
+                <textarea id="gen-suggestions" class="gen-textarea" rows="3" placeholder="e.g. D3 teams in New York, 100m times between 11.50 and 13.00"></textarea>
+                <button type="button" class="gen-btn gen-btn--primary" id="gen-generate-btn" onclick="doGenerate()">Generate</button>
+            </div>
+            <div id="gen-modal-loading" class="gen-modal-body" style="display:none;">
+                <p class="gen-status">Generating…</p>
+            </div>
+            <div id="gen-modal-error" class="gen-modal-body" style="display:none;">
+                <p class="gen-status gen-error" id="gen-error-msg"></p>
+                <button type="button" class="gen-btn" onclick="backToConfig()">Back</button>
+            </div>
+            <div id="gen-modal-preview" class="gen-modal-body" style="display:none;">
+                <div class="gen-preview-actions">
+                    <button type="button" class="gen-btn gen-btn--sm" onclick="toggleAllPreview(true)">Select All</button>
+                    <button type="button" class="gen-btn gen-btn--sm" onclick="toggleAllPreview(false)">Deselect All</button>
+                    <span id="gen-selected-count" class="gen-status"></span>
+                </div>
+                <div class="gen-preview-scroll">
+                    <table class="gen-preview-table" id="gen-preview-table">
+                        <thead><tr><th></th><th>#</th><th>Athlete</th><th>Result</th><th>Team</th></tr></thead>
+                        <tbody id="gen-preview-body"></tbody>
+                    </table>
+                </div>
+                <div class="gen-preview-footer">
+                    <button type="button" class="gen-btn gen-btn--primary" id="gen-insert-btn" onclick="doInsertSelected()">Insert Selected</button>
+                    <button type="button" class="gen-btn" onclick="closeGenerateModal()">Cancel</button>
+                </div>
+            </div>
+            <div id="gen-modal-done" class="gen-modal-body" style="display:none;">
+                <p class="gen-status" id="gen-done-msg"></p>
+                <button type="button" class="gen-btn gen-btn--primary" onclick="closeAndReload()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Generate button in event headers */
+        .gen-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            font-size: 0.75em;
+            font-weight: 600;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #2a2d30;
+            color: #ccc;
+            cursor: pointer;
+            margin-left: 12px;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .gen-btn:hover { background: #3a3f44; color: #fff; border-color: #888; }
+        .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .gen-btn--primary { background: #617394; border-color: #617394; color: #fff; }
+        .gen-btn--primary:hover { background: #7a8fb3; }
+        .gen-btn--sm { padding: 3px 8px; font-size: 0.72em; }
+
+        /* Modal overlay */
+        .gen-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gen-modal {
+            background: #23272a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 640px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
+        }
+        .gen-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #444;
+        }
+        .gen-modal-header h3 { margin: 0; color: #fff; font-size: 1.1em; }
+        .gen-modal-close {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 1.5em;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+        .gen-modal-close:hover { color: #fff; }
+
+        .gen-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .gen-label {
+            display: block;
+            color: #ccc;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+        .gen-label:first-child { margin-top: 0; }
+        .gen-input, .gen-textarea {
+            width: 100%;
+            padding: 8px 10px;
+            background: #181a1b;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        .gen-textarea { resize: vertical; }
+        .gen-input:focus, .gen-textarea:focus { outline: none; border-color: #617394; }
+        .gen-status { color: #ccc; font-size: 0.9em; margin: 0; }
+        .gen-error { color: #f44336; }
+
+        .gen-preview-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .gen-preview-scroll {
+            max-height: 45vh;
+            overflow-y: auto;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+        .gen-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+            color: #e0e0e0;
+        }
+        .gen-preview-table th {
+            background: #2a2d30;
+            color: #aaa;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+            position: sticky;
+            top: 0;
+            font-size: 0.9em;
+        }
+        .gen-preview-table td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #2a2d30;
+        }
+        .gen-preview-table tr:nth-child(even) td { background: #1e2124; }
+        .gen-preview-table input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .gen-preview-footer {
+            display: flex;
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .gen-modal { width: 96%; max-height: 90vh; }
+            .gen-preview-scroll { max-height: 35vh; }
+        }
+    </style>
+
+    <script>
+    (function() {
+        var _genMeetName = {{ meet_name|tojson }};
+        var _genEvent = '';
+        var _genDate = '';
+        var _genResults = [];
+
+        window.openGenerateModal = function(btn) {
+            _genEvent = btn.getAttribute('data-event') || '';
+            _genDate = btn.getAttribute('data-date') || '';
+            _genResults = [];
+            document.getElementById('gen-modal-title').textContent = 'Generate Results: ' + _genEvent;
+            document.getElementById('gen-count').value = '10';
+            document.getElementById('gen-gender').value = 'male';
+            document.getElementById('gen-suggestions').value = '';
+            showPanel('gen-modal-config');
+            document.getElementById('gen-modal-overlay').style.display = 'flex';
+        };
+
+        window.closeGenerateModal = function() {
+            document.getElementById('gen-modal-overlay').style.display = 'none';
+        };
+
+        window.closeAndReload = function() {
+            closeGenerateModal();
+            location.reload();
+        };
+
+        window.backToConfig = function() {
+            showPanel('gen-modal-config');
+        };
+
+        function showPanel(id) {
+            ['gen-modal-config','gen-modal-loading','gen-modal-error','gen-modal-preview','gen-modal-done'].forEach(function(p) {
+                document.getElementById(p).style.display = (p === id) ? 'block' : 'none';
+            });
+        }
+
+        function getCsrfToken() {
+            var el = document.querySelector('input[name="csrf_token"]');
+            return el ? el.value : '';
+        }
+
+        window.doGenerate = function() {
+            var count = parseInt(document.getElementById('gen-count').value, 10);
+            if (isNaN(count) || count < 1) count = 10;
+            if (count > 100) count = 100;
+            var gender = document.getElementById('gen-gender').value;
+            var suggestions = document.getElementById('gen-suggestions').value.trim();
+            showPanel('gen-modal-loading');
+
+            fetch('/meet/' + encodeURIComponent(_genMeetName) + '/api/generate_results', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ event: _genEvent, count: count, gender: gender, suggestions: suggestions })
+            })
+            .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+            .then(function(resp) {
+                if (!resp.ok) {
+                    document.getElementById('gen-error-msg').textContent = resp.data.error || 'Generation failed';
+                    showPanel('gen-modal-error');
+                    return;
+                }
+                _genResults = resp.data.results || [];
+                if (!_genResults.length) {
+                    document.getElementById('gen-error-msg').textContent = 'No results generated.';
+                    showPanel('gen-modal-error');
+                    return;
+                }
+                renderPreview();
+                showPanel('gen-modal-preview');
+            })
+            .catch(function(err) {
+                document.getElementById('gen-error-msg').textContent = err.message || 'Request failed';
+                showPanel('gen-modal-error');
+            });
+        };
+
+        function renderPreview() {
+            var tbody = document.getElementById('gen-preview-body');
+            tbody.innerHTML = '';
+            _genResults.forEach(function(r, i) {
+                var tr = document.createElement('tr');
+                var tdCb = document.createElement('td');
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = true;
+                cb.dataset.index = i;
+                cb.addEventListener('change', updateSelectedCount);
+                tdCb.appendChild(cb);
+                tr.appendChild(tdCb);
+
+                var tdIdx = document.createElement('td');
+                tdIdx.textContent = (i + 1);
+                tr.appendChild(tdIdx);
+
+                var tdAth = document.createElement('td');
+                tdAth.textContent = r.athlete || '';
+                tr.appendChild(tdAth);
+
+                var tdRes = document.createElement('td');
+                tdRes.textContent = r.result || '';
+                tr.appendChild(tdRes);
+
+                var tdTeam = document.createElement('td');
+                tdTeam.textContent = r.team || '';
+                tr.appendChild(tdTeam);
+
+                tbody.appendChild(tr);
+            });
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            var cbs = document.querySelectorAll('#gen-preview-body input[type="checkbox"]');
+            var selected = 0;
+            cbs.forEach(function(cb) { if (cb.checked) selected++; });
+            document.getElementById('gen-selected-count').textContent = selected + ' of ' + cbs.length + ' selected';
+        }
+
+        window.toggleAllPreview = function(state) {
+            var cbs = document.querySelectorAll('#gen-preview-body input[type="checkbox"]');
+            cbs.forEach(function(cb) { cb.checked = state; });
+            updateSelectedCount();
+        };
+
+        window.doInsertSelected = function() {
+            var cbs = document.querySelectorAll('#gen-preview-body input[type="checkbox"]');
+            var selected = [];
+            cbs.forEach(function(cb) {
+                if (cb.checked) {
+                    var idx = parseInt(cb.dataset.index, 10);
+                    var r = _genResults[idx];
+                    if (r) {
+                        selected.push({
+                            athlete: r.athlete,
+                            result: r.result,
+                            team: r.team,
+                            event: _genEvent,
+                            date: _genDate
+                        });
+                    }
+                }
+            });
+            if (!selected.length) return;
+
+            var btn = document.getElementById('gen-insert-btn');
+            btn.disabled = true;
+            btn.textContent = 'Inserting…';
+
+            fetch('/meet/' + encodeURIComponent(_genMeetName) + '/api/insert_generated_results', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ results: selected })
+            })
+            .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+            .then(function(resp) {
+                btn.disabled = false;
+                btn.textContent = 'Insert Selected';
+                if (!resp.ok) {
+                    document.getElementById('gen-error-msg').textContent = resp.data.error || 'Insert failed';
+                    showPanel('gen-modal-error');
+                    return;
+                }
+                document.getElementById('gen-done-msg').textContent = resp.data.inserted + ' result(s) added.';
+                showPanel('gen-modal-done');
+            })
+            .catch(function(err) {
+                btn.disabled = false;
+                btn.textContent = 'Insert Selected';
+                document.getElementById('gen-error-msg').textContent = err.message || 'Request failed';
+                showPanel('gen-modal-error');
+            });
+        };
+    })();
+    </script>
     <script>
         function lookupTeam(athleteInput) {
             const athleteName = athleteInput.value;

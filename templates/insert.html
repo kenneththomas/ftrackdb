@@ -252,287 +252,417 @@
         <div class="helper-section">
             <h3>Helper Tools</h3>
             <div class="helper-tools">
-                <div class="ai-fill-helper">
-                    <h4>AI Fill Blanks (OpenRouter)</h4>
-                    <p class="helper-desc">Send current rows to an LLM with full context to fill in empty fields with plausible track &amp; field test data. Set <code>OPENROUTER_API_KEY</code> in the environment.</p>
-                    <label for="ai-fill-suggestions" class="ai-suggestions-label">Suggestions for the AI (optional):</label>
-                    <textarea id="ai-fill-suggestions" name="ai-fill-suggestions" class="ai-suggestions-input" rows="2" placeholder="e.g. pick d3 teams in NY, or fill results with 400m times between 47.00 and 49.26"></textarea>
-                    <button type="button" id="ai-fill-blanks-btn" class="generate-name-btn ai-fill-btn">Fill blanks with AI</button>
-                    <div id="ai-fill-status" class="generated-name-display" aria-live="polite"></div>
-                    <label class="pr-fill-option">
-                        <input type="checkbox" id="use-pr-for-existing-athletes">
-                        Fill result from PR when athlete exists in database
-                    </label>
-                    <p class="helper-desc form-option-desc">When enabled, leaving the athlete or event field will auto-fill the result with that athlete's PR for that event (if they have one in the database).</p>
-                </div>
-                <div class="random-name-helper">
-                    <h4>Random Name (test data)</h4>
-                    <p class="helper-desc">Generate a random name via <a href="https://namey.muffinlabs.com/" target="_blank" rel="noopener">Namey</a> and fill the next empty athlete field.</p>
-                    <label class="random-name-choices-option">
-                        <input type="checkbox" id="enable-name-choices">
-                        Enable choices (pick one of several names instead of auto-fill)
-                    </label>
-                    <div class="random-name-controls">
-                        <select id="namey-type">
-                            <option value="">Any gender</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                        </select>
-                        <select id="namey-frequency">
-                            <option value="common">Common</option>
-                            <option value="rare">Rare</option>
-                            <option value="all">All</option>
-                        </select>
-                        <button type="button" id="generate-name-btn" class="generate-name-btn">Generate name</button>
+
+                <!-- Row 1: AI Fill + Random Name -->
+                <div class="helper-row helper-row--top">
+                    <div class="helper-card ai-fill-helper">
+                        <div class="helper-card-header">
+                            <span class="helper-card-icon">&#x2728;</span>
+                            <h4>AI Fill Blanks</h4>
+                        </div>
+                        <p class="helper-desc">Send current rows to an LLM to fill empty fields with plausible track &amp; field data. Requires <code>OPENROUTER_API_KEY</code>.</p>
+                        <label for="ai-fill-suggestions" class="ai-suggestions-label">Suggestions for the AI (optional):</label>
+                        <textarea id="ai-fill-suggestions" name="ai-fill-suggestions" class="ai-suggestions-input" rows="2" placeholder="e.g. pick D3 teams in NY, fill 400m times between 47.00–49.26"></textarea>
+                        <div class="helper-actions">
+                            <button type="button" id="ai-fill-blanks-btn" class="helper-btn helper-btn--ai">Fill blanks with AI</button>
+                        </div>
+                        <div id="ai-fill-status" class="helper-status" aria-live="polite"></div>
+                        <label class="helper-checkbox-label">
+                            <input type="checkbox" id="use-pr-for-existing-athletes">
+                            <span>Auto-fill result from athlete's DB PR</span>
+                        </label>
+                        <p class="helper-desc helper-desc--sm">When enabled, blurring the athlete or event field auto-fills the result with their PR for that event.</p>
                     </div>
-                    <div id="generated-name-display" class="generated-name-display" aria-live="polite"></div>
-                    <div id="name-choices-list" class="name-choices-list" style="display: none;"></div>
+
+                    <div class="helper-card random-name-helper">
+                        <div class="helper-card-header">
+                            <span class="helper-card-icon">&#x1F3B2;</span>
+                            <h4>Random Name</h4>
+                        </div>
+                        <p class="helper-desc">Generate a name via <a href="https://namey.muffinlabs.com/" target="_blank" rel="noopener">Namey</a> and fill the next empty athlete field.</p>
+                        <label class="helper-checkbox-label">
+                            <input type="checkbox" id="enable-name-choices">
+                            <span>Show multiple choices</span>
+                        </label>
+                        <div class="random-name-controls">
+                            <select id="namey-type" class="helper-select">
+                                <option value="">Any gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                            <select id="namey-frequency" class="helper-select">
+                                <option value="common">Common</option>
+                                <option value="rare">Rare</option>
+                                <option value="all">All</option>
+                            </select>
+                            <button type="button" id="generate-name-btn" class="helper-btn helper-btn--purple">Generate name</button>
+                        </div>
+                        <div id="generated-name-display" class="helper-status" aria-live="polite"></div>
+                        <div id="name-choices-list" class="name-choices-list" style="display: none;"></div>
+                    </div>
                 </div>
-                <div class="team-lookup">
-                    <h4>Team Members Lookup</h4>
-                    <input type="text" id="team-lookup" placeholder="Enter team name" onkeyup="lookupTeamMembers(this.value)">
-                    <div id="team-members-list" class="results-list"></div>
+
+                <!-- Row 2: Team Lookup + Athlete PRs — full height -->
+                <div class="helper-row helper-row--lookup">
+                    <div class="helper-card team-lookup">
+                        <div class="helper-card-header">
+                            <span class="helper-card-icon">&#x1F465;</span>
+                            <h4>Team Members</h4>
+                        </div>
+                        <input type="text" id="team-lookup" class="helper-search-input" placeholder="Search team name…" onkeyup="lookupTeamMembers(this.value)">
+                        <div id="team-members-list" class="results-list results-list--tall"></div>
+                    </div>
+
+                    <div class="helper-card athlete-prs">
+                        <div class="helper-card-header">
+                            <span class="helper-card-icon">&#x1F3C6;</span>
+                            <h4>Athlete PRs</h4>
+                        </div>
+                        <input type="text" id="athlete-lookup" class="helper-search-input" placeholder="Search athlete name…" onkeyup="lookupAthletePRs(this.value)">
+                        <div id="athlete-prs-list" class="results-list results-list--tall"></div>
+                    </div>
                 </div>
-                <div class="athlete-prs">
-                    <h4>Athlete PRs Lookup</h4>
-                    <input type="text" id="athlete-lookup" placeholder="Enter athlete name" onkeyup="lookupAthletePRs(this.value)">
-                    <div id="athlete-prs-list" class="results-list"></div>
-                </div>
+
             </div>
         </div>
     </div>
 
     <style>
+        /* ── Helper Section ─────────────────────────────── */
         .helper-section {
-            margin-top: 2rem;
-            padding: 1rem;
-            background: #f5f5f5;
-            border-radius: 8px;
+            margin-top: 2.5rem;
+            padding: 1.5rem;
+            background: #f0f2f5;
+            border-radius: 10px;
+            border: 1px solid #dde1e7;
+        }
+        .helper-section h3 {
+            margin: 0 0 1.25rem 0;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7280;
         }
         .helper-tools {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* ── Rows ───────────────────────────────────────── */
+        .helper-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 2rem;
+            gap: 1rem;
         }
-        .team-lookup, .athlete-prs, .random-name-helper, .ai-fill-helper {
-            padding: 1rem;
-            background: white;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        .helper-row--top {
+            grid-template-columns: 1fr 1fr;
         }
-        .ai-fill-btn {
-            background: #1976d2;
+        .helper-row--lookup {
+            grid-template-columns: 1fr 1fr;
         }
-        .ai-fill-btn:hover {
-            background: #1565c0;
+
+        /* ── Cards ──────────────────────────────────────── */
+        .helper-card {
+            background: #fff;
+            border: 1px solid #e2e6ea;
+            border-radius: 8px;
+            padding: 1.1rem 1.25rem 1.25rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
         }
-        .ai-fill-btn:disabled {
-            background: #b0b0b0;
-            cursor: wait;
-        }
-        .helper-desc code {
-            font-size: 0.85em;
-            background: #eee;
-            padding: 0.1em 0.35em;
-            border-radius: 3px;
-        }
-        .helper-desc {
-            font-size: 0.9em;
-            color: #555;
-            margin: 0.5rem 0;
-        }
-        .random-name-choices-option {
-            display: inline-flex;
+        .helper-card-header {
+            display: flex;
             align-items: center;
             gap: 0.5rem;
-            cursor: pointer;
-            font-size: 0.9em;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.1rem;
         }
-        .random-name-choices-option input[type="checkbox"] {
+        .helper-card-header h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .helper-card-icon {
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        /* ── Descriptions ───────────────────────────────── */
+        .helper-desc {
+            font-size: 0.85em;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.5;
+        }
+        .helper-desc--sm {
+            font-size: 0.8em;
+            margin-top: -0.2rem;
+        }
+        .helper-desc code {
+            font-size: 0.9em;
+            background: #f3f4f6;
+            padding: 0.1em 0.35em;
+            border-radius: 3px;
+            color: #374151;
+        }
+
+        /* ── Buttons ────────────────────────────────────── */
+        .helper-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
             margin: 0;
         }
-        .name-choices-list {
-            margin-top: 0.5rem;
+        .helper-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+        .helper-btn:active {
+            transform: translateY(0);
+        }
+        .helper-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .helper-btn--ai {
+            background: #1976d2;
+        }
+        .helper-btn--ai:hover {
+            background: #1565c0;
+        }
+        .helper-btn--purple {
+            background: #7c3aed;
+        }
+        .helper-btn--purple:hover {
+            background: #6d28d9;
+        }
+        .helper-actions {
             display: flex;
+            gap: 0.5rem;
             flex-wrap: wrap;
-            gap: 0.35rem;
         }
-        .name-choice-btn {
-            background: #e0e0e0;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 0.35rem 0.6rem;
-            border-radius: 4px;
+
+        /* ── Status display ─────────────────────────────── */
+        .helper-status {
+            min-height: 1.4em;
+            font-size: 0.88em;
+            color: #374151;
+        }
+
+        /* ── Checkbox labels ────────────────────────────── */
+        .helper-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 0.88em;
+            color: #374151;
+            font-weight: 500;
         }
-        .name-choice-btn:hover {
-            background: #9c27b0;
-            color: white;
-            border-color: #7b1fa2;
+        .helper-checkbox-label input[type="checkbox"] {
+            margin: 0;
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
         }
+
+        /* ── AI suggestions textarea ────────────────────── */
+        .ai-suggestions-label {
+            display: block;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 0.2rem;
+        }
+        .ai-suggestions-input {
+            width: 100%;
+            padding: 0.5rem 0.65rem;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 0.88em;
+            resize: vertical;
+            box-sizing: border-box;
+            background: #fafafa;
+            color: #1f2937;
+            line-height: 1.45;
+        }
+        .ai-suggestions-input::placeholder { color: #9ca3af; }
+        .ai-suggestions-input:focus {
+            outline: none;
+            border-color: #1976d2;
+            background: #fff;
+        }
+
+        /* ── Random name controls ───────────────────────── */
         .random-name-controls {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
             align-items: center;
         }
-        .random-name-controls select {
-            padding: 0.35rem 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .generate-name-btn {
-            background: #9c27b0;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
+        .helper-select {
+            padding: 0.45rem 0.6rem;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 0.88em;
+            background: #fafafa;
+            color: #1f2937;
             cursor: pointer;
-            font-size: 0.95em;
         }
-        .generate-name-btn:hover {
-            background: #7b1fa2;
+        .helper-select:focus {
+            outline: none;
+            border-color: #7c3aed;
         }
-        .generate-name-btn:disabled {
-            background: #b0b0b0;
-            cursor: not-allowed;
+
+        /* ── Name choices pills ─────────────────────────── */
+        .name-choices-list {
+            margin-top: 0.25rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
         }
-        .generated-name-display {
-            margin-top: 0.75rem;
-            min-height: 1.5em;
-            font-size: 0.95em;
+        .name-choice-btn {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.15s, color 0.15s;
+            margin: 0;
+            box-shadow: none;
         }
+        .name-choice-btn:hover {
+            background: #7c3aed;
+            color: #fff;
+            border-color: #6d28d9;
+            transform: none;
+        }
+
+        /* ── Lookup cards search input ──────────────────── */
+        .helper-search-input {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 0.9em;
+            box-sizing: border-box;
+            background: #fafafa;
+            color: #1f2937;
+            transition: border-color 0.15s;
+        }
+        .helper-search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            background: #fff;
+        }
+
+        /* ── Results list ───────────────────────────────── */
         .results-list {
-            margin-top: 1rem;
-            max-height: 200px;
+            margin-top: 0.25rem;
             overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .results-list--tall {
+            flex: 1 1 0;
+            min-height: 0;
+            max-height: 320px;
+        }
+        /* make lookup cards fill height so the list gets space */
+        .helper-row--lookup .helper-card {
+            min-height: 300px;
         }
         .results-list div {
-            padding: 0.5rem;
-            border-bottom: 1px solid #eee;
+            padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        .results-list div:last-child {
-            border-bottom: none;
-        }
-        .pr-lookup-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
-            transition: background-color 0.2s;
-        }
-        .pr-lookup-btn:hover {
-            background: #45a049;
-        }
-        .pr-lookup-btn:active {
-            background: #3d8b40;
-        }
-        .add-result-btn {
-            background: #2196F3;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8em;
-            transition: background-color 0.2s;
-            margin-left: 8px;
-        }
-        .add-result-btn:hover {
-            background: #0b7dda;
-        }
-        .add-result-btn:active {
-            background: #0a6bc2;
-        }
-        .pr-fill-option {
-            display: inline-flex;
-            align-items: center;
+            font-size: 0.88em;
             gap: 0.5rem;
-            cursor: pointer;
-            font-weight: 500;
-            margin-top: 1rem;
         }
-        .pr-fill-option input[type="checkbox"] {
-            margin: 0;
-        }
-        .form-option-desc {
-            margin: 0.35rem 0 0 0;
-            font-size: 0.9em;
-            color: #555;
-        }
-        .ai-suggestions-label {
-            display: block;
-            font-weight: 500;
-            margin: 0.75rem 0 0.35rem 0;
-        }
-        .ai-suggestions-input {
-            width: 100%;
-            min-height: 2.5em;
-            padding: 0.5rem 0.6rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 0.95em;
-            resize: vertical;
-            box-sizing: border-box;
-        }
-        .ai-suggestions-input::placeholder {
-            color: #888;
-        }
+        .results-list div:last-child { border-bottom: none; }
+        .results-list div:hover { background: #f3f4f6; }
 
-        /* Mobile-friendly helper section */
-        @media (max-width: 768px) {
-            .helper-section {
-                margin-top: 1.5rem;
-                padding: 0.75rem;
-            }
-            .helper-tools {
+        /* ── List action buttons ────────────────────────── */
+        .pr-lookup-btn {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            white-space: nowrap;
+            transition: background 0.15s;
+            margin: 0;
+            box-shadow: none;
+        }
+        .pr-lookup-btn:hover { background: #15803d; transform: none; }
+        .add-result-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            white-space: nowrap;
+            transition: background 0.15s;
+            margin: 0;
+            box-shadow: none;
+        }
+        .add-result-btn:hover { background: #1d4ed8; transform: none; }
+
+        /* ── Mobile ─────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .helper-row--top,
+            .helper-row--lookup {
                 grid-template-columns: 1fr;
-                gap: 1.25rem;
             }
-            .team-lookup, .athlete-prs, .random-name-helper, .ai-fill-helper {
-                padding: 0.85rem;
+            .helper-row--lookup .helper-card {
+                min-height: 0;
+            }
+            .results-list--tall {
+                max-height: 240px;
+            }
+        }
+        @media (max-width: 600px) {
+            .helper-section {
+                padding: 1rem;
             }
             .random-name-controls {
                 flex-direction: column;
                 align-items: stretch;
             }
-            .random-name-controls select {
+            .helper-select,
+            .helper-btn {
+                width: 100%;
                 min-height: 44px;
                 font-size: 16px;
-            }
-            .generate-name-btn {
-                min-height: 44px;
-                padding: 0.65rem 1rem;
-            }
-            .results-list {
-                max-height: 180px;
-            }
-            .results-list div {
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                padding: 0.6rem;
-                min-height: 44px;
-            }
-            .pr-lookup-btn, .add-result-btn {
-                min-height: 40px;
-                padding: 8px 12px;
-            }
-            #team-lookup, #athlete-lookup {
-                min-height: 44px;
-                font-size: 16px;
-                padding: 0.6rem 0.75rem;
             }
             .ai-suggestions-input {
-                min-height: 3.5em;
+                font-size: 16px;
+            }
+            .helper-search-input {
+                min-height: 44px;
                 font-size: 16px;
             }
         }

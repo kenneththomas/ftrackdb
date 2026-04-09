@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify
-from models import Result, Database, Athlete, Team, AthleteRanking, StaggerScore
-from forms import SearchForm
+import os
+from flask import Blueprint, render_template, request, jsonify, url_for
+from models import Result, Database, Athlete, Team, AthleteRanking, StaggerScore, BoardPost
+from forms import SearchForm, BoardPostForm, BoardGenerateForm
 from utils.relay_utils import calculate_relay_results
 
 # Create blueprint
@@ -152,6 +153,9 @@ def athlete_profile(name):
         delta = stagger_deltas.get((result[1], event, date_key))
         results_with_pr_flag.append((*result, is_pr, delta))
     
+    board_posts = BoardPost.get_threaded_posts(page_type='athlete', page_id=name)
+    openrouter_available = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
+    
     return render_template('profile.html', 
                          name=name, 
                          results=results_with_pr_flag, 
@@ -165,7 +169,14 @@ def athlete_profile(name):
                          team_logo=team_logo,
                          team_logos=team_logos,
                          rankings=rankings,
-                         stagger_scores=stagger_scores)
+                         stagger_scores=stagger_scores,
+                         board_posts=board_posts,
+                         post_form=BoardPostForm(),
+                         generate_form=BoardGenerateForm(),
+                         openrouter_available=openrouter_available,
+                         post_action_url=url_for('board.athlete_board_post', name=name),
+                         generate_action_url=url_for('board.athlete_board_generate', name=name),
+                         section_title='Discussion')
 
 @athlete_bp.route('/athlete/<name>/calculate_rankings', methods=['POST'])
 def calculate_athlete_rankings(name):

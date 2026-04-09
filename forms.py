@@ -27,4 +27,17 @@ class CommentForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=50)])
     content = TextAreaField('Comment', validators=[DataRequired(), Length(min=1, max=1000)])
     parent_id = HiddenField('Parent ID')
-    submit = SubmitField('Post Comment') 
+    submit = SubmitField('Post Comment')
+
+
+class BoardPostForm(FlaskForm):
+    author_display_name = StringField('Author', validators=[DataRequired(), Length(min=1, max=50)])
+    content = TextAreaField('Content', validators=[DataRequired(), Length(min=1, max=2000)])
+    parent_id = HiddenField('Parent ID')
+    submit = SubmitField('Post')
+
+
+class BoardGenerateForm(FlaskForm):
+    prompt = TextAreaField('Prompt', validators=[DataRequired(), Length(min=1, max=500)])
+    parent_id = HiddenField('Parent ID')
+    submit = SubmitField('Generate post with AI')

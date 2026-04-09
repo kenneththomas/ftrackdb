@@ -15,6 +15,7 @@ from routes.meet_routes import meet_bp
 from routes.leaderboard_routes import leaderboard_bp
 from routes.comment_routes import comment_bp
 from routes.football_routes import football_bp
+from routes.board_routes import board_bp
 
 app = Flask(__name__)
 app.config['DATABASE'] = 'track.db'
@@ -29,6 +30,7 @@ app.register_blueprint(meet_bp)
 app.register_blueprint(leaderboard_bp)
 app.register_blueprint(comment_bp)
 app.register_blueprint(football_bp)
+app.register_blueprint(board_bp)
 
 # Exempt API endpoint from CSRF (JSON POST; no form)
 if 'result.fill_result_blanks' in app.view_functions:

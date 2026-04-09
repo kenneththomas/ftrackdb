@@ -83,6 +83,29 @@ class Database:
                 )
             ''')
             
+            # Create BoardPosts table (Reddit-style message board)
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS BoardPosts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    author_display_name TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    parent_id INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_ai_generated INTEGER DEFAULT 0,
+                    ai_prompt TEXT,
+                    page_type TEXT DEFAULT 'global',
+                    page_id TEXT DEFAULT '',
+                    FOREIGN KEY (parent_id) REFERENCES BoardPosts(id) ON DELETE CASCADE
+                )
+            ''')
+            # Add columns to existing BoardPosts table if they were created before page_type/page_id existed
+            cur.execute("PRAGMA table_info(BoardPosts)")
+            columns = [row[1] for row in cur.fetchall()]
+            if 'page_type' not in columns:
+                cur.execute("ALTER TABLE BoardPosts ADD COLUMN page_type TEXT DEFAULT 'global'")
+            if 'page_id' not in columns:
+                cur.execute("ALTER TABLE BoardPosts ADD COLUMN page_id TEXT DEFAULT ''")
+            
             # Stagger (ELO-style placement ranking): one score per athlete per event
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS StaggerScores (
@@ -660,6 +683,65 @@ class Comment:
                 WHERE page_type = ? AND page_id = ?
             ''', (page_type, page_id))
             return cur.fetchone()[0]
+
+
+class BoardPost:
+    @staticmethod
+    def get_threaded_posts(page_type='global', page_id=''):
+        """Get board posts for the given scope, organized in a threaded structure (roots have parent_id NULL)."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, author_display_name, content, parent_id, created_at, is_ai_generated, ai_prompt
+                FROM BoardPosts
+                WHERE page_type = ? AND page_id = ?
+                ORDER BY created_at ASC
+            ''', (page_type, page_id or ''))
+            rows = cur.fetchall()
+            post_dict = {}
+            root_posts = []
+            for row in rows:
+                post_dict[row[0]] = {
+                    'id': row[0],
+                    'author_display_name': row[1],
+                    'content': row[2],
+                    'parent_id': row[3],
+                    'created_at': row[4],
+                    'is_ai_generated': bool(row[5]) if row[5] is not None else False,
+                    'ai_prompt': row[6],
+                    'replies': []
+                }
+            for post_id, post in post_dict.items():
+                if post['parent_id'] is None:
+                    root_posts.append(post)
+                else:
+                    parent = post_dict.get(post['parent_id'])
+                    if parent:
+                        parent['replies'].append(post)
+            return root_posts
+
+    @staticmethod
+    def add_post(author_display_name, content, parent_id=None, is_ai_generated=False, ai_prompt=None, page_type='global', page_id=''):
+        """Add a new board post. Returns the new post id."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO BoardPosts (author_display_name, content, parent_id, is_ai_generated, ai_prompt, page_type, page_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (author_display_name, content, parent_id, 1 if is_ai_generated else 0, ai_prompt, page_type, page_id or ''))
+            conn.commit()
+            return cur.lastrowid
+
+    @staticmethod
+    def delete_post(post_id):
+        """Delete a board post and all its replies (CASCADE in DB)."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('DELETE FROM BoardPosts WHERE id = ?', (post_id,))
+            conn.commit()
 
 
 # --- Stagger (ELO-style placement ranking) ---

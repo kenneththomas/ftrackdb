@@ -59,6 +59,53 @@ def _parse_json_from_response(content: str) -> list:
     return json.loads(content)
 
 
+def _parse_json_object_from_response(content: str) -> dict:
+    """Extract a JSON object from LLM response, allowing markdown code blocks."""
+    content = content.strip()
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", content)
+    if m:
+        content = m.group(1).strip()
+    obj = json.loads(content)
+    if isinstance(obj, list) and len(obj) > 0:
+        obj = obj[0]
+    if not isinstance(obj, dict):
+        raise ValueError("LLM response is not a JSON object")
+    return obj
+
+
+def generate_board_post(prompt: str) -> dict:
+    """
+    Ask the LLM to generate a single Reddit-style board post from the user's prompt.
+    Returns a dict with keys: author_display_name, content.
+    """
+    api_key = _get_api_key()
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY is not set")
+    system = (
+        "You are a forum poster. The user will give you a topic or instruction. "
+        "Write a short Reddit-style post (a few sentences). Also invent a plausible username for the author. "
+        "Return a single JSON object with exactly these keys: author_display_name, content. "
+        "author_display_name should be a short username (e.g. run_fan_42). content is the post body. "
+        "Output only valid JSON, no other text."
+    )
+    response_text = _call_openrouter(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        model=_get_model(),
+        api_key=api_key,
+    )
+    obj = _parse_json_object_from_response(response_text)
+    author = obj.get("author_display_name") or obj.get("author") or "Anonymous"
+    content = obj.get("content") or ""
+    if not isinstance(author, str):
+        author = str(author)
+    if not isinstance(content, str):
+        content = str(content)
+    return {"author_display_name": author.strip(), "content": content.strip()}
+
+
 def fill_result_blanks(rows: list[dict], suggestions: str | None = None) -> list[dict]:
     """
     Given a list of result rows (each with date, athlete, meet, event, result, team),
@@ -141,3 +188,103 @@ def fill_result_blanks(rows: list[dict], suggestions: str | None = None) -> list
     while len(out) < len(normalized):
         out.append(dict(normalized[len(out)]))
     return out[: len(normalized)]
+
+
+def generate_bulk_results(seed_results: list[dict], count: int, event: str, suggestions: str | None = None, gender: str | None = None) -> list[dict]:
+    """
+    Generate bulk synthetic track & field results for a given event, seeded from
+    existing meet results.  Returns a list of dicts with keys: athlete, result, team.
+
+    seed_results: list of {'athlete', 'result', 'team', ...} already in the meet.
+    count:        number of new results to generate.
+    event:        e.g. "100m".
+    suggestions:  optional free-text steering from the user.
+    gender:       optional gender preference: 'male', 'female', or None for any.
+    """
+    import urllib.request as _urlreq
+    api_key = _get_api_key()
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY is not set")
+
+    # --- build context from seeds ---
+    seed_lines = []
+    seed_teams = set()
+    for sr in seed_results:
+        ath = (sr.get('athlete') or '').strip()
+        res = (sr.get('result') or '').strip()
+        team = (sr.get('team') or '').strip()
+        if ath and res:
+            seed_lines.append(f"{ath} ({team}): {res}")
+            if team:
+                seed_teams.add(team)
+
+    context_block = "\n".join(seed_lines) if seed_lines else "(no seed results)"
+    teams_hint = ", ".join(sorted(seed_teams)) if seed_teams else "N/A"
+
+    # --- try to fetch name candidates from Namey (best-effort) ---
+    name_candidates = []
+    try:
+        params = f"count={count + 5}&with_surname=true&frequency=all"
+        if gender in ('male', 'female'):
+            params += f"&type={gender}"
+        req = _urlreq.Request(f"https://namey.muffinlabs.com/name.json?{params}", method="GET")
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            name_candidates = json.load(resp) or []
+    except Exception:
+        pass
+
+    name_pool = ", ".join(name_candidates) if name_candidates else "generate plausible names yourself"
+    
+    gender_rule = ""
+    if gender in ('male', 'female'):
+        gender_rule = f"- All new athletes should be {gender}.\n"
+
+    system = (
+        f"You are a track & field results generator. The user wants {count} plausible NEW results "
+        f"for the {event} event at a meet that already has the results listed below.\n\n"
+        f"Existing results (seed):\n{context_block}\n\n"
+        f"Teams already in this meet: {teams_hint}\n\n"
+        f"Name pool (available for new athletes): {name_pool}\n\n"
+        "Rules:\n"
+        f"{gender_rule}"
+        f"- Generate exactly {count} new results.\n"
+        "- New athletes should be either (a) names from the name pool above or (b) brand new plausible names you invent.\n"
+        "- A mix of athletes: roughly half from teams already at the meet, half from new plausible team names.\n"
+        "- Results should be SLOWER / WEAKER than the existing seed results above (these are the bottom half of the field).\n"
+        "- For timed events (100m, 200m, 400m, 800m, 1500m, Mile, 5000m, etc.) — slower times.\n"
+        "- For field events (Long Jump, High Jump, Shot Put, etc.) — shorter / lower marks.\n"
+        "- Use realistic result formats: times like 11.42, 1:58.3, 4:42.15; or field marks like 18'7.5\", 5'10\".\n"
+        "- Do NOT duplicate any existing athlete name from the seed results.\n"
+        "- Return a JSON array of objects with exactly these keys: athlete, result, team. No other keys.\n"
+        "Output only valid JSON, no other text."
+    )
+    user_msg = (
+        f"Generate {count} additional results for {event}. "
+        f"The seed athletes already have times shown above. "
+        f"Make the new athletes competitive but definitely ranked below the existing ones."
+    )
+    if suggestions:
+        user_msg += f"\n\nUser steering instructions (follow these): {suggestions}"
+
+    response_text = _call_openrouter(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_msg},
+        ],
+        model=_get_model(),
+        api_key=api_key,
+    )
+    raw = _parse_json_from_response(response_text)
+    if not isinstance(raw, list):
+        raise ValueError("LLM response is not a JSON array")
+
+    out = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        out.append({
+            'athlete': str(row.get('athlete', '')).strip(),
+            'result': str(row.get('result', '')).strip(),
+            'team': str(row.get('team', '')).strip(),
+        })
+    return out[:count]

@@ -1,0 +1,150 @@
+{% macro render_board_post(post, post_form, generate_form, openrouter_available, post_action_url, generate_action_url) %}
+<div class="board-post {{ 'board-reply' if post.parent_id else '' }}">
+    <div class="board-post-header">
+        <span>
+            <span class="board-post-author">{{ post.author_display_name }}</span>
+            {% if post.is_ai_generated %}<span class="board-ai-badge">AI</span>{% endif %}
+        </span>
+        <span class="board-post-date">{{ post.created_at }}</span>
+    </div>
+    {% if post.is_ai_generated and post.ai_prompt %}
+    <div class="board-ai-prompt">Prompt: {{ post.ai_prompt }}</div>
+    {% endif %}
+    <div class="board-post-content">{{ post.content }}</div>
+    <div class="board-actions">
+        <button type="button" class="board-reply-btn" onclick="showBoardReplyForm({{ post.id }})">Reply</button>
+    </div>
+    <div id="board-reply-form-{{ post.id }}" class="board-reply-form hidden">
+        <form method="post" action="{{ post_action_url }}" style="margin-bottom: 12px;">
+            {{ post_form.csrf_token }}
+            <input type="hidden" name="parent_id" value="{{ post.id }}">
+            <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 10px; margin-bottom: 10px;">
+                <div>
+                    <label style="display: block; margin-bottom: 4px; color: #e0e0e0;">Author</label>
+                    <input type="text" name="author_display_name" class="form-control" placeholder="Your name" required maxlength="50" style="width: 100%;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 4px; color: #e0e0e0;">Reply</label>
+                    <textarea name="content" class="form-control" placeholder="Write a reply..." rows="2" required maxlength="2000" style="width: 100%;"></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn" style="background: #4CAF50;">Post Reply</button>
+        </form>
+        {% if openrouter_available %}
+        <form method="post" action="{{ generate_action_url }}">
+            {{ generate_form.csrf_token }}
+            <input type="hidden" name="parent_id" value="{{ post.id }}">
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 4px; color: #e0e0e0;">AI reply (prompt)</label>
+                <input type="text" name="prompt" class="form-control" placeholder="What should the AI reply?" required maxlength="500" style="width: 100%;">
+            </div>
+            <button type="submit" class="btn" style="background: #617394;">Generate reply with AI</button>
+        </form>
+        {% endif %}
+    </div>
+    {% if post.replies %}
+    <div class="board-replies" style="margin-left: 24px; margin-top: 10px;">
+        {% for reply in post.replies %}
+            {{ render_board_post(reply, post_form, generate_form, openrouter_available, post_action_url, generate_action_url) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<div class="board-section" style="margin-top: 40px; background: #2a2d30; padding: 30px; border-radius: 5px;">
+    {% if section_title %}
+    <h3 style="margin-top: 0; margin-bottom: 20px; color: #fff;">{{ section_title }}</h3>
+    {% endif %}
+    <div class="board-form-section" style="margin-bottom: 24px;">
+        <h4 style="margin-bottom: 12px; color: #e0e0e0;">New post</h4>
+        <form method="post" action="{{ post_action_url }}" class="board-post-form">
+            {{ post_form.csrf_token }}
+            <input type="hidden" name="parent_id" value="">
+            <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Author</label>
+                    {{ post_form.author_display_name(class="form-control", placeholder="Your name", style="width: 100%;") }}
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Content</label>
+                    {{ post_form.content(class="form-control", placeholder="Write a post...", rows=3, style="width: 100%; resize: vertical;") }}
+                </div>
+            </div>
+            {{ post_form.submit(class="btn", style="background: #4CAF50;") }}
+        </form>
+    </div>
+    {% if openrouter_available %}
+    <div class="board-ai-section" style="margin-bottom: 24px;">
+        <h4 style="margin-bottom: 12px; color: #e0e0e0;">Generate post with AI</h4>
+        <form method="post" action="{{ generate_action_url }}" class="board-generate-form">
+            {{ generate_form.csrf_token }}
+            <input type="hidden" name="parent_id" value="">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">What should the post be about?</label>
+                {{ generate_form.prompt(class="form-control", placeholder="e.g. A hot take about this meet", rows=2, style="width: 100%; resize: vertical;") }}
+            </div>
+            {{ generate_form.submit(class="btn", style="background: #617394;") }}
+        </form>
+    </div>
+    {% else %}
+    <p style="color: #888; font-size: 0.9em; margin-bottom: 20px;">Set <code>OPENROUTER_API_KEY</code> in the environment to enable AI-generated posts.</p>
+    {% endif %}
+    <div class="board-posts-list">
+        <h4 style="margin-bottom: 16px; color: #fff;">Posts</h4>
+        {% if board_posts %}
+            {% for post in board_posts %}
+                {{ render_board_post(post, post_form, generate_form, openrouter_available, post_action_url, generate_action_url) }}
+            {% endfor %}
+        {% else %}
+            <p style="color: #888; font-style: italic;">No posts yet. Be the first to post!</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.board-section .board-post {
+    background: #23272a;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-left: 3px solid #617394;
+}
+.board-section .board-reply {
+    margin-left: 24px;
+    margin-top: 10px;
+    border-left: 2px solid #444;
+}
+.board-section .board-post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.board-section .board-post-author { font-weight: bold; color: #fff; font-size: 1.1em; }
+.board-section .board-post-date { color: #888; font-size: 0.9em; }
+.board-section .board-post-content { color: #e0e0e0; line-height: 1.5; margin-bottom: 10px; white-space: pre-wrap; }
+.board-section .board-ai-badge { font-size: 0.75em; background: #617394; color: #fff; padding: 2px 6px; border-radius: 3px; margin-left: 8px; }
+.board-section .board-ai-prompt { color: #888; font-size: 0.85em; margin-top: 6px; }
+.board-section .board-actions { display: flex; gap: 10px; align-items: center; }
+.board-section .board-reply-btn { background: none; border: none; color: #617394; cursor: pointer; font-size: 0.9em; text-decoration: underline; padding: 0; }
+.board-section .board-reply-btn:hover { color: #fff; }
+.board-section .board-reply-form { background: #1e2124; border-radius: 5px; padding: 15px; margin-top: 10px; margin-left: 20px; border-left: 2px solid #444; }
+.board-section .board-reply-form.hidden { display: none; }
+.board-section .board-post-form .form-control,
+.board-section .board-generate-form .form-control {
+    background: #181a1b; border: 1px solid #444; color: #e0e0e0;
+    padding: 8px 12px; border-radius: 3px;
+}
+.board-section .board-post-form textarea.form-control,
+.board-section .board-generate-form textarea.form-control { min-height: 60px; }
+</style>
+
+<script>
+function showBoardReplyForm(postId) {
+    var el = document.getElementById('board-reply-form-' + postId);
+    if (el) el.classList.toggle('hidden');
+}
+</script>

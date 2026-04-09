@@ -1,8 +1,9 @@
+import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, StaggerScore, compute_stagger_deltas_for_meet
+from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, BoardPost, StaggerScore, compute_stagger_deltas_for_meet
 from utils.relay_utils import parse_time
 from utils.field_utils import parse_field_result, all_results_are_field_format
-from forms import MeetResultForm, CommentForm
+from forms import MeetResultForm, CommentForm, BoardPostForm, BoardGenerateForm
 from datetime import datetime, timedelta
 
 # Create blueprint
@@ -120,6 +121,8 @@ def is_pr_and_debut(athlete, event, result):
 def meet_results(meet_name):
     form = MeetResultForm()
     comment_form = CommentForm()
+    board_post_form = BoardPostForm()
+    board_generate_form = BoardGenerateForm()
     
     if form.validate_on_submit():
         # Insert the result for this meet
@@ -358,6 +361,9 @@ def meet_results(meet_name):
     meet_is_staggered = len(stagger_history) > 0
     stagger_changes = [{'event': row[0], 'date': row[1], 'athlete': row[2], 'delta': row[3]} for row in stagger_history]
 
+    board_posts = BoardPost.get_threaded_posts(page_type='meet', page_id=meet_name)
+    openrouter_available = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
+
     return render_template('meet.html', 
                          meet_name=meet_name, 
                          events=events, 
@@ -368,7 +374,14 @@ def meet_results(meet_name):
                          comments=comments,
                          comment_count=comment_count,
                          meet_is_staggered=meet_is_staggered,
-                         stagger_changes=stagger_changes)
+                         stagger_changes=stagger_changes,
+                         board_posts=board_posts,
+                         post_form=board_post_form,
+                         generate_form=board_generate_form,
+                         openrouter_available=openrouter_available,
+                         post_action_url=url_for('board.meet_board_post', meet_name=meet_name),
+                         generate_action_url=url_for('board.meet_board_generate', meet_name=meet_name),
+                         section_title='Discussion')
 
 @meet_bp.route('/meet/<old_name>/rename', methods=['POST'])
 def rename_meet(old_name):
@@ -619,6 +632,88 @@ def stagger_rank_meet(meet_name):
         return redirect(url_for('meet.meet_results', meet_name=meet_name))
     StaggerScore.apply_meet_deltas(meet_name, all_deltas)
     flash('Meet Stagger-ranked. Score changes applied.', 'success')
-    return redirect(url_for('meet.meet_results', meet_name=meet_name)) 
+    return redirect(url_for('meet.meet_results', meet_name=meet_name))
+
+
+@meet_bp.route('/meet/<meet_name>/api/generate_results', methods=['POST'])
+def api_generate_results(meet_name):
+    """Generate synthetic results for an event at this meet. Returns JSON preview."""
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        event = (payload.get('event') or '').strip()
+        if not event:
+            return jsonify({'ok': False, 'error': 'event is required'}), 400
+        count = int(payload.get('count', 10))
+        count = max(1, min(100, count))
+        suggestions = (payload.get('suggestions') or '').strip() or None
+        gender = (payload.get('gender') or '').strip() or None
+
+        # Pull existing results for this event at this meet to use as seed
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT Athlete, Result, Team
+                FROM Results
+                WHERE Meet_Name = ? AND Event = ?
+                ORDER BY 
+                    CASE 
+                        WHEN Event IN ('60m','100m','200m','400m','800m','1500m','Mile','3000m','5000m','10000m','60mH','100mH','110mH','400mH')
+                        THEN CAST(REPLACE(Result, ':','') AS DECIMAL)
+                        ELSE Result
+                    END ASC
+            ''', (meet_name, event))
+            seed_results = [
+                {'athlete': row['Athlete'], 'result': row['Result'], 'team': row['Team']}
+                for row in cur.fetchall()
+            ]
+
+        from utils.openrouter import generate_bulk_results
+        generated = generate_bulk_results(seed_results, count, event, suggestions=suggestions, gender=gender)
+        return jsonify({'ok': True, 'results': generated})
+    except ValueError as e:
+        err = str(e)
+        if 'OPENROUTER_API_KEY' in err:
+            return jsonify({'ok': False, 'error': err}), 503
+        return jsonify({'ok': False, 'error': err}), 400
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@meet_bp.route('/meet/<meet_name>/api/insert_generated_results', methods=['POST'])
+def api_insert_generated_results(meet_name):
+    """Insert selected generated results into the database."""
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        results = payload.get('results') or []
+        if not isinstance(results, list) or not results:
+            return jsonify({'ok': False, 'error': 'no results provided'}), 400
+
+        inserted = 0
+        for r in results:
+            athlete = (r.get('athlete') or '').strip()
+            result_val = (r.get('result') or '').strip()
+            team = (r.get('team') or '').strip()
+            event = (r.get('event') or '').strip()
+            date = (r.get('date') or '').strip()
+            if not all([athlete, result_val, team, event, date]):
+                continue
+            Result.insert_result({
+                'date': date,
+                'athlete': athlete,
+                'meet': meet_name,
+                'event': event,
+                'result': result_val,
+                'team': team,
+            })
+            inserted += 1
+
+        if inserted > 0:
+            TeamScore.update_meet_scores(meet_name, {})
+            AthleteRanking.update_meet_rankings(meet_name, [])
+
+        return jsonify({'ok': True, 'inserted': inserted})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500 
 
  

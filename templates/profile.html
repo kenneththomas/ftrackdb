@@ -707,6 +707,16 @@
             padding: 15px;
         }
 
+        .quick-insert-overlay {
+            padding: 12px;
+        }
+
+        .quick-insert-floating {
+            max-width: 100%;
+            max-height: calc(100vh - 24px);
+            padding: 20px;
+        }
+
         /* Ranking badges on mobile */
         .ranking-badge {
             font-size: 0.7em;
@@ -809,6 +819,81 @@
     .profile-dark .quick-insert {
         background: #2c2f33 !important;
         color: #e0e0e0 !important;
+    }
+
+    /* Floating "Add New Result" overlay and box */
+    .quick-insert-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .quick-insert-overlay.hidden {
+        display: none !important;
+    }
+
+    .quick-insert-floating {
+        position: relative;
+        max-width: 420px;
+        width: 100%;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        background: #2c2f33;
+        color: #e0e0e0;
+        border-radius: 10px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+        padding: 24px;
+    }
+
+    .quick-insert-floating .quick-insert {
+        margin: 0;
+        padding: 0;
+        background: transparent !important;
+    }
+
+    .quick-insert-drag-handle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: move;
+        user-select: none;
+        margin: -24px -24px 16px -24px;
+        padding: 12px 24px;
+        border-radius: 10px 10px 0 0;
+        background: rgba(0, 0, 0, 0.15);
+    }
+
+    .quick-insert-drag-handle h2 {
+        margin: 0;
+        border: none;
+        padding: 0;
+        font-size: 1.4em;
+    }
+
+    .quick-insert-close {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #e0e0e0;
+        font-size: 1.5em;
+        line-height: 1;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .quick-insert-close:hover {
+        background: #40444b;
+        color: #fff;
     }
 
     .ranking-arrow.down {
@@ -1074,42 +1159,128 @@
         </section>
         {% endif %}
 
-        <section class="quick-insert hidden" id="quickInsertSection">
-            <h2>Add New Result</h2>
-            <form id="quick-insert-form" class="result-form">
-                <input type="hidden" name="athlete[]" value="{{ name }}">
-                <input type="hidden" name="team[]" value="{{ team }}">
-                
-                <div class="form-group">
-                    <label for="date">Date:</label>
-                    <input type="date" name="date[]" required>
+        <div class="quick-insert-overlay hidden" id="quickInsertSection" aria-hidden="true">
+            <div class="quick-insert-floating" role="dialog" aria-modal="true" aria-labelledby="quick-insert-heading">
+                <div class="quick-insert-drag-handle">
+                    <h2 id="quick-insert-heading">Add New Result</h2>
+                    <button type="button" class="quick-insert-close" aria-label="Close" title="Close">×</button>
                 </div>
-                <div class="form-group">
-                    <label for="meet">Meet:</label>
-                    <input type="text" name="meet[]" required>
-                </div>
-                <div class="form-group">
-                    <label for="event">Event:</label>
-                    <input type="text" name="event[]" required>
-                </div>
-                <div class="form-group">
-                    <label for="result">Result:</label>
-                    <input type="text" name="result[]" required>
-                </div>
-                <button type="submit" class="submit-btn">Add Result</button>
-            </form>
-        </section>
+                <section class="quick-insert">
+                    <form id="quick-insert-form" class="result-form">
+                        <input type="hidden" name="athlete[]" value="{{ name }}">
+                        <input type="hidden" name="team[]" value="{{ team }}">
+                        
+                        <div class="form-group">
+                            <label for="date">Date:</label>
+                            <input type="date" name="date[]" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="meet">Meet:</label>
+                            <input type="text" name="meet[]" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="event">Event:</label>
+                            <input type="text" name="event[]" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="result">Result:</label>
+                            <input type="text" name="result[]" required>
+                        </div>
+                        <button type="submit" class="submit-btn">Add Result</button>
+                    </form>
+                </section>
+            </div>
+        </div>
         
         <a href="{{ url_for('home') }}" class="home-button">Back to Home</a>
         </main>
+
+        <!-- Message board for this athlete -->
+        {% include 'board_section.html' %}
     </div>
     <script src="{{ url_for('static', filename='filter.js') }}"></script>
     <script>
-    document.getElementById('showQuickInsert').addEventListener('click', function() {
-        const quickInsertSection = document.getElementById('quickInsertSection');
-        quickInsertSection.classList.toggle('hidden');
-        this.textContent = quickInsertSection.classList.contains('hidden') ? 'Add New Result' : 'Hide Form';
-    });
+    (function() {
+        const overlay = document.getElementById('quickInsertSection');
+        const showBtn = document.getElementById('showQuickInsert');
+        const floating = overlay.querySelector('.quick-insert-floating');
+        const dragHandle = overlay.querySelector('.quick-insert-drag-handle');
+
+        function closeQuickInsert() {
+            overlay.classList.add('hidden');
+            overlay.setAttribute('aria-hidden', 'true');
+            if (showBtn) showBtn.textContent = 'Add New Result';
+        }
+
+        function openQuickInsert() {
+            overlay.classList.remove('hidden');
+            overlay.setAttribute('aria-hidden', 'false');
+            if (showBtn) showBtn.textContent = 'Hide Form';
+        }
+
+        function toggleQuickInsert() {
+            const isHidden = overlay.classList.contains('hidden');
+            if (isHidden) openQuickInsert(); else closeQuickInsert();
+        }
+
+        function getClientXY(e) {
+            if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function initDrag(startE) {
+            if (startE.target.closest('.quick-insert-close')) return;
+            startE.preventDefault();
+            var rect = floating.getBoundingClientRect();
+            floating.style.position = 'fixed';
+            floating.style.left = rect.left + 'px';
+            floating.style.top = rect.top + 'px';
+            floating.style.width = rect.width + 'px';
+            floating.style.margin = '0';
+            var startXY = getClientXY(startE);
+            var startLeft = rect.left;
+            var startTop = rect.top;
+
+            function move(e) {
+                var xy = getClientXY(e);
+                var dx = xy.x - startXY.x;
+                var dy = xy.y - startXY.y;
+                floating.style.left = (startLeft + dx) + 'px';
+                floating.style.top = (startTop + dy) + 'px';
+                startLeft += dx;
+                startTop += dy;
+                startXY = xy;
+                e.preventDefault();
+            }
+
+            function stop() {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', stop);
+                document.removeEventListener('touchmove', move, { passive: false });
+                document.removeEventListener('touchend', stop);
+            }
+
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', stop);
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', stop);
+        }
+
+        dragHandle.addEventListener('mousedown', initDrag);
+        dragHandle.addEventListener('touchstart', initDrag, { passive: false });
+
+        showBtn.addEventListener('click', toggleQuickInsert);
+
+        overlay.querySelector('.quick-insert-close').addEventListener('click', closeQuickInsert);
+
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay || (floating && !floating.contains(e.target))) closeQuickInsert();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) closeQuickInsert();
+        });
+    })();
 
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.addEventListener('click', function() {

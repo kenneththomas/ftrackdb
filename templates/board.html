@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Board</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body style="background: #181a1b; color: #e0e0e0;">
+    {% include 'navbar.html' %}
+    <div class="board-container" style="max-width: 800px; margin: 0 auto; padding: 30px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;">
+        <h1 style="margin-bottom: 24px; color: #fff; border-bottom: 2px solid #444; padding-bottom: 10px;">Message Board</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% include 'board_section.html' with context %}
+    </div>
+</body>
+</html>
