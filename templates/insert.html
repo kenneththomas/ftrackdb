@@ -309,7 +309,7 @@
                             <span class="helper-card-icon">&#x1F465;</span>
                             <h4>Team Members</h4>
                         </div>
-                        <input type="text" id="team-lookup" class="helper-search-input" placeholder="Search team name…" onkeyup="lookupTeamMembers(this.value)">
+                         <input type="text" id="team-lookup" class="helper-search-input" placeholder="Search team name…">
                         <div id="team-members-list" class="results-list results-list--tall"></div>
                     </div>
 
@@ -318,7 +318,7 @@
                             <span class="helper-card-icon">&#x1F3C6;</span>
                             <h4>Athlete PRs</h4>
                         </div>
-                        <input type="text" id="athlete-lookup" class="helper-search-input" placeholder="Search athlete name…" onkeyup="lookupAthletePRs(this.value)">
+                         <input type="text" id="athlete-lookup" class="helper-search-input" placeholder="Search athlete name…">
                         <div id="athlete-prs-list" class="results-list results-list--tall"></div>
                     </div>
                 </div>
@@ -668,9 +668,18 @@
         }
     </style>
 
-    <script>
+     <script>
+        // Debounce function to limit API calls
+        function debounce(func, delay) {
+            let timeoutId;
+            return function(...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
         function lookupTeamMembers(teamName) {
-            if (!teamName) {
+            if (!teamName || teamName.trim().length < 2) {
                 document.getElementById('team-members-list').innerHTML = '';
                 return;
             }
@@ -684,7 +693,7 @@
                         return `<div>
                             <span>${member}</span>
                             <div>
-                                <button class="pr-lookup-btn" onclick="lookupAthletePRs('${escapedMember}')">View PRs</button>
+                                 <button class="pr-lookup-btn" onclick="lookupAthletePRs('${escapedMember}', true)">View PRs</button>
                                 <button class="add-result-btn" onclick="addResultForAthlete('${escapedMember}')">Add Result</button>
                             </div>
                         </div>`;
@@ -692,13 +701,21 @@
                 });
         }
 
-        function lookupAthletePRs(athleteName) {
-            if (!athleteName) {
+        // Debounced version for team lookup
+        const debouncedLookupTeamMembers = debounce(lookupTeamMembers, 300);
+
+        function lookupAthletePRs(athleteName, skipSetInput = false) {
+            if (!athleteName || athleteName.trim().length < 2) {
                 document.getElementById('athlete-prs-list').innerHTML = '';
                 return;
             }
-            // Set the athlete name in the input field
-            document.getElementById('athlete-lookup').value = athleteName;
+            // Set the athlete name in the input field (unless skipping)
+            if (!skipSetInput) {
+                const athleteInput = document.getElementById('athlete-lookup');
+                if (athleteInput && athleteInput.value !== athleteName) {
+                    athleteInput.value = athleteName;
+                }
+            }
             
             fetch(`/get_athlete_prs/${encodeURIComponent(athleteName)}`)
                 .then(response => response.json())
@@ -709,6 +726,11 @@
                     ).join('');
                 });
         }
+
+        // Debounced version for athlete PR lookup (skips setting input value)
+        const debouncedLookupAthletePRs = debounce((athleteName) => {
+            lookupAthletePRs(athleteName, true);
+        }, 300);
 
         function fillNameIntoNextEmptyAthlete(name) {
             const athleteInputs = document.querySelectorAll('input[name="athlete[]"]');
@@ -894,6 +916,21 @@
             document.getElementById('generate-name-btn').addEventListener('click', generateRandomName);
             var aiBtn = document.getElementById('ai-fill-blanks-btn');
             if (aiBtn) aiBtn.addEventListener('click', fillBlanksWithAI);
+
+            // Add debounced event listeners for team and athlete lookup
+            var teamLookupInput = document.getElementById('team-lookup');
+            if (teamLookupInput) {
+                teamLookupInput.addEventListener('input', function(e) {
+                    debouncedLookupTeamMembers(e.target.value);
+                });
+            }
+
+            var athleteLookupInput = document.getElementById('athlete-lookup');
+            if (athleteLookupInput) {
+                athleteLookupInput.addEventListener('input', function(e) {
+                    debouncedLookupAthletePRs(e.target.value);
+                });
+            }
         });
     </script>
 </body>

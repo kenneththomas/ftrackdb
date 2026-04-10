@@ -250,9 +250,9 @@ def generate_bulk_results(seed_results: list[dict], count: int, event: str, sugg
         f"- Generate exactly {count} new results.\n"
         "- New athletes should be either (a) names from the name pool above or (b) brand new plausible names you invent.\n"
         "- A mix of athletes: roughly half from teams already at the meet, half from new plausible team names.\n"
-        "- Results should be SLOWER / WEAKER than the existing seed results above (these are the bottom half of the field).\n"
-        "- For timed events (100m, 200m, 400m, 800m, 1500m, Mile, 5000m, etc.) — slower times.\n"
-        "- For field events (Long Jump, High Jump, Shot Put, etc.) — shorter / lower marks.\n"
+        "- Results should be SIMILAR to the existing seed results above (competitive with the same event field).\n"
+        "- For timed events (100m, 200m, 400m, 800m, 1500m, Mile, 5000m, etc.) — similar times.\n"
+        "- For field events (Long Jump, High Jump, Shot Put, etc.) — similar marks.\n"
         "- Use realistic result formats: times like 11.42, 1:58.3, 4:42.15; or field marks like 18'7.5\", 5'10\".\n"
         "- Do NOT duplicate any existing athlete name from the seed results.\n"
         "- Return a JSON array of objects with exactly these keys: athlete, result, team. No other keys.\n"
@@ -261,7 +261,7 @@ def generate_bulk_results(seed_results: list[dict], count: int, event: str, sugg
     user_msg = (
         f"Generate {count} additional results for {event}. "
         f"The seed athletes already have times shown above. "
-        f"Make the new athletes competitive but definitely ranked below the existing ones."
+        f"Make the new athletes competitive and comparable to the existing field."
     )
     if suggestions:
         user_msg += f"\n\nUser steering instructions (follow these): {suggestions}"

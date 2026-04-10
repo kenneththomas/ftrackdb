@@ -700,6 +700,21 @@
             display: flex;
             gap: 10px;
         }
+        .gen-edit-input {
+            width: 100%;
+            padding: 4px 6px;
+            background: #181a1b;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        .gen-edit-input:focus {
+            outline: none;
+            border-color: #617394;
+        }
         @media (max-width: 600px) {
             .gen-modal { width: 96%; max-height: 90vh; }
             .gen-preview-scroll { max-height: 35vh; }
@@ -806,15 +821,42 @@
                 tr.appendChild(tdIdx);
 
                 var tdAth = document.createElement('td');
-                tdAth.textContent = r.athlete || '';
+                var inpAth = document.createElement('input');
+                inpAth.type = 'text';
+                inpAth.value = r.athlete || '';
+                inpAth.className = 'gen-edit-input';
+                inpAth.dataset.index = i;
+                inpAth.dataset.field = 'athlete';
+                inpAth.addEventListener('change', function() {
+                    _genResults[parseInt(this.dataset.index, 10)].athlete = this.value;
+                });
+                tdAth.appendChild(inpAth);
                 tr.appendChild(tdAth);
 
                 var tdRes = document.createElement('td');
-                tdRes.textContent = r.result || '';
+                var inpRes = document.createElement('input');
+                inpRes.type = 'text';
+                inpRes.value = r.result || '';
+                inpRes.className = 'gen-edit-input';
+                inpRes.dataset.index = i;
+                inpRes.dataset.field = 'result';
+                inpRes.addEventListener('change', function() {
+                    _genResults[parseInt(this.dataset.index, 10)].result = this.value;
+                });
+                tdRes.appendChild(inpRes);
                 tr.appendChild(tdRes);
 
                 var tdTeam = document.createElement('td');
-                tdTeam.textContent = r.team || '';
+                var inpTeam = document.createElement('input');
+                inpTeam.type = 'text';
+                inpTeam.value = r.team || '';
+                inpTeam.className = 'gen-edit-input';
+                inpTeam.dataset.index = i;
+                inpTeam.dataset.field = 'team';
+                inpTeam.addEventListener('change', function() {
+                    _genResults[parseInt(this.dataset.index, 10)].team = this.value;
+                });
+                tdTeam.appendChild(inpTeam);
                 tr.appendChild(tdTeam);
 
                 tbody.appendChild(tr);
