@@ -167,15 +167,69 @@ class Result:
                 ORDER BY Date DESC
             ''', (name,))
             results = cur.fetchall()
+            # Convert sqlite3.Row objects to tuples if needed
+            results = [tuple(r) for r in results] if results else []
             
-            # Get PRs
+            # Get PRs with dates - simple approach with numeric parsing in Python
             cur.execute("""
-                SELECT Event, MIN(Result) 
-                FROM Results 
-                WHERE Athlete = ? 
-                GROUP BY Event
-                """, (name,))
-            prs = dict(cur.fetchall() or [])  # Return empty dict if no PRs
+                SELECT Event, Result, Date
+                FROM Results
+                WHERE Athlete = ?
+                ORDER BY Event, Date
+            """, (name,))
+            rows = cur.fetchall()
+            
+            # Find best result for each event using proper numeric comparison
+            prs = {}
+            event_rows = {}
+            for row in rows:
+                event = row[0]
+                if event not in event_rows:
+                    event_rows[event] = []
+                event_rows[event].append((row[1], row[2]))  # (result, date)
+            
+            for event, event_results in event_rows.items():
+                if not event_results:
+                    continue
+                best_result = None
+                best_numeric = None
+                best_date = None
+                for result_str, date in event_results:
+                    if not result_str:
+                        continue
+                    try:
+                        # Parse the result to a numeric value
+                        if ':' in result_str:
+                            # Time format like 1:52.34
+                            parts = result_str.split(':')
+                            numeric = float(parts[0]) * 60 + float(parts[1])
+                        else:
+                            numeric = float(result_str)
+                        
+                        if best_numeric is None:
+                            best_result = result_str
+                            best_numeric = numeric
+                            best_date = date
+                        elif 'm' in event or 'H' in event or 'XC' in event or 'Road' in event or 'Marathon' in event:
+                            # For running events, lower is better
+                            if numeric < best_numeric:
+                                best_result = result_str
+                                best_numeric = numeric
+                                best_date = date
+                        else:
+                            # For field events, higher is better
+                            if numeric > best_numeric:
+                                best_result = result_str
+                                best_numeric = numeric
+                                best_date = date
+                    except (ValueError, IndexError):
+                        # If parsing fails, use the first result as fallback
+                        if best_result is None:
+                            best_result = result_str
+                            best_date = date
+                
+                if best_result is not None:
+                    prs[event] = {'result': best_result, 'date': best_date}
             
             # Get athlete info
             cur.execute('''

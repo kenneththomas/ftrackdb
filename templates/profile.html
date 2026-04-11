@@ -331,6 +331,42 @@
         font-weight: bold;
     }
 
+    .pr-date {
+        color: #888;
+        font-size: 0.8em;
+    }
+
+    .best-since-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+
+    .best-since-input {
+        padding: 8px 12px;
+        background: #23272a;
+        color: #e0e0e0;
+        border: 1px solid #444;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 0.95em;
+    }
+
+    .best-since-input:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+
+    #best-since-results .pr-item {
+        background: #2c2f33;
+    }
+
+    .profile-dark #best-since-results .pr-item {
+        background: #2c2f33 !important;
+    }
+
     #filterInput {
         width: 100%;
         padding: 12px;
@@ -1017,13 +1053,12 @@
         
         <section class="personal-records" aria-labelledby="pr-alltime-heading">
             <h2 id="pr-alltime-heading">Personal Records</h2>
-            <p class="pr-section-label">All-Time</p>
             <div class="pr-grid">
-                {% for event, result in prs.items() %}
+                {% for event, result_data in prs.items() %}
                 <div class="pr-item" data-event="{{ event }}">
                     <span class="pr-event">{{ event }}</span>
                     <span class="pr-result">
-                        {{ result }}
+                        {{ result_data.result }}
                         {% if rankings.get(event) %}
                             <span class="ranking-badge" title="Ranked #{{ rankings[event] }} in this event">#{{ rankings[event] }}</span>
                         {% endif %}
@@ -1031,29 +1066,22 @@
                             <span class="stagger-badge" title="Stagger placement score (starts at 1000)">{{ stagger_scores[event]|int }}</span>
                         {% endif %}
                     </span>
+                    {% if result_data.date %}
+                    <span class="pr-date">{{ result_data.date }}</span>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
         </section>
 
-        <section class="personal-records" aria-labelledby="pr-season-heading">
-            <h2 id="pr-season-heading">Season Bests</h2>
-            <p class="pr-section-label">This Season</p>
-            <div class="pr-grid">
-                {% for event, result in annual_prs.items() %}
-                <div class="pr-item" data-event="{{ event }}">
-                    <span class="pr-event">{{ event }}</span>
-                    <span class="pr-result">
-                        {{ result }}
-                        {% if rankings.get(event) %}
-                            <span class="ranking-badge">#{{ rankings[event] }}</span>
-                        {% endif %}
-                        {% if stagger_scores.get(event) %}
-                            <span class="stagger-badge" title="Stagger placement score">{{ stagger_scores[event]|int }}</span>
-                        {% endif %}
-                    </span>
-                </div>
-                {% endfor %}
+        <section class="personal-records" aria-labelledby="pr-since-heading">
+            <h2 id="pr-since-heading">Best Since</h2>
+            <div class="best-since-controls">
+                <input type="date" id="best-since-date" class="best-since-input">
+                <button id="apply-best-since" class="bio-btn">Apply</button>
+                <button id="clear-best-since" class="bio-btn">Clear</button>
+            </div>
+            <div id="best-since-results" class="pr-grid" style="display: none;">
             </div>
         </section>
         
@@ -1621,6 +1649,67 @@
             this.disabled = false;
         });
     });
+
+    (function() {
+        var applyBtn = document.getElementById('apply-best-since');
+        var clearBtn = document.getElementById('clear-best-since');
+        var dateInput = document.getElementById('best-since-date');
+        var resultsContainer = document.getElementById('best-since-results');
+
+        if (!applyBtn || !clearBtn || !dateInput || !resultsContainer) return;
+
+        function fetchBestsSince(sinceDate) {
+            var athleteName = '{{ name }}';
+            fetch('/get_athlete_bests_since/' + encodeURIComponent(athleteName) + '?since=' + sinceDate)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (!data.success || !data.bests || data.bests.length === 0) {
+                        resultsContainer.style.display = 'none';
+                        return;
+                    }
+                    resultsContainer.innerHTML = '';
+                    resultsContainer.style.display = '';
+                    var rankings = {{ rankings | tojson }};
+                    var staggerScores = {{ stagger_scores | tojson }};
+                    data.bests.forEach(function(item) {
+                        var div = document.createElement('div');
+                        div.className = 'pr-item';
+                        div.setAttribute('data-event', item.event);
+                        var html = '<span class="pr-event">' + item.event + '</span>';
+                        html += '<span class="pr-result">' + item.result;
+                        if (rankings[item.event]) {
+                            html += ' <span class="ranking-badge" title="Ranked #' + rankings[item.event] + '">#' + rankings[item.event] + '</span>';
+                        }
+                        if (staggerScores[item.event] !== undefined) {
+                            html += ' <span class="stagger-badge" title="Stagger placement score">' + Math.round(staggerScores[item.event]) + '</span>';
+                        }
+                        html += '</span>';
+                        if (item.date) {
+                            html += '<span class="pr-date">' + item.date + '</span>';
+                        }
+                        div.innerHTML = html;
+                        resultsContainer.appendChild(div);
+                    });
+                })
+                .catch(function(err) {
+                    console.error('Error fetching bests since:', err);
+                    resultsContainer.style.display = 'none';
+                });
+        }
+
+        applyBtn.addEventListener('click', function() {
+            var val = dateInput.value;
+            if (val) {
+                fetchBestsSince(val);
+            }
+        });
+
+        clearBtn.addEventListener('click', function() {
+            dateInput.value = '';
+            resultsContainer.innerHTML = '';
+            resultsContainer.style.display = 'none';
+        });
+    })();
     </script>
 </body>
 </html>

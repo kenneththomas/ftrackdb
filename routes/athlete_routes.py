@@ -46,7 +46,11 @@ def athlete_profile(name):
     
     # sort prs by preferred order (handle empty prs)
     if prs:
-        prs = {event: prs[event] for event in preforder if event in prs}
+        sorted_prs = {}
+        for event in preforder:
+            if event in prs:
+                sorted_prs[event] = prs[event]
+        prs = sorted_prs
     if annual_prs:
         annual_prs = {event: annual_prs[event] for event in preforder if event in annual_prs}
     
@@ -65,7 +69,8 @@ def athlete_profile(name):
     team_logos = {}
     teams = set()
     for result in results:
-        teams.add(result[4])  # team is at index 4
+        if result and len(result) > 4:
+            teams.add(result[4])
     
     for team_name in teams:
         team_info = Team.get_team_info(team_name)
@@ -132,26 +137,35 @@ def athlete_profile(name):
     
     # Create a mapping of (event, normalized_result) -> True for PRs
     pr_results_set = set()
-    for event, pr_result in prs.items():
-        normalized = normalize_result(pr_result)
-        if normalized:
-            pr_results_set.add((event, normalized))
+    for event, pr_data in prs.items():
+        if isinstance(pr_data, dict):
+            pr_result = pr_data.get('result', '')
+        else:
+            pr_result = pr_data
+        if pr_result:
+            normalized = normalize_result(str(pr_result))
+            if normalized:
+                pr_results_set.add((event, normalized))
     
     # Pre-process results to mark which ones are PRs
     results_with_pr_flag = []
     for result in results:
-        event = result[2]
-        result_value = result[3]
-        normalized = normalize_result(result_value)
-        is_pr = normalized and (event, normalized) in pr_results_set
-        # Match StaggerHistory date format (YYYY-MM-DD). Results.Date may include time in some DBs.
-        date_str = (result[0] or '')
-        if isinstance(date_str, str) and len(date_str) >= 10:
-            date_key = date_str[:10]
-        else:
-            date_key = date_str
-        delta = stagger_deltas.get((result[1], event, date_key))
-        results_with_pr_flag.append((*result, is_pr, delta))
+        try:
+            if not result:
+                continue
+            try:
+                event = result[2]
+                result_value = result[3]
+            except (IndexError, TypeError):
+                continue
+            normalized = normalize_result(result_value)
+            is_pr = normalized and (event, normalized) in pr_results_set
+            date_str = str(result[0]) if result[0] else ''
+            date_key = date_str[:10] if date_str and len(date_str) >= 10 else date_str
+            delta = stagger_deltas.get((result[1], event, date_key))
+            results_with_pr_flag.append((*result, is_pr, delta))
+        except Exception as e:
+            continue
     
     board_posts = BoardPost.get_threaded_posts(page_type='athlete', page_id=name)
     openrouter_available = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
@@ -183,6 +197,67 @@ def calculate_athlete_rankings(name):
     """Calculate and return current rankings for an athlete"""
     rankings = AthleteRanking.calculate_athlete_rankings(name)
     return jsonify({'success': True, 'rankings': rankings})
+
+@athlete_bp.route('/get_athlete_bests_since/<name>')
+def get_athlete_bests_since(name):
+    """Get best results for each event since a given date"""
+    since_date = request.args.get('since', '')
+    if not since_date:
+        return jsonify({'success': False, 'error': 'Missing since date'}), 400
+    
+    conn = Database.get_connection()
+    with conn:
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT Event, Result, Date
+            FROM Results
+            WHERE Athlete = ? AND Date >= ?
+            ORDER BY Event, Date
+        ''', (name, since_date))
+        rows = cur.fetchall()
+    
+    # Find best result for each event using numeric comparison
+    event_results = {}
+    for row in rows:
+        event = row[0]
+        if event not in event_results:
+            event_results[event] = []
+        event_results[event].append((row[1], row[2]))
+    
+    bests = []
+    for event, results in event_results.items():
+        best_result = None
+        best_date = None
+        for result_str, date in results:
+            if not result_str:
+                continue
+            try:
+                if ':' in result_str:
+                    parts = result_str.split(':')
+                    numeric = float(parts[0]) * 60 + float(parts[1])
+                else:
+                    numeric = float(result_str)
+                
+                if best_result is None:
+                    best_result = result_str
+                    best_date = date
+                elif 'm' in event or 'H' in event or 'XC' in event or 'Road' in event or 'Marathon' in event:
+                    if numeric < float(best_result.split(':')[0]) * 60 + float(best_result.split(':')[1]) if ':' in best_result else float(best_result):
+                        best_result = result_str
+                        best_date = date
+                else:
+                    if numeric > float(best_result):
+                        best_result = result_str
+                        best_date = date
+            except (ValueError, IndexError):
+                if best_result is None:
+                    best_result = result_str
+                    best_date = date
+        
+        if best_result:
+            bests.append({'event': event, 'result': best_result, 'date': best_date})
+    
+    return jsonify({'success': True, 'bests': bests})
 
 @athlete_bp.route('/search', methods=['GET', 'POST'])
 def search():
