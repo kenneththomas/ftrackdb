@@ -1168,13 +1168,22 @@
                         <td>
                             <a href="{{ url_for('meet.meet_results', meet_name=result.meet) }}">{{ result.meet }}</a>
                         </td>
-                        <td>{{ result.event }}</td>
+                        <td>
+                            {{ result.event }}
+                            {% if result.team_designation %}
+                                ({{ result.team_designation }} team)
+                            {% endif %}
+                        </td>
                         <td>{{ result.result }}</td>
                         <td>
                             <a href="{{ url_for('team.team_results', team_name=result.team) }}">{{ result.team }}</a>
                         </td>
                         <td>
-                            {% if result.athletes is defined %}
+                            {% if result.legs is defined %}
+                                {% for leg in result.legs %}
+                                    <a href="{{ url_for('athlete.athlete_profile', name=leg.athlete|trim) }}">{{ leg.athlete|trim }}</a> <span style="font-size:0.85em;color:#888;">{{ leg.split_event }} {{ leg.split_result }}</span>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% elif result.athletes is defined %}
                                 {% for athlete in result.athletes %}
                                     <a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a>{% if not loop.last %}, {% endif %}
                                 {% endfor %}

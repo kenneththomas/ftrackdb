@@ -1,7 +1,7 @@
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, BoardPost, StaggerScore, compute_stagger_deltas_for_meet
-from utils.relay_utils import parse_time
+from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, BoardPost, StaggerScore, compute_stagger_deltas_for_meet, RelayTeam
+from utils.relay_utils import parse_time, explicit_relay_to_display_dict
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from forms import MeetResultForm, CommentForm, BoardPostForm, BoardGenerateForm
 from datetime import datetime, timedelta
@@ -10,19 +10,19 @@ from datetime import datetime, timedelta
 meet_bp = Blueprint('meet', __name__)
 
 def get_meet_placements(meet_name):
-    """Build (event, date) -> list of {athlete, place} for stagger. Skips 400m RS and relay team events."""
+    """Build (event, date) -> list of {athlete, place} for stagger. Skips all RS splits and relay team events."""
     raw = Result.get_meet_results(meet_name)
     events = {}
     relay_by_team = {}
     for row in raw:
         date, athlete, event, result, team = row
-        if event == "400m RS":
-            relay_key = (team, date)
+        if event.endswith(' RS'):
+            relay_key = (event, team, date)
             if relay_key not in relay_by_team:
                 relay_by_team[relay_key] = []
             relay_by_team[relay_key].append({'athlete': athlete, 'result': result})
             continue
-        if event == "400m RS Relay":
+        if event.endswith(' Relay'):
             continue  # team event, skip for stagger
         key = (event, date)
         if key not in events:
@@ -30,13 +30,14 @@ def get_meet_placements(meet_name):
         events[key].append({'athlete': athlete, 'result': result})
 
     # Add combined relay results (one entry per team - we skip these for stagger)
-    for (team, group_date), splits in relay_by_team.items():
+    for (relay_event, team, group_date), splits in relay_by_team.items():
         if len(splits) < 4:
             continue
         sorted_splits = sorted(splits, key=lambda x: parse_time(x['result']))
         best = sorted_splits[:4]
         total = sum(parse_time(s['result']) for s in best)
-        key = ("400m RS Relay", group_date)
+        relay_name = f"4x{relay_event.replace(' RS', '')} Relay"
+        key = (relay_name, group_date)
         if key not in events:
             events[key] = []
         events[key].append({
@@ -48,7 +49,7 @@ def get_meet_placements(meet_name):
     # Sort and assign places (skip relay for stagger). De-duplicate athletes within event/date.
     out = {}
     for (event, date), records in events.items():
-        if event == "400m RS Relay":
+        if event.endswith(' Relay'):
             continue
         result_strs = [r.get('result') for r in records if r.get('result') is not None]
         is_ft_in = all_results_are_field_format(result_strs)
@@ -245,12 +246,9 @@ def meet_results(meet_name):
 
     for row in raw_results:
         date, athlete, event, result, team = row
-        # For relay splits, process them twice:
-        # 1. Include them in the raw results (as "400m RS Relay Splits")
-        # 2. Also include them in relay_by_team for computing the combined result.
-        if event == "400m RS":
-            # Group for combined relay calculations by team and date
-            relay_key = (team, date)
+        if event.endswith(' RS'):
+            # Group for combined relay calculations by event, team, and date
+            relay_key = (event, team, date)
             if relay_key not in relay_by_team:
                 relay_by_team[relay_key] = []
             relay_by_team[relay_key].append({
@@ -262,11 +260,11 @@ def meet_results(meet_name):
             event_key = (event, date)
             if event_key not in events:
                 events[event_key] = []
-            
+
             # Get rankings from cache or calculate if not available
             ranking_key = (event, date, athlete)
             rankings = rankings_dict.get(ranking_key, {})
-            
+
             pr_debut = is_pr_and_debut(athlete, event, result)
             events[event_key].append({
                 'athlete': athlete,
@@ -282,11 +280,11 @@ def meet_results(meet_name):
             event_key = (event, date)
             if event_key not in events:
                 events[event_key] = []
-            
+
             # Get rankings from cache or calculate if not available
             ranking_key = (event, date, athlete)
             rankings = rankings_dict.get(ranking_key, {})
-            
+
             pr_debut = is_pr_and_debut(athlete, event, result)
             score_key = (athlete, event)
             if score_key not in stagger_score_cache:
@@ -301,49 +299,57 @@ def meet_results(meet_name):
                 'ranking_after': rankings.get('ranking_after'),
                 'stagger_score_current': stagger_score_cache[score_key]
             })
-    
-    # Process relay splits: for each team and date grouping, if there are at least 4 splits,
+
+    # Process relay splits: for each (event, team, date) grouping, if there are at least 4 splits,
     # select the fastest four and calculate the combined relay time.
-    relay_results = []
-    for (team, group_date), splits in relay_by_team.items():
+    for (relay_event, team, group_date), splits in relay_by_team.items():
         if len(splits) < 4:
             continue  # Skip groups with fewer than 4 splits
         sorted_splits = sorted(splits, key=lambda x: parse_time(x['result']))
         best_splits = sorted_splits[:4]
         total_time = sum(parse_time(s['result']) for s in best_splits)
-        relay_date = group_date  # all splits in the group share the same date
+        relay_date = group_date
         minutes = int(total_time // 60)
         seconds = total_time - minutes * 60
         formatted_time = f"{minutes}:{seconds:05.2f}"
         members = [s['athlete'] for s in best_splits]
-        relay_results.append({
-            'athlete': ', '.join(members),  # fallback display string
-            'athletes': members,            # list of individual athletes for linking
+        # e.g. "400m RS" => "4x400m Relay"
+        relay_display_event = f"4x{relay_event.replace(' RS', '')} Relay"
+        relay_results = {
+            'athlete': ', '.join(members),
+            'athletes': members,
             'result': formatted_time,
             'team': team,
             'relay_time_numeric': total_time,
             'date': relay_date
-        })
-    
-    # Add computed combined relay results to the events dictionary.
-    # They will appear under the event name "400m RS Relay".
-    for rr in relay_results:
-        key = ("400m RS Relay", rr['date'])
+        }
+        key = (relay_display_event, relay_date)
         if key not in events:
             events[key] = []
         events[key].append({
-            'athlete': rr['athlete'],
-            'athletes': rr.get('athletes'),
-            'result': rr['result'],
-            'team': rr['team'],
-            'relay_time_numeric': rr['relay_time_numeric']
+            'athlete': relay_results['athlete'],
+            'athletes': relay_results.get('athletes'),
+            'result': relay_results['result'],
+            'team': relay_results['team'],
+            'relay_time_numeric': relay_results['relay_time_numeric']
         })
-    
-    # Sort each event's results and assign places. Field events (results with ' and ") = higher is better.
+
+    # Add explicit relays from RelayTeams table alongside old-style relays.
+    explicit_relays = RelayTeam.get_relays_for_meet(meet_name)
+    for relay in explicit_relays:
+        key = (relay['event'], relay['date'])
+        if key not in events:
+            events[key] = []
+        events[key].append(explicit_relay_to_display_dict(relay))
+
+    # Sort each event's results and assign places.
     for event_key, records in events.items():
-        if event_key[0] == "400m RS Relay":
+        if event_key[0].endswith(' Relay') or event_key[0] in RelayTeam.RELAY_CONFIG:
             records.sort(key=lambda x: x.get('relay_time_numeric', float('inf')))
-        elif event_key[0] != "400m RS":
+        elif event_key[0].endswith(' RS'):
+            # RS splits already added above; no need to sort separately
+            pass
+        else:
             result_strs = [r.get('result') for r in records if r.get('result') is not None]
             if all_results_are_field_format(result_strs):
                 records.sort(key=lambda x: parse_field_result(x.get('result') or ''), reverse=True)
@@ -527,7 +533,9 @@ def calculate_meet_scores(meet_name):
     # Calculate scores for each event
     for (event, date), results in events.items():
         # Skip relay splits as they're part of the relay event
-        if event == "400m RS":
+        if event.endswith(' RS'):
+            continue
+        if event.endswith(' Relay'):
             continue
             
         # Sort results by place
@@ -592,7 +600,9 @@ def calculate_rankings(meet_name):
     rankings_data = []
     for (event, date), results in events_by_date.items():
         # Skip relay splits as they're part of the relay event
-        if event == "400m RS":
+        if event.endswith(' RS'):
+            continue
+        if event.endswith(' Relay'):
             continue
             
         # Calculate rankings before the meet (excluding current results)

@@ -21,7 +21,18 @@ class Database:
         try:
             cur = conn.cursor()
             
-            # Create Athletes table if it doesn't exist.
+            # Create Results table if it doesn't exist (original schema from create_db.py)
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Results (
+                    Result_ID INTEGER PRIMARY KEY,
+                    Date TEXT,
+                    Athlete TEXT,
+                    Meet_Name TEXT,
+                    Event TEXT,
+                    Result TEXT,
+                    Team TEXT
+                )
+            ''')
             # Note: If the table already exists you may need to run an ALTER TABLE command
             # to add the new column "is_female". For a new database, include it here.
             cur.execute('''
@@ -126,7 +137,33 @@ class Database:
                     PRIMARY KEY (meet_name, event, date, athlete)
                 )
             ''')
-            
+
+            # Create RelayTeams table for explicit relay entries
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS RelayTeams (
+                    Relay_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Date TEXT,
+                    Meet_Name TEXT,
+                    Team TEXT,
+                    Event TEXT,
+                    Total_Result TEXT,
+                    Team_Designation TEXT DEFAULT 'A'
+                )
+            ''')
+
+            # RelayLegs table for individual legs of explicit relays
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS RelayLegs (
+                    Leg_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Relay_ID INTEGER,
+                    Leg_Number INTEGER,
+                    Athlete TEXT,
+                    Split_Event TEXT,
+                    Split_Result TEXT,
+                    FOREIGN KEY (Relay_ID) REFERENCES RelayTeams(Relay_ID) ON DELETE CASCADE
+                )
+            ''')
+
             conn.commit()
         except Error as e:
             print(f"Error initializing tables: {e}")
@@ -957,6 +994,145 @@ class StaggerScore:
                 conn.close()
             except Exception:
                 pass
+
+
+class RelayTeam:
+    RELAY_CONFIG = {
+        '4x100m': ['100m', '100m', '100m', '100m'],
+        '4x200m': ['200m', '200m', '200m', '200m'],
+        '4x400m': ['400m', '400m', '400m', '400m'],
+        '4x800m': ['800m', '800m', '800m', '800m'],
+        'DMR': ['1200m', '400m', '800m', '1600m'],
+        'SMR': ['400m', '200m', '200m', '800m'],
+    }
+
+    @staticmethod
+    def insert_relay(data, legs):
+        """Insert a relay team and its legs. Also inserts individual Results rows for backward compat."""
+        conn = Database.get_connection()
+        if not conn:
+            raise Exception("Could not connect to database")
+        try:
+            with conn:
+                cur = conn.cursor()
+                # Compute total time from splits
+                total_seconds = 0
+                for leg in legs:
+                    t = leg['split_result']
+                    if ':' in t:
+                        parts = t.split(':')
+                        total_seconds += float(parts[0]) * 60 + float(parts[1])
+                    else:
+                        total_seconds += float(t)
+                minutes = int(total_seconds // 60)
+                seconds = total_seconds - minutes * 60
+                total_result = f"{minutes}:{seconds:05.2f}"
+
+                cur.execute(
+                    'INSERT INTO RelayTeams (Date, Meet_Name, Team, Event, Total_Result, Team_Designation) VALUES (?, ?, ?, ?, ?, ?)',
+                    (data['date'], data['meet'], data['team'], data['event'], total_result, data.get('team_designation', 'A'))
+                )
+                relay_id = cur.lastrowid
+
+                for idx, leg in enumerate(legs, start=1):
+                    leg_number = leg.get('leg_number', idx)
+                    split_event = leg.get('split_event')
+                    if not split_event and data.get('event') in RelayTeam.RELAY_CONFIG:
+                        split_event = RelayTeam.RELAY_CONFIG[data['event']][idx - 1]
+                    cur.execute(
+                        'INSERT INTO RelayLegs (Relay_ID, Leg_Number, Athlete, Split_Event, Split_Result) VALUES (?, ?, ?, ?, ?)',
+                        (relay_id, leg_number, leg['athlete'], split_event, leg['split_result'])
+                    )
+                    # Backward compat: also insert into Results so splits show on athlete profiles / meet pages
+                    rs_event = f"{split_event} RS" if split_event else ""
+                    cur.execute(
+                        'INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
+                        (data['date'], leg['athlete'], data['meet'], rs_event, leg['split_result'], data['team'])
+                    )
+                conn.commit()
+                return relay_id
+        except Exception as e:
+            raise Exception(f"Failed to insert relay: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
+
+    @staticmethod
+    def get_relays_for_meet(meet_name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT Relay_ID, Date, Meet_Name, Team, Event, Total_Result, Team_Designation
+                FROM RelayTeams
+                WHERE Meet_Name = ?
+                ORDER BY Event, Team, Team_Designation
+            ''', (meet_name,))
+            relays = cur.fetchall()
+            result = []
+            for relay in relays:
+                relay_id = relay[0]
+                cur.execute('''
+                    SELECT Leg_Number, Athlete, Split_Event, Split_Result
+                    FROM RelayLegs
+                    WHERE Relay_ID = ?
+                    ORDER BY Leg_Number
+                ''', (relay_id,))
+                legs = cur.fetchall()
+                result.append({
+                    'relay_id': relay_id,
+                    'date': relay[1],
+                    'meet': relay[2],
+                    'team': relay[3],
+                    'event': relay[4],
+                    'total_result': relay[5],
+                    'team_designation': relay[6],
+                    'legs': [{'leg_number': l[0], 'athlete': l[1], 'split_event': l[2], 'split_result': l[3]} for l in legs]
+                })
+            return result
+
+    @staticmethod
+    def get_relays_for_athlete(athlete_name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT rt.Relay_ID, rt.Date, rt.Meet_Name, rt.Team, rt.Event, rt.Total_Result, rt.Team_Designation
+                FROM RelayTeams rt
+                JOIN RelayLegs rl ON rt.Relay_ID = rl.Relay_ID
+                WHERE rl.Athlete = ?
+                ORDER BY rt.Date DESC
+            ''', (athlete_name,))
+            relays = cur.fetchall()
+            result = []
+            for relay in relays:
+                relay_id = relay[0]
+                cur.execute('''
+                    SELECT Leg_Number, Athlete, Split_Event, Split_Result
+                    FROM RelayLegs
+                    WHERE Relay_ID = ?
+                    ORDER BY Leg_Number
+                ''', (relay_id,))
+                legs = cur.fetchall()
+                result.append({
+                    'relay_id': relay_id,
+                    'date': relay[1],
+                    'meet': relay[2],
+                    'team': relay[3],
+                    'event': relay[4],
+                    'total_result': relay[5],
+                    'team_designation': relay[6],
+                    'legs': [{'leg_number': l[0], 'athlete': l[1], 'split_event': l[2], 'split_result': l[3]} for l in legs]
+                })
+            return result
+
+    @staticmethod
+    def get_all_relay_events():
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('SELECT DISTINCT Event FROM RelayTeams')
+            return [row[0] for row in cur.fetchall()]
 
 
 def compute_stagger_deltas_for_meet(meet_name, get_placements_fn):

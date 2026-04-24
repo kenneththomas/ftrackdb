@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
-from models import Result, Database
+from models import Result, Database, RelayTeam
 from forms import ResultForm
 
 # Create blueprint
@@ -141,4 +141,57 @@ def update_result(result_id):
         return jsonify({'success': True})
     except Exception as e:
         print(f"Error updating result {result_id}: {str(e)}")  # Debug logging
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@result_bp.route('/insert_relay', methods=['POST'])
+def insert_relay():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        date = data.get('date', '').strip()
+        meet = data.get('meet', '').strip()
+        team = data.get('team', '').strip()
+        event = data.get('event', '').strip()
+        team_designation = data.get('team_designation', 'A').strip() or 'A'
+        legs = data.get('legs', [])
+
+        if not all([date, meet, team, event]):
+            return jsonify({'success': False, 'error': 'Missing required relay fields'}), 400
+
+        if not all([date, meet, team, event]):
+            return jsonify({'success': False, 'error': 'Missing required relay fields'}), 400
+
+        # Allow partial/incomplete relay entries: filter out empty legs
+        filled_legs = [leg for leg in legs if leg.get('athlete', '').strip() or leg.get('split_result', '').strip()]
+        if not filled_legs:
+            return jsonify({'success': False, 'error': 'At least one leg with athlete or split must be provided'}), 400
+
+        # Validate event is known
+        if event not in RelayTeam.RELAY_CONFIG:
+            return jsonify({'success': False, 'error': f"Unknown relay event: {event}"}), 400
+
+        expected_legs = RelayTeam.RELAY_CONFIG[event]
+        if len(filled_legs) > len(expected_legs):
+            return jsonify({'success': False, 'error': f"{event} has {len(expected_legs)} legs, got {len(filled_legs)}"}), 400
+
+        formatted_legs = []
+        for i, leg in enumerate(filled_legs, start=1):
+            formatted_legs.append({
+                'leg_number': i,
+                'athlete': leg.get('athlete', '').strip(),
+                'split_event': expected_legs[i - 1],
+                'split_result': leg.get('split_result', '').strip()
+            })
+
+        relay_data = {
+            'date': date,
+            'meet': meet,
+            'team': team,
+            'event': event,
+            'team_designation': team_designation
+        }
+        relay_id = RelayTeam.insert_relay(relay_data, formatted_legs)
+        return jsonify({'success': True, 'relay_id': relay_id})
+    except Exception as e:
+        print(f"Error inserting relay: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500 

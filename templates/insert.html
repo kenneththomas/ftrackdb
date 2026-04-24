@@ -91,6 +91,9 @@
             const athleteInput = targetForm.querySelector('input[name="athlete[]"]');
             lookupTeam(athleteInput);
             
+            // Also show PRs for this athlete
+            lookupAthletePRs(athleteName, false);
+            
             // Scroll to the form
             targetForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -197,6 +200,12 @@
             {% endif %}
         {% endwith %}
 
+        <div class="insert-tabs">
+            <button type="button" id="tab-individual" class="insert-tab active" onclick="switchTab('individual')">Individual Results</button>
+            <button type="button" id="tab-relay" class="insert-tab" onclick="switchTab('relay')">Relay Teams</button>
+        </div>
+
+        <div id="individual-panel" class="insert-panel active">
         <form action="{{ url_for('result.insert_result') }}" method="post" id="results-form">
             {{ form.csrf_token }}
             {% if form.errors %}
@@ -248,12 +257,229 @@
             <button type="button" onclick="addResultForm()">Add Another Result</button>
             <input type="submit" value="Submit All">
         </form>
+        </div>
+
+        <div id="relay-panel" class="insert-panel">
+            <form id="relay-form" onsubmit="submitRelay(event)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="header-row">
+                    <div>Date</div>
+                    <div>Meet</div>
+                    <div>Team</div>
+                    <div>Event</div>
+                    <div>Designation</div>
+                </div>
+                <div class="result-form relay-meta-row">
+                    <div class="form-group">
+                        <label>Date:</label>
+                        <input type="date" id="relay-date" required value="{{ today }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Meet:</label>
+                        <input type="text" id="relay-meet" required value="{{ last_meet or '' }}" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Team:</label>
+                        <input type="text" id="relay-team" required autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Event:</label>
+                        <select id="relay-event" required onchange="updateRelayLegs()">
+                            <option value="">Select relay...</option>
+                            <option value="4x100m">4x100m</option>
+                            <option value="4x200m">4x200m</option>
+                            <option value="4x400m">4x400m</option>
+                            <option value="4x800m">4x800m</option>
+                            <option value="DMR">DMR</option>
+                            <option value="SMR">SMR</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Team Designation:</label>
+                        <select id="relay-designation">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="relay-legs-container"></div>
+                <button type="submit" class="helper-btn helper-btn--ai" style="margin-top:1rem;">Submit Relay</button>
+                <div id="relay-status" class="helper-status" style="margin-top:0.5rem;"></div>
+            </form>
+        </div>
+
+        <style>
+            .insert-tabs {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 1.25rem;
+                border-bottom: 2px solid #e2e6ea;
+            }
+            .insert-tab {
+                background: #f0f2f5;
+                border: none;
+                padding: 0.6rem 1.2rem;
+                font-size: 0.95rem;
+                font-weight: 600;
+                cursor: pointer;
+                border-radius: 6px 6px 0 0;
+                color: #6b7280;
+                transition: background 0.15s, color 0.15s;
+            }
+            .insert-tab.active {
+                background: #fff;
+                color: #1f2937;
+                border: 2px solid #e2e6ea;
+                border-bottom: 2px solid #fff;
+                margin-bottom: -2px;
+            }
+            .insert-tab:hover {
+                background: #e5e7eb;
+            }
+            .insert-panel {
+                display: none;
+            }
+            .insert-panel.active {
+                display: block;
+            }
+            .relay-leg-row {
+                display: grid;
+                grid-template-columns: 60px 1fr 120px;
+                gap: 12px;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .relay-leg-label {
+                font-weight: 600;
+                font-size: 0.9em;
+            }
+        </style>
+
+        <script>
+            function switchTab(tab) {
+                document.getElementById('tab-individual').classList.toggle('active', tab === 'individual');
+                document.getElementById('tab-relay').classList.toggle('active', tab === 'relay');
+                document.getElementById('individual-panel').classList.toggle('active', tab === 'individual');
+                document.getElementById('relay-panel').classList.toggle('active', tab === 'relay');
+            }
+
+            var RELAY_CONFIG = {
+                '4x100m': ['100m', '100m', '100m', '100m'],
+                '4x200m': ['200m', '200m', '200m', '200m'],
+                '4x400m': ['400m', '400m', '400m', '400m'],
+                '4x800m': ['800m', '800m', '800m', '800m'],
+                'DMR': ['1200m', '400m', '800m', '1600m'],
+                'SMR': ['400m', '200m', '200m', '800m']
+            };
+
+            function updateRelayLegs() {
+                var event = document.getElementById('relay-event').value;
+                var container = document.getElementById('relay-legs-container');
+                container.innerHTML = '';
+                if (!event || !RELAY_CONFIG[event]) return;
+                var legs = RELAY_CONFIG[event];
+                legs.forEach(function(splitEvent, index) {
+                    var row = document.createElement('div');
+                    row.className = 'relay-leg-row result-form';
+                    row.innerHTML = '<div class="relay-leg-label">Leg ' + (index + 1) + ' (' + splitEvent + ')</div>' +
+                        '<div class="form-group" style="margin:0;"><input type="text" class="relay-athlete" placeholder="Athlete" required autocomplete="off"></div>' +
+                        '<div class="form-group" style="margin:0;"><input type="text" class="relay-split" placeholder="Split" required autocomplete="off"></div>';
+                    container.appendChild(row);
+                });
+            }
+
+            function submitRelay(e) {
+                e.preventDefault();
+                var date = document.getElementById('relay-date').value.trim();
+                var meet = document.getElementById('relay-meet').value.trim();
+                var team = document.getElementById('relay-team').value.trim();
+                var event = document.getElementById('relay-event').value.trim();
+                var designation = document.getElementById('relay-designation').value.trim();
+                var status = document.getElementById('relay-status');
+
+                var athleteInputs = document.querySelectorAll('.relay-athlete');
+                var splitInputs = document.querySelectorAll('.relay-split');
+                var legs = [];
+                for (var i = 0; i < athleteInputs.length; i++) {
+                    legs.push({
+                        athlete: athleteInputs[i].value.trim(),
+                        split_result: splitInputs[i].value.trim()
+                    });
+                }
+
+                if (!date || !meet || !team || !event) {
+                    status.textContent = 'Please fill in all relay fields.';
+                    return;
+                }
+                if (legs.length === 0) {
+                    status.textContent = 'Please select a relay event to generate leg fields.';
+                    return;
+                }
+                var empty = legs.every(function(l) { return !l.athlete && !l.split_result; });
+                if (empty) {
+                    status.textContent = 'Please fill in at least one leg.';
+                    return;
+                }
+
+                var csrf = document.querySelector('#relay-form input[name="csrf_token"]');
+                var headers = { 'Content-Type': 'application/json' };
+                if (csrf) headers['X-CSRFToken'] = csrf.value;
+
+                fetch('{{ url_for("result.insert_relay") }}', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        date: date,
+                        meet: meet,
+                        team: team,
+                        event: event,
+                        team_designation: designation,
+                        legs: legs
+                    })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        status.textContent = 'Relay added successfully!';
+                        document.getElementById('relay-form').reset();
+                        document.getElementById('relay-legs-container').innerHTML = '';
+                    } else {
+                        status.textContent = 'Error: ' + (data.error || 'Unknown error');
+                    }
+                })
+                .catch(function(err) {
+                    status.textContent = 'Error: ' + (err.message || 'Request failed');
+                });
+            }
+        </script>
 
         <div class="helper-section">
             <h3>Helper Tools</h3>
             <div class="helper-tools">
 
-                <!-- Row 1: AI Fill + Random Name -->
+                <!-- Row 1: Team Lookup + Athlete PRs — full height -->
+                <div class="helper-row helper-row--lookup">
+                    <div class="helper-card team-lookup">
+                        <div class="helper-card-header">
+                            <span class="helper-card-icon">&#x1F465;</span>
+                            <h4>Team Members</h4>
+                        </div>
+                         <input type="text" id="team-lookup" class="helper-search-input" placeholder="Search team name…">
+                        <div id="team-members-list" class="results-list results-list--tall"></div>
+                    </div>
+
+                    <div class="helper-card athlete-prs">
+                        <div class="helper-card-header">
+                            <span class="helper-card-icon">&#x1F3C6;</span>
+                            <h4>Athlete PRs</h4>
+                        </div>
+                         <input type="text" id="athlete-lookup" class="helper-search-input" placeholder="Search athlete name…">
+                        <div id="athlete-prs-list" class="results-list results-list--tall"></div>
+                    </div>
+                </div>
+
+                <!-- Row 2: AI Fill + Random Name -->
                 <div class="helper-row helper-row--top">
                     <div class="helper-card ai-fill-helper">
                         <div class="helper-card-header">
@@ -299,27 +525,6 @@
                         </div>
                         <div id="generated-name-display" class="helper-status" aria-live="polite"></div>
                         <div id="name-choices-list" class="name-choices-list" style="display: none;"></div>
-                    </div>
-                </div>
-
-                <!-- Row 2: Team Lookup + Athlete PRs — full height -->
-                <div class="helper-row helper-row--lookup">
-                    <div class="helper-card team-lookup">
-                        <div class="helper-card-header">
-                            <span class="helper-card-icon">&#x1F465;</span>
-                            <h4>Team Members</h4>
-                        </div>
-                         <input type="text" id="team-lookup" class="helper-search-input" placeholder="Search team name…">
-                        <div id="team-members-list" class="results-list results-list--tall"></div>
-                    </div>
-
-                    <div class="helper-card athlete-prs">
-                        <div class="helper-card-header">
-                            <span class="helper-card-icon">&#x1F3C6;</span>
-                            <h4>Athlete PRs</h4>
-                        </div>
-                         <input type="text" id="athlete-lookup" class="helper-search-input" placeholder="Search athlete name…">
-                        <div id="athlete-prs-list" class="results-list results-list--tall"></div>
                     </div>
                 </div>
 
@@ -583,7 +788,7 @@
         .results-list--tall {
             flex: 1 1 0;
             min-height: 0;
-            max-height: 320px;
+            max-height: 500px;
         }
         /* make lookup cards fill height so the list gets space */
         .helper-row--lookup .helper-card {
@@ -641,7 +846,7 @@
                 min-height: 0;
             }
             .results-list--tall {
-                max-height: 240px;
+                max-height: 350px;
             }
         }
         @media (max-width: 600px) {
@@ -687,17 +892,17 @@
                 .then(response => response.json())
                 .then(data => {
                     const list = document.getElementById('team-members-list');
-                    list.innerHTML = data.members.map(member => {
-                        // Escape single quotes and backslashes for use in onclick attribute
-                        const escapedMember = member.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                        return `<div>
-                            <span>${member}</span>
-                            <div>
-                                 <button class="pr-lookup-btn" onclick="lookupAthletePRs('${escapedMember}', true)">View PRs</button>
-                                <button class="add-result-btn" onclick="addResultForAthlete('${escapedMember}')">Add Result</button>
-                            </div>
-                        </div>`;
-                    }).join('');
+                         list.innerHTML = data.members.map(member => {
+                         // Escape single quotes and backslashes for use in onclick attribute
+                         const escapedMember = member.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                         return `<div>
+                             <span>${member}</span>
+                             <div>
+                                  <button class="pr-lookup-btn" onclick="lookupAthletePRs('${escapedMember}', false)">View PRs</button>
+                                 <button class="add-result-btn" onclick="addResultForAthlete('${escapedMember}')">Add Result</button>
+                             </div>
+                         </div>`;
+                     }).join('');
                 });
         }
 

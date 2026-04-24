@@ -388,7 +388,11 @@
                                     <span class="athlete-info">
                                         <div style="display: flex; align-items: center;">
                                             <div>
-                                                {% if result.athletes is defined %}
+                                                {% if result.legs is defined %}
+                                                    {% for leg in result.legs %}
+                                                        <a href="{{ url_for('athlete.athlete_profile', name=leg.athlete|trim) }}" class="athlete-name {% if get_gender(leg.athlete|trim) %}female-text{% endif %}"><b>{{ leg.athlete|trim }}</b></a> <span class="inline-result" style="font-size:0.85em;color:#aaa;">{{ leg.split_event }} {{ leg.split_result }}</span>{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% elif result.athletes is defined %}
                                                     {% for athlete in result.athletes %}
                                                         <a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}" class="athlete-name {% if get_gender(athlete|trim) %}female-text{% endif %}"><b>{{ athlete|trim }}</b></a>{% if not loop.last %}, {% endif %}
                                                     {% endfor %}
@@ -416,7 +420,7 @@
                                                 {% endif %}
                                             </div>
                                         </div>
-                                        <a href="{{ url_for('team.team_results', team_name=result.team) }}" class="team-meta">{{ result.team }}</a>
+                                        <a href="{{ url_for('team.team_results', team_name=result.team) }}" class="team-meta">{{ result.team }}{% if result.team_designation %} ({{ result.team_designation }} team){% endif %}</a>
                                     </span>
                                 </div>
                             </td>

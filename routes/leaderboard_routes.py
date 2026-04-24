@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for
-from models import Database, Team, StaggerScore
-from utils.relay_utils import calculate_relay_results, parse_time
+from models import Database, Team, StaggerScore, RelayTeam
+from utils.relay_utils import calculate_relay_results, parse_time, explicit_relay_to_display_dict
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -11,6 +11,71 @@ leaderboard_bp = Blueprint('leaderboard', __name__)
 def is_time_event(event):
     """Check if an event is time-based (lower is better)"""
     return 'm' in event or 'Mile' in event
+
+def _get_old_style_relay_results(selected_event, date_filter, cur):
+    """Fetch old-style relay results from Results table RS splits."""
+    from utils.relay_utils import calculate_relay_results
+    split_event = selected_event.replace('4x', '') + ' RS'
+    query = '''
+        SELECT Date, Meet_Name, Team, Athlete, Result
+        FROM Results
+        WHERE Event = ?
+    '''
+    params = [split_event]
+    if date_filter:
+        query += ' AND Date >= ?'
+        params.append(date_filter)
+    query += ' ORDER BY Date DESC'
+    cur.execute(query, params)
+    relay_splits = cur.fetchall()
+    relay_by_team = {}
+    for date, meet, team, athlete, result in relay_splits:
+        key = (team, date, meet)
+        relay_by_team.setdefault(key, []).append((athlete, result, date, meet, team))
+    results = []
+    for (team, date, meet), splits in relay_by_team.items():
+        if len(splits) >= 4:
+            relay_result = calculate_relay_results(splits, split_event)
+            if relay_result:
+                results.extend(relay_result)
+    return results
+
+def _get_explicit_relay_results(selected_event, date_filter, cur):
+    """Fetch explicit relay results from RelayTeams table."""
+    query = '''
+        SELECT rt.Relay_ID, rt.Date, rt.Meet_Name, rt.Team, rt.Event, rt.Total_Result, rt.Team_Designation
+        FROM RelayTeams rt
+        WHERE rt.Event = ?
+    '''
+    params = [selected_event]
+    if date_filter:
+        query += ' AND rt.Date >= ?'
+        params.append(date_filter)
+    query += ' ORDER BY rt.Date DESC'
+    cur.execute(query, params)
+    relays = cur.fetchall()
+    results = []
+    for relay in relays:
+        relay_id = relay[0]
+        cur.execute('''
+            SELECT Leg_Number, Athlete, Split_Event, Split_Result
+            FROM RelayLegs
+            WHERE Relay_ID = ?
+            ORDER BY Leg_Number
+        ''', (relay_id,))
+        legs = cur.fetchall()
+        relay_dict = {
+            'relay_id': relay_id,
+            'date': relay[1],
+            'meet': relay[2],
+            'team': relay[3],
+            'event': relay[4],
+            'total_result': relay[5],
+            'team_designation': relay[6],
+            'legs': [{'leg_number': l[0], 'athlete': l[1], 'split_event': l[2], 'split_result': l[3]} for l in legs]
+        }
+        results.append(explicit_relay_to_display_dict(relay_dict))
+    return results
 
 @leaderboard_bp.route('/leaderboard')
 def leaderboard():
@@ -43,7 +108,7 @@ def leaderboard():
         ''')
         all_events = [row[0] for row in cur.fetchall()]
         
-        # Get relay events
+        # Get old-style relay events (from RS splits)
         cur.execute('''
             SELECT DISTINCT Event
             FROM Results 
@@ -52,9 +117,15 @@ def leaderboard():
         relay_events_raw = [row[0] for row in cur.fetchall()]
         relay_events = [f"4x{event.replace(' RS', '')}" for event in relay_events_raw]
         
+        # Add explicit relay events from RelayTeams
+        explicit_events = RelayTeam.get_all_relay_events()
+        for ev in explicit_events:
+            if ev not in relay_events:
+                relay_events.append(ev)
+        
         # Combine all events
         all_events.extend(relay_events)
-        all_events.sort(key=lambda x: (not x.startswith('4x'), x))
+        all_events.sort(key=lambda x: (not (x.startswith('4x') or x in RelayTeam.RELAY_CONFIG), x))
         
         results = []
         total_results = 0
@@ -65,7 +136,7 @@ def leaderboard():
         sort_by_stagger = False
 
         if selected_event:
-            is_relay = selected_event.startswith('4x')
+            is_relay = selected_event.startswith('4x') or selected_event in RelayTeam.RELAY_CONFIG
             
             # Sort by Stagger rank (non-relay only, ignores year_filter for stagger list)
             if sort_by == 'stagger' and not is_relay:
@@ -131,40 +202,15 @@ def leaderboard():
                 else:
                     results = []
             elif is_relay:
-                # Handle relay events
-                query = '''
-                    SELECT Date, Meet_Name, Team, Athlete, Result
-                    FROM Results 
-                    WHERE Event = ?
-                '''
-                params = [selected_event.replace('4x', '') + ' RS']
-                
-                if date_filter:
-                    query += ' AND Date >= ?'
-                    params.append(date_filter)
-                    
-                query += ' ORDER BY Date DESC'
-                
-                cur.execute(query, params)
-                relay_splits = cur.fetchall()
-                
-                # Group splits by team and date
-                relay_by_team = {}
-                for date, meet, team, athlete, result in relay_splits:
-                    key = (team, date, meet)
-                    if key not in relay_by_team:
-                        relay_by_team[key] = []
-                    relay_by_team[key].append((athlete, result, date, meet, team))
-                
-                # Calculate relay results
+                # Merge old-style and explicit relay results
                 relay_results = []
-                for (team, date, meet), splits in relay_by_team.items():
-                    if len(splits) >= 4:
-                        relay_result = calculate_relay_results(splits, selected_event.replace('4x', '') + ' RS')
-                        if relay_result:
-                            relay_results.extend(relay_result)
+                # Old-style (only for 4x... events that have RS data)
+                if selected_event.startswith('4x'):
+                    relay_results.extend(_get_old_style_relay_results(selected_event, date_filter, cur))
+                # Explicit relays
+                relay_results.extend(_get_explicit_relay_results(selected_event, date_filter, cur))
                 
-                # Sort relay results by time
+                # Sort by time
                 relay_results.sort(key=lambda x: parse_time(x['result']))
                 
                 # If best_only, keep only best result per team

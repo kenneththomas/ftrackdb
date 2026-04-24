@@ -1,8 +1,8 @@
 import os
 from flask import Blueprint, render_template, request, jsonify, url_for
-from models import Result, Database, Athlete, Team, AthleteRanking, StaggerScore, BoardPost
+from models import Result, Database, Athlete, Team, AthleteRanking, StaggerScore, BoardPost, RelayTeam
 from forms import SearchForm, BoardPostForm, BoardGenerateForm
-from utils.relay_utils import calculate_relay_results
+from utils.relay_utils import calculate_relay_results, explicit_relay_to_display_dict
 
 # Create blueprint
 athlete_bp = Blueprint('athlete', __name__)
@@ -87,7 +87,7 @@ def athlete_profile(name):
     # ---------------------------
     # Compute relay results for the athlete
     relay_results = []
-    relay_types = ['200m RS', '400m RS', '800m RS']
+    relay_types = ['100m RS', '200m RS', '400m RS', '800m RS']
     
     with conn:
         cur = conn.cursor()
@@ -108,6 +108,11 @@ def athlete_profile(name):
                 splits = cur.fetchall()
                 if splits:
                     relay_results.extend(calculate_relay_results(splits, relay_type))
+    
+    # Add explicit relay results from RelayTeams/RelayLegs
+    explicit_relays = RelayTeam.get_relays_for_athlete(name)
+    for relay in explicit_relays:
+        relay_results.append(explicit_relay_to_display_dict(relay))
     
     # Get current rankings for the athlete
     rankings = AthleteRanking.calculate_athlete_rankings(name)
