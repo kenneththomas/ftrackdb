@@ -140,6 +140,20 @@
     .save-btn:hover { color: #28a745; }
     .cancel-btn:hover { color: #dc3545; }
     .delete-btn:hover { color: #dc3545; }
+
+    .result-actions-toggle[aria-pressed="true"] {
+        background: #617394;
+    }
+
+    .results-table .actions-header,
+    .results-table .actions-cell {
+        display: none;
+    }
+
+    .results-table.actions-visible .actions-header,
+    .results-table.actions-visible .actions-cell {
+        display: table-cell;
+    }
     
     .editing {
         background: #2c2f33;
@@ -258,6 +272,85 @@
     .results-section label[for="filterInput"] {
         color: #888;
         font-size: 0.9em;
+    }
+
+    .results-section #filterInput {
+        flex: 1 1 280px;
+        width: auto;
+        margin-bottom: 0;
+    }
+
+    .results-filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        width: 100%;
+    }
+
+    .results-filter-select {
+        padding: 9px 12px;
+        background: #181a1b;
+        color: #e0e0e0;
+        border: 1px solid #444;
+        border-radius: 6px;
+        font-family: inherit;
+    }
+
+    .quick-filter-btn {
+        padding: 9px 12px;
+        background: #181a1b;
+        color: #e0e0e0;
+        border: 1px solid #444;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.9em;
+    }
+
+    .quick-filter-btn[aria-pressed="true"] {
+        background: #617394;
+        border-color: #7e91b6;
+        color: #fff;
+    }
+
+    .year-divider-row td {
+        padding: 18px 10px 8px 0;
+        background: #23272a !important;
+        border-bottom: 1px solid #4b5563;
+        color: #d8dee9;
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .year-divider-row span {
+        display: inline-block;
+        padding: 2px 0;
+    }
+
+    .collapsible-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .collapsible-section-header h2,
+    .collapsible-section-header h3 {
+        flex: 1;
+        margin: 0;
+        text-align: left;
+    }
+
+    .collapse-toggle {
+        flex: 0 0 auto;
+        padding: 8px 12px;
+        background: #000;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: inherit;
     }
 
     .pr-section-label {
@@ -601,6 +694,17 @@
             overflow-wrap: break-word;
         }
 
+        .year-divider-row {
+            padding: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+
+        .year-divider-row td {
+            padding: 10px 0 6px 0;
+            border-bottom: 1px solid #555;
+        }
+
         .results-table td:last-child {
             border-bottom: none;
         }
@@ -637,6 +741,15 @@
             font-size: 0.85em;
         }
 
+        .results-table td[data-field="place"]:before {
+            content: "Place: ";
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.85em;
+        }
+
         .results-table td[data-field="result"]:before {
             content: "Result: ";
             font-weight: bold;
@@ -655,7 +768,7 @@
             font-size: 0.85em;
         }
 
-        .results-table td:last-child:before {
+        .results-table td[data-field="actions"]:before {
             content: "Actions: ";
             font-weight: bold;
             display: block;
@@ -669,13 +782,14 @@
         }
 
         .result-content {
-            display: block;
-            margin-bottom: 5px;
+            display: inline-block;
+            margin-bottom: 0;
         }
 
         .result-badges {
-            display: inline-block;
+            display: inline-flex;
             margin-top: 5px;
+            margin-left: 0;
         }
 
         .team-cell {
@@ -691,7 +805,7 @@
         }
 
         /* Action buttons in table */
-        .results-table td:last-child {
+        .results-table.actions-visible .actions-cell {
             display: flex;
             gap: 10px;
             justify-content: flex-start;
@@ -982,12 +1096,13 @@
     }
 
     .result-cell {
-        white-space: nowrap;
+        white-space: normal;
     }
 
     .result-content {
         display: inline-block;
-        vertical-align: middle;
+        min-width: 7ch;
+        vertical-align: baseline;
     }
 
     .result-content input {
@@ -1002,9 +1117,18 @@
     }
 
     .result-badges {
-        display: inline-block;
-        vertical-align: middle;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         margin-left: 8px;
+        vertical-align: baseline;
+        white-space: nowrap;
+    }
+
+    .result-badges .pr-indicator,
+    .result-badges .ranking-badge,
+    .result-badges .stagger-badge {
+        margin-left: 0;
     }
     </style>
 </head>
@@ -1089,7 +1213,20 @@
             <h2 id="results-heading">Results</h2>
             <div class="results-section-header">
                 <label for="filterInput" id="filterLabel">Filter results</label>
-                <input type="text" id="filterInput" placeholder="Filter results..." aria-labelledby="filterLabel">             
+                <input type="text" id="filterInput" placeholder="Filter results..." aria-labelledby="filterLabel">
+                <button type="button" id="toggle-result-actions" class="bio-btn result-actions-toggle" aria-pressed="false">Edit</button>
+                <div class="results-filter-bar" aria-label="Quick result filters">
+                    <select id="eventQuickFilter" class="results-filter-select" aria-label="Filter by event">
+                        <option value="">All events</option>
+                    </select>
+                    <select id="teamQuickFilter" class="results-filter-select" aria-label="Filter by team">
+                        <option value="">All teams</option>
+                    </select>
+                    <button type="button" class="quick-filter-btn" data-filter="pr" aria-pressed="false">PR</button>
+                    <button type="button" class="quick-filter-btn" data-filter="top8" aria-pressed="false">Top 8</button>
+                    <button type="button" class="quick-filter-btn" data-filter="stagger" aria-pressed="false">Score</button>
+                    <button type="button" id="clearResultFilters" class="quick-filter-btn">Clear</button>
+                </div>
             </div>
             <table class="results-table" aria-describedby="filterLabel">
                 <thead>
@@ -1097,27 +1234,40 @@
                     <th>Date</th>
                     <th>Meet</th>
                     <th>Event</th>
+                    <th>Place</th>
                     <th>Result</th>
                     <th>Team</th>
-                    <th>Actions</th>
+                    <th class="actions-header">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
+                    {% set years = namespace(current='') %}
                     {% for result in results %}
-                    <tr data-result-id="{{ result[5] }}" data-event="{{ result[2] }}">
+                    {% set row_year = (result[0]|string)[:4] if result[0] else 'Unknown' %}
+                    {% set is_pr = result[6] if result|length > 6 else False %}
+                    {% set stagger_delta = result[7] if result|length > 7 else None %}
+                    {% set place = result[8] if result|length > 8 else None %}
+                    {% if row_year != years.current %}
+                    <tr class="year-divider-row" data-year-divider="{{ row_year }}">
+                        <td colspan="7"><span>{{ row_year }}</span></td>
+                    </tr>
+                    {% set years.current = row_year %}
+                    {% endif %}
+                    <tr class="result-row" data-result-id="{{ result[5] }}" data-event="{{ result[2] }}" data-team="{{ result[4] }}" data-year="{{ row_year }}" data-place="{{ place or '' }}" data-is-pr="{{ 'true' if is_pr else 'false' }}" data-has-stagger="{{ 'true' if stagger_delta is not none else 'false' }}">
                         <td class="editable" data-field="date">{{ result[0] }}</td>
                         <td class="editable" data-field="meet">
                             <a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a>
                         </td>
                         <td class="editable" data-field="event">{{ result[2] }}</td>
+                        <td data-field="place">
+                            {% if place %}{{ place }}{% else %}--{% endif %}
+                        </td>
                         <td class="editable result-cell" data-field="result">
                             <div class="result-content">
                                 <span class="result-value">{{ result[3] }}</span>
                             </div>
                             <div class="result-badges">
                                 {% set event = result[2] %}
-                                {% set is_pr = result[6] if result|length > 6 else False %}
-                                {% set stagger_delta = result[7] if result|length > 7 else None %}
                                 {% if is_pr %}
                                     <span class="pr-indicator" title="Personal Record">PR</span>
                                 {% endif %}
@@ -1135,7 +1285,7 @@
                             <img src="{{ team_logos.get(result[4]) or url_for('static', filename='default-team.svg') }}" alt="{{ result[4] }} logo" class="team-logo">
                             <a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a>
                         </td>
-                        <td>
+                        <td class="actions-cell" data-field="actions">
                             <button class="edit-btn" title="Edit">✎</button>
                             <button class="save-btn hidden" title="Save Changes">✓</button>
                             <button class="cancel-btn hidden" title="Cancel Edit">✗</button>
@@ -1148,9 +1298,13 @@
         </section>
 
         {% if relay_results %}
-        <section class="relay-results">
-            <h2>Relay Results</h2>
-            <table class="results-table">
+        <section class="relay-results collapsible-section" data-collapsible-section>
+            <div class="collapsible-section-header">
+                <h2>Relay Results</h2>
+                <button type="button" class="collapse-toggle" data-collapse-toggle aria-expanded="false">Show</button>
+            </div>
+            <div class="collapsible-content hidden" data-collapse-content>
+                <table class="results-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -1192,7 +1346,8 @@
                     </tr>
                     {% endfor %}
                 </tbody>
-            </table>
+                </table>
+            </div>
         </section>
         {% endif %}
 
@@ -1233,9 +1388,17 @@
         </main>
 
         <!-- Message board for this athlete -->
-        {% include 'board_section.html' %}
+        <section class="discussion-collapsible collapsible-section" data-collapsible-section>
+            <div class="collapsible-section-header">
+                <h2>Discussion</h2>
+                <button type="button" class="collapse-toggle" data-collapse-toggle aria-expanded="false">Show</button>
+            </div>
+            <div class="collapsible-content hidden" data-collapse-content>
+                {% set section_title = none %}
+                {% include 'board_section.html' %}
+            </div>
+        </section>
     </div>
-    <script src="{{ url_for('static', filename='filter.js') }}"></script>
     <script>
     (function() {
         const overlay = document.getElementById('quickInsertSection');
@@ -1318,6 +1481,126 @@
             if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) closeQuickInsert();
         });
     })();
+
+    (function() {
+        const actionsToggle = document.getElementById('toggle-result-actions');
+        const resultsTable = document.querySelector('.results-section .results-table');
+
+        if (!actionsToggle || !resultsTable) return;
+
+        actionsToggle.addEventListener('click', function() {
+            const shouldShowActions = !resultsTable.classList.contains('actions-visible');
+
+            if (!shouldShowActions) {
+                resultsTable.querySelectorAll('.cancel-btn:not(.hidden)').forEach(button => {
+                    button.click();
+                });
+            }
+
+            resultsTable.classList.toggle('actions-visible', shouldShowActions);
+            actionsToggle.setAttribute('aria-pressed', shouldShowActions ? 'true' : 'false');
+            actionsToggle.textContent = shouldShowActions ? 'Done' : 'Edit';
+        });
+    })();
+
+    (function() {
+        const table = document.querySelector('.results-section .results-table');
+        const filterInput = document.getElementById('filterInput');
+        const eventFilter = document.getElementById('eventQuickFilter');
+        const teamFilter = document.getElementById('teamQuickFilter');
+        const clearBtn = document.getElementById('clearResultFilters');
+        const quickButtons = Array.from(document.querySelectorAll('.quick-filter-btn[data-filter]'));
+
+        if (!table || !filterInput || !eventFilter || !teamFilter) return;
+
+        const resultRows = Array.from(table.querySelectorAll('tbody tr.result-row'));
+        const yearRows = Array.from(table.querySelectorAll('tbody tr.year-divider-row'));
+
+        function addOptions(select, values) {
+            values.forEach(value => {
+                if (!value) return;
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+        }
+
+        addOptions(eventFilter, [...new Set(resultRows.map(row => row.dataset.event))].sort());
+        addOptions(teamFilter, [...new Set(resultRows.map(row => row.dataset.team))].sort());
+
+        function activeFilters() {
+            return quickButtons.reduce((filters, button) => {
+                filters[button.dataset.filter] = button.getAttribute('aria-pressed') === 'true';
+                return filters;
+            }, {});
+        }
+
+        function rowMatches(row, text, filters) {
+            const matchesText = !text || row.textContent.toLowerCase().includes(text);
+            const matchesEvent = !eventFilter.value || row.dataset.event === eventFilter.value;
+            const matchesTeam = !teamFilter.value || row.dataset.team === teamFilter.value;
+            const place = parseInt(row.dataset.place, 10);
+            const matchesPr = !filters.pr || row.dataset.isPr === 'true';
+            const matchesTop8 = !filters.top8 || (!Number.isNaN(place) && place <= 8);
+            const matchesStagger = !filters.stagger || row.dataset.hasStagger === 'true';
+            return matchesText && matchesEvent && matchesTeam && matchesPr && matchesTop8 && matchesStagger;
+        }
+
+        function applyResultsFilters() {
+            const text = filterInput.value.trim().toLowerCase();
+            const filters = activeFilters();
+            const visibleYears = new Set();
+
+            resultRows.forEach(row => {
+                const show = rowMatches(row, text, filters);
+                row.style.display = show ? '' : 'none';
+                if (show) visibleYears.add(row.dataset.year);
+            });
+
+            yearRows.forEach(row => {
+                row.style.display = visibleYears.has(row.dataset.yearDivider) ? '' : 'none';
+            });
+        }
+
+        filterInput.addEventListener('input', applyResultsFilters);
+        eventFilter.addEventListener('change', applyResultsFilters);
+        teamFilter.addEventListener('change', applyResultsFilters);
+
+        quickButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const isPressed = this.getAttribute('aria-pressed') === 'true';
+                this.setAttribute('aria-pressed', isPressed ? 'false' : 'true');
+                applyResultsFilters();
+            });
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                filterInput.value = '';
+                eventFilter.value = '';
+                teamFilter.value = '';
+                quickButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
+                applyResultsFilters();
+            });
+        }
+
+        applyResultsFilters();
+    })();
+
+    document.querySelectorAll('[data-collapsible-section]').forEach(section => {
+        const toggle = section.querySelector('[data-collapse-toggle]');
+        const content = section.querySelector('[data-collapse-content]');
+
+        if (!toggle || !content) return;
+
+        toggle.addEventListener('click', function() {
+            const shouldOpen = content.classList.contains('hidden');
+            content.classList.toggle('hidden', !shouldOpen);
+            toggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            toggle.textContent = shouldOpen ? 'Hide' : 'Show';
+        });
+    });
 
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.addEventListener('click', function() {

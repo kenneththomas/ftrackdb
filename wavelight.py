@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import calendar
+from datetime import date, datetime
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_wtf import CSRFProtect
 from forms import ResultForm, SearchForm
@@ -112,14 +114,74 @@ def get_athlete_prs(athlete_name):
 
 @app.route('/meets')
 def meets():
-    page = request.args.get('page', 1, type=int)
-    per_page = 25
     search = request.args.get('search', '', type=str)
-    offset = (page - 1) * per_page
-    results = Result.get_recent_meets(limit=per_page, offset=offset, search=search if search else None)
-    total_results = Result.get_total_meets(search=search if search else None)
-    total_pages = (total_results + per_page - 1) // per_page
-    return render_template('meets.html', results=results, page=page, total_pages=total_pages, search=search)
+    selected_day = request.args.get('day', '', type=str)
+    search_term = search if search else None
+
+    if selected_day:
+        try:
+            day_date = datetime.strptime(selected_day, '%Y-%m-%d').date()
+        except ValueError:
+            return redirect(url_for('meets', search=search))
+
+        results = Result.get_meets_for_date(selected_day, search=search_term)
+        return render_template(
+            'meets.html',
+            view_mode='day',
+            results=results,
+            search=search,
+            selected_day=day_date,
+            month=day_date.month,
+            year=day_date.year,
+        )
+
+    latest_meet_date = Result.get_latest_meet_date(search=search_term)
+    today = date.today()
+    default_year = today.year
+    default_month = today.month
+    if latest_meet_date:
+        latest_date = datetime.strptime(latest_meet_date, '%Y-%m-%d').date()
+        default_year = latest_date.year
+        default_month = latest_date.month
+
+    year = request.args.get('year', default_year, type=int)
+    month = request.args.get('month', default_month, type=int)
+    if month < 1 or month > 12 or year < 1900 or year > 2200:
+        return redirect(url_for('meets', year=default_year, month=default_month, search=search))
+
+    month_start = date(year, month, 1)
+    previous_month = month_start.replace(year=year - 1, month=12) if month == 1 else month_start.replace(month=month - 1)
+    next_month = month_start.replace(year=year + 1, month=1) if month == 12 else month_start.replace(month=month + 1)
+
+    month_meets = Result.get_meets_for_month(year, month, search=search_term)
+    meets_by_day = {}
+    for meet_name, meet_date in month_meets:
+        meets_by_day.setdefault(meet_date, []).append({'name': meet_name, 'date': meet_date})
+
+    calendar.setfirstweekday(calendar.SUNDAY)
+    calendar_weeks = []
+    for week in calendar.monthcalendar(year, month):
+        calendar_weeks.append([
+            {
+                'day': day_number,
+                'date': date(year, month, day_number).strftime('%Y-%m-%d') if day_number else '',
+                'meets': meets_by_day.get(date(year, month, day_number).strftime('%Y-%m-%d'), []) if day_number else [],
+            }
+            for day_number in week
+        ])
+
+    return render_template(
+        'meets.html',
+        view_mode='calendar',
+        calendar_weeks=calendar_weeks,
+        month=month,
+        year=year,
+        month_name=calendar.month_name[month],
+        previous_month=previous_month,
+        next_month=next_month,
+        search=search,
+        total_meets=len(month_meets),
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5006)

@@ -65,6 +65,7 @@ def explicit_relay_to_display_dict(relay):
     members = [leg['athlete'] for leg in legs]
     splits = [(leg['athlete'], leg['split_result']) for leg in legs]
     return {
+        'relay_id': relay.get('relay_id'),
         'date': relay['date'],
         'meet': relay['meet'],
         'event': relay['event'],

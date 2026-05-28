@@ -1,4 +1,5 @@
 import os
+from collections import Counter
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, BoardPost, StaggerScore, compute_stagger_deltas_for_meet, RelayTeam
 from utils.relay_utils import parse_time, explicit_relay_to_display_dict
@@ -125,6 +126,39 @@ def meet_results(meet_name):
     board_post_form = BoardPostForm()
     board_generate_form = BoardGenerateForm()
     
+    if request.method == 'POST' and request.form.getlist('date[]'):
+        dates = request.form.getlist('date[]')
+        athletes = request.form.getlist('athlete[]')
+        events_to_add = request.form.getlist('event[]')
+        results_to_add = request.form.getlist('result[]')
+        teams_to_add = request.form.getlist('team[]')
+
+        inserted = 0
+        for row in zip(dates, athletes, events_to_add, results_to_add, teams_to_add):
+            date, athlete, event, result, team = [value.strip() for value in row]
+            if not any([date, athlete, event, result, team]):
+                continue
+            if not all([date, athlete, event, result, team]):
+                flash('Each result row needs a date, athlete, event, result, and team.', 'error')
+                return redirect(url_for('meet.meet_results', meet_name=meet_name))
+            Result.insert_result({
+                'date': date,
+                'athlete': athlete,
+                'meet': meet_name,
+                'event': event,
+                'result': result,
+                'team': team
+            })
+            inserted += 1
+
+        if inserted:
+            TeamScore.update_meet_scores(meet_name, {})
+            AthleteRanking.update_meet_rankings(meet_name, [])
+            flash(f'{inserted} result{"s" if inserted != 1 else ""} added!', 'success')
+        else:
+            flash('No result rows were submitted.', 'warning')
+        return redirect(url_for('meet.meet_results', meet_name=meet_name))
+
     if form.validate_on_submit():
         # Insert the result for this meet
         data = {
@@ -142,7 +176,9 @@ def meet_results(meet_name):
         flash('Result added!', 'success')
         return redirect(url_for('meet.meet_results', meet_name=meet_name))
 
-    raw_results = Result.get_meet_results(meet_name)
+    raw_results = Result.get_meet_results_with_ids(meet_name)
+    date_counts = Counter((row[0] or '')[:10] for row in raw_results if row[0])
+    meet_default_date = date_counts.most_common(1)[0][0] if date_counts else datetime.today().strftime('%Y-%m-%d')
     # Group standard results by (event, date)
     events = {}
     # Gather relay splits separately for computing the combined relay result
@@ -245,7 +281,7 @@ def meet_results(meet_name):
     stagger_score_cache = {}
 
     for row in raw_results:
-        date, athlete, event, result, team = row
+        date, athlete, event, result, team, result_id = row
         if event.endswith(' RS'):
             # Group for combined relay calculations by event, team, and date
             relay_key = (event, team, date)
@@ -267,6 +303,7 @@ def meet_results(meet_name):
 
             pr_debut = is_pr_and_debut(athlete, event, result)
             events[event_key].append({
+                'result_id': result_id,
                 'athlete': athlete,
                 'result': result,
                 'team': team,
@@ -290,6 +327,7 @@ def meet_results(meet_name):
             if score_key not in stagger_score_cache:
                 stagger_score_cache[score_key] = StaggerScore.get_score_if_exists(athlete, event)
             events[event_key].append({
+                'result_id': result_id,
                 'athlete': athlete,
                 'result': result,
                 'team': team,
@@ -375,6 +413,7 @@ def meet_results(meet_name):
                          events=events, 
                          team_logos=team_logos, 
                          form=form, 
+                         meet_default_date=meet_default_date,
                          sorted_teams=sorted_teams,
                          comment_form=comment_form,
                          comments=comments,
@@ -686,6 +725,86 @@ def api_generate_results(meet_name):
         if 'OPENROUTER_API_KEY' in err:
             return jsonify({'ok': False, 'error': err}), 503
         return jsonify({'ok': False, 'error': err}), 400
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@meet_bp.route('/meet/<meet_name>/api/update_relay', methods=['POST'])
+def api_update_relay(meet_name):
+    """Update an explicit relay's legs."""
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        relay_id = payload.get('relay_id')
+        if not relay_id:
+            return jsonify({'ok': False, 'error': 'relay_id is required'}), 400
+
+        team = (payload.get('team') or '').strip()
+        event = (payload.get('event') or '').strip()
+        team_designation = (payload.get('team_designation') or 'A').strip() or 'A'
+        legs = payload.get('legs', [])
+
+        if not all([team, event]):
+            return jsonify({'ok': False, 'error': 'Missing required relay fields'}), 400
+
+        if not legs or not isinstance(legs, list):
+            return jsonify({'ok': False, 'error': 'legs must be a non-empty array'}), 400
+
+        # Filter out empty legs
+        filled_legs = [leg for leg in legs if leg.get('athlete', '').strip() or leg.get('split_result', '').strip()]
+        if not filled_legs:
+            return jsonify({'ok': False, 'error': 'At least one leg with athlete or split must be provided'}), 400
+
+        if event not in RelayTeam.RELAY_CONFIG:
+            return jsonify({'ok': False, 'error': f"Unknown relay event: {event}"}), 400
+
+        expected_legs = RelayTeam.RELAY_CONFIG[event]
+        if len(filled_legs) > len(expected_legs):
+            return jsonify({'ok': False, 'error': f"{event} has {len(expected_legs)} legs, got {len(filled_legs)}"}), 400
+
+        formatted_legs = []
+        for i, leg in enumerate(filled_legs, start=1):
+            formatted_legs.append({
+                'leg_number': i,
+                'athlete': leg.get('athlete', '').strip(),
+                'split_event': expected_legs[i - 1],
+                'split_result': leg.get('split_result', '').strip()
+            })
+
+        relay_data = {
+            'date': payload.get('date', '').strip(),
+            'meet': meet_name,
+            'team': team,
+            'event': event,
+            'team_designation': team_designation
+        }
+
+        RelayTeam.update_relay(relay_id, relay_data, formatted_legs)
+
+        # Clear cached scores/rankings
+        TeamScore.update_meet_scores(meet_name, {})
+        AthleteRanking.update_meet_rankings(meet_name, [])
+
+        return jsonify({'ok': True, 'relay_id': relay_id})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@meet_bp.route('/meet/<meet_name>/api/delete_relay', methods=['POST'])
+def api_delete_relay(meet_name):
+    """Delete an explicit relay."""
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        relay_id = payload.get('relay_id')
+        if not relay_id:
+            return jsonify({'ok': False, 'error': 'relay_id is required'}), 400
+
+        RelayTeam.delete_relay(relay_id)
+
+        # Clear cached scores/rankings
+        TeamScore.update_meet_scores(meet_name, {})
+        AthleteRanking.update_meet_rankings(meet_name, [])
+
+        return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recent Meets — Track & Field</title>
+    <title>Meets Calendar - Track & Field</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
@@ -12,54 +12,109 @@
     {% include 'navbar.html' %}
     <div class="meets-container">
         <header class="meets-header" role="banner">
-            <h1 class="meets-title">Recent Meets</h1>
-            <p class="meets-subtitle">Browse meets and view full results</p>
-            <form method="get" action="{{ url_for('meets') }}" class="meets-search" role="search" aria-label="Search meets">
+            <h1 class="meets-title">Meets Calendar</h1>
+            <p class="meets-subtitle">Browse meets by date and jump into full results</p>
+
+            <form method="get" action="{{ url_for('meets') }}" class="meets-controls" role="search" aria-label="Filter meets calendar">
                 <label for="meet-search-input" class="sr-only">Search meets by name</label>
                 <input type="text" id="meet-search-input" name="search" class="meets-search-input" placeholder="Search meets..." value="{{ search or '' }}" aria-label="Search meets by name">
-                <button type="submit" class="meets-search-btn" aria-label="Search">Search</button>
+
+                {% if view_mode == 'calendar' %}
+                <label for="month-select" class="sr-only">Month</label>
+                <select id="month-select" name="month" class="meets-select" aria-label="Month">
+                    {% for month_number in range(1, 13) %}
+                    <option value="{{ month_number }}" {% if month_number == month %}selected{% endif %}>{{ month_number }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="year-input" class="sr-only">Year</label>
+                <input type="number" id="year-input" name="year" class="meets-year-input" min="1900" max="2200" value="{{ year }}" aria-label="Year">
+                {% endif %}
+
+                <button type="submit" class="meets-search-btn" aria-label="Update meets view">Update</button>
             </form>
         </header>
 
-        <section class="meets-list" aria-label="List of meets">
+        {% if view_mode == 'day' %}
+        <section class="meets-list" aria-label="Meets on {{ selected_day.strftime('%B %d, %Y') if selected_day else '' }}">
+            <div class="meets-calendar-bar">
+                <a href="{{ url_for('meets', month=month, year=year, search=search or '') }}" class="meets-pagination-link">Back to Calendar</a>
+                <h2 class="meets-month-title">{{ selected_day.strftime('%B %d, %Y') }}</h2>
+                <span class="meets-count">{{ results|length }} meet{{ '' if results|length == 1 else 's' }}</span>
+            </div>
+
             {% if results %}
-            <div class="meets-grid">
+            <div class="meets-grid meets-day-grid">
                 {% for meet in results %}
                 <a href="{{ url_for('meet.meet_results', meet_name=meet[0]) }}" class="meet-card" aria-label="View results for {{ meet[0] }}">
                     <span class="meet-card-date">{{ meet[1] }}</span>
                     <h2 class="meet-card-name">{{ meet[0] }}</h2>
-                    <span class="meet-card-arrow" aria-hidden="true">→</span>
+                    <span class="meet-card-arrow" aria-hidden="true">&rarr;</span>
                 </a>
                 {% endfor %}
             </div>
-
-            {% if total_pages > 1 %}
-            <nav class="meets-pagination" role="navigation" aria-label="Meets pagination">
-                {% if page > 1 %}
-                    <a href="{{ url_for('meets', page=page-1, search=search or '') }}" class="meets-pagination-link" aria-label="Previous page">&laquo; Previous</a>
-                {% endif %}
-                {% set start_page = [1, page - 2]|max %}
-                {% set end_page = [total_pages, page + 2]|min %}
-                {% for p in range(start_page, end_page + 1) %}
-                    <a href="{{ url_for('meets', page=p, search=search or '') }}" class="meets-pagination-link {{ 'meets-pagination-link--active' if p == page else '' }}" {% if p == page %}aria-current="page"{% endif %} aria-label="Page {{ p }}">{{ p }}</a>
-                {% endfor %}
-                {% if page < total_pages %}
-                    <a href="{{ url_for('meets', page=page+1, search=search or '') }}" class="meets-pagination-link" aria-label="Next page">Next &raquo;</a>
-                {% endif %}
-            </nav>
-            {% endif %}
             {% else %}
             <div class="meets-empty" role="status">
-                <p class="meets-empty-text">No meets found.</p>
+                <p class="meets-empty-text">No meets found for this day.</p>
                 {% if search %}
-                <p class="meets-empty-hint">Try a different search or <a href="{{ url_for('meets') }}">clear search</a>.</p>
+                <p class="meets-empty-hint">Try a different search or <a href="{{ url_for('meets', month=month, year=year) }}">clear search</a>.</p>
                 {% endif %}
             </div>
             {% endif %}
         </section>
+        {% else %}
+        <section class="meets-calendar-section" aria-label="Meets calendar for {{ month_name }} {{ year }}">
+            <div class="meets-calendar-bar">
+                <a href="{{ url_for('meets', month=previous_month.month, year=previous_month.year, search=search or '') }}" class="meets-pagination-link" aria-label="Previous month">&laquo; Prev</a>
+                <h2 class="meets-month-title">{{ month_name }} {{ year }}</h2>
+                <a href="{{ url_for('meets', month=next_month.month, year=next_month.year, search=search or '') }}" class="meets-pagination-link" aria-label="Next month">Next &raquo;</a>
+            </div>
+
+            <div class="meets-calendar" role="grid">
+                <div class="meets-weekdays" role="row">
+                    {% for weekday in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+                    <div class="meets-weekday" role="columnheader">{{ weekday }}</div>
+                    {% endfor %}
+                </div>
+
+                {% for week in calendar_weeks %}
+                <div class="meets-week" role="row">
+                    {% for day in week %}
+                    <div class="meets-day {{ 'meets-day--empty' if not day.day else '' }}" role="gridcell">
+                        {% if day.day %}
+                        <div class="meets-day-number">{{ day.day }}</div>
+                        {% if day.meets %}
+                        <div class="meets-day-events">
+                            {% for meet in day.meets %}
+                            {% if loop.index <= 3 %}
+                            <a href="{{ url_for('meet.meet_results', meet_name=meet.name) }}" class="meets-calendar-meet">{{ meet.name }}</a>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if day.meets|length > 3 %}
+                        <a href="{{ url_for('meets', day=day.date, search=search or '') }}" class="meets-more-link">See {{ day.meets|length - 3 }} more</a>
+                        {% endif %}
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if total_meets == 0 %}
+            <div class="meets-empty" role="status">
+                <p class="meets-empty-text">No meets found for this month.</p>
+                {% if search %}
+                <p class="meets-empty-hint">Try a different search or <a href="{{ url_for('meets', month=month, year=year) }}">clear search</a>.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
 
         <footer class="meets-footer">
-            <a href="{{ url_for('home') }}" class="meets-back-link">← Back to Home</a>
+            <a href="{{ url_for('home') }}" class="meets-back-link">&larr; Back to Home</a>
         </footer>
     </div>
 </body>

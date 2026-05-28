@@ -16,7 +16,7 @@
                 <tbody>
                     {% for row in leaderboard_results %}
                         <tr>
-                            <td>{{ loop.index }}</td>
+                            <td>{{ (page - 1) * per_page + loop.index }}</td>
                             <td><a href="{{ url_for('athlete.athlete_profile', name=row.athlete) }}">{{ row.athlete }}</a></td>
                             <td>{{ row.result }}</td>
                             {% if not best_only %}
@@ -36,6 +36,17 @@
                 </tbody>
             </table>
         </div>
+        {% if total_pages > 1 %}
+            <div class="pagination" style="margin-top: 1.5rem; justify-content: center;">
+                {% if page > 1 %}
+                    <a href="#" data-page="{{ page - 1 }}" class="page-link">&laquo; Previous</a>
+                {% endif %}
+                <span>Page {{ page }} of {{ total_pages }}</span>
+                {% if page < total_pages %}
+                    <a href="#" data-page="{{ page + 1 }}" class="page-link">Next &raquo;</a>
+                {% endif %}
+            </div>
+        {% endif %}
     {% else %}
         <div class="empty-state">
             <p>No results for {{ selected_event }} yet.</p>

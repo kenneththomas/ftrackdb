@@ -2,10 +2,58 @@ import os
 from flask import Blueprint, render_template, request, jsonify, url_for
 from models import Result, Database, Athlete, Team, AthleteRanking, StaggerScore, BoardPost, RelayTeam
 from forms import SearchForm, BoardPostForm, BoardGenerateForm
-from utils.relay_utils import calculate_relay_results, explicit_relay_to_display_dict
+from utils.relay_utils import calculate_relay_results, explicit_relay_to_display_dict, parse_time
+from utils.field_utils import parse_field_result, all_results_are_field_format
 
 # Create blueprint
 athlete_bp = Blueprint('athlete', __name__)
+
+def _get_result_places(conn, results):
+    """Return Result_ID -> place for the athlete profile's displayed results."""
+    places = {}
+    event_keys = {
+        (result[0], result[1], result[2])
+        for result in results
+        if result and len(result) > 5
+    }
+
+    with conn:
+        cur = conn.cursor()
+        for date, meet_name, event in event_keys:
+            cur.execute('''
+                SELECT Result_ID, Result
+                FROM Results
+                WHERE Date = ? AND Meet_Name = ? AND Event = ?
+            ''', (date, meet_name, event))
+            rows = [dict(row) for row in cur.fetchall()]
+            if not rows:
+                continue
+
+            result_strs = [row.get('Result') for row in rows if row.get('Result') is not None]
+            if all_results_are_field_format(result_strs):
+                key_fn = lambda row: parse_field_result(row.get('Result') or '')
+                rows.sort(key=key_fn, reverse=True)
+            elif 'm' in event or 'Mile' in event:
+                key_fn = lambda row: parse_time(row.get('Result') or '')
+                rows.sort(key=key_fn)
+            else:
+                def key_fn(row):
+                    try:
+                        return float(row.get('Result') or 0)
+                    except (TypeError, ValueError):
+                        return -1.0
+                rows.sort(key=key_fn, reverse=True)
+
+            current_place = 1
+            previous_key = None
+            for index, row in enumerate(rows):
+                current_key = key_fn(row)
+                if previous_key is not None and current_key != previous_key:
+                    current_place = index + 1
+                places[row['Result_ID']] = current_place
+                previous_key = current_key
+
+    return places
 
 @athlete_bp.route('/athlete/<name>')
 def athlete_profile(name):
@@ -120,6 +168,8 @@ def athlete_profile(name):
     # Stagger scores per event (for display near PRs)
     stagger_scores = StaggerScore.get_scores_for_athlete(name)
 
+    result_places = _get_result_places(conn, results)
+
     # Stagger delta by meet for this athlete: (meet_name, event, date) -> delta
     with conn:
         cur = conn.cursor()
@@ -168,7 +218,8 @@ def athlete_profile(name):
             date_str = str(result[0]) if result[0] else ''
             date_key = date_str[:10] if date_str and len(date_str) >= 10 else date_str
             delta = stagger_deltas.get((result[1], event, date_key))
-            results_with_pr_flag.append((*result, is_pr, delta))
+            place = result_places.get(result[5])
+            results_with_pr_flag.append((*result, is_pr, delta, place))
         except Exception as e:
             continue
     

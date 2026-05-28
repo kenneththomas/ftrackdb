@@ -380,7 +380,7 @@
                     </thead>
                     <tbody>
                         {% for result in results %}
-                        <tr>
+                        <tr {% if result.result_id is defined and result.result_id %}data-result-id="{{ result.result_id }}"{% endif %}>
                             <td class="athlete-cell">
                                 <div class="athlete-row">
                                     <span class="place-num">{{ result.place }}</span>
@@ -388,7 +388,29 @@
                                     <span class="athlete-info">
                                         <div style="display: flex; align-items: center;">
                                             <div>
-                                                {% if result.legs is defined %}
+                                                {% if result.relay_id is defined and result.relay_id %}
+                                                    <span class="relay-view-{{ result.relay_id }}">
+                                                        {% for leg in result.legs %}
+                                                            <a href="{{ url_for('athlete.athlete_profile', name=leg.athlete|trim) }}" class="athlete-name {% if get_gender(leg.athlete|trim) %}female-text{% endif %}"><b>{{ leg.athlete|trim }}</b></a> <span class="inline-result" style="font-size:0.85em;color:#aaa;">{{ leg.split_event }} {{ leg.split_result }}</span>{% if not loop.last %}, {% endif %}
+                                                        {% endfor %}
+                                                    </span>
+                                                    <span class="relay-edit-{{ result.relay_id }}" style="display:none;">
+                                                        {% for leg in result.legs %}
+                                                            <span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;">
+                                                                <input type="text" class="relay-edit-athlete" value="{{ leg.athlete|trim }}" placeholder="Athlete" style="width:100px;padding:2px 4px;background:#181a1b;color:#e0e0e0;border:1px solid #555;border-radius:3px;font-size:0.85em;">
+                                                                <input type="text" class="relay-edit-split" value="{{ leg.split_result }}" placeholder="Time" style="width:70px;padding:2px 4px;background:#181a1b;color:#e0e0e0;border:1px solid #555;border-radius:3px;font-size:0.85em;">
+                                                            </span>
+                                                        {% endfor %}
+                                                    </span>
+                                                    <span class="relay-actions-{{ result.relay_id }}" style="display:inline-flex;align-items:center;gap:6px;margin-left:8px;">
+                                                        <button type="button" class="relay-edit-btn" data-relay-id="{{ result.relay_id }}" data-event="{{ event }}" data-date="{{ date }}" data-team="{{ result.team }}" data-team-designation="{{ result.team_designation or 'A' }}" title="Edit relay" style="background:none;border:none;color:#888;cursor:pointer;font-size:1em;padding:2px;">&#9998;</button>
+                                                        <button type="button" class="relay-del-btn" data-relay-id="{{ result.relay_id }}" title="Delete relay" style="background:none;border:none;color:#f44336;cursor:pointer;font-size:1em;padding:2px;">&#10005;</button>
+                                                    </span>
+                                                    <span class="relay-savecancel-{{ result.relay_id }}" style="display:none;margin-left:8px;">
+                                                        <button type="button" class="relay-save-btn" data-relay-id="{{ result.relay_id }}" style="background:#4CAF50;border:none;color:white;cursor:pointer;padding:2px 8px;border-radius:3px;font-size:0.85em;">Save</button>
+                                                        <button type="button" class="relay-cancel-btn" data-relay-id="{{ result.relay_id }}" style="background:#666;border:none;color:white;cursor:pointer;padding:2px 8px;border-radius:3px;font-size:0.85em;">Cancel</button>
+                                                    </span>
+                                                {% elif result.legs is defined %}
                                                     {% for leg in result.legs %}
                                                         <a href="{{ url_for('athlete.athlete_profile', name=leg.athlete|trim) }}" class="athlete-name {% if get_gender(leg.athlete|trim) %}female-text{% endif %}"><b>{{ leg.athlete|trim }}</b></a> <span class="inline-result" style="font-size:0.85em;color:#aaa;">{{ leg.split_event }} {{ leg.split_result }}</span>{% if not loop.last %}, {% endif %}
                                                     {% endfor %}
@@ -397,9 +419,32 @@
                                                         <a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}" class="athlete-name {% if get_gender(athlete|trim) %}female-text{% endif %}"><b>{{ athlete|trim }}</b></a>{% if not loop.last %}, {% endif %}
                                                     {% endfor %}
                                                 {% else %}
-                                                    <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
+                                                    {% if result.result_id is defined and result.result_id %}
+                                                        <span class="result-view-{{ result.result_id }}">
+                                                            <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
+                                                        </span>
+                                                        <span class="result-edit-{{ result.result_id }}" style="display:none;">
+                                                            <input type="text" class="result-edit-input result-edit-athlete" value="{{ result.athlete }}" placeholder="Athlete" style="width:160px;">
+                                                        </span>
+                                                    {% else %}
+                                                        <a href="{{ url_for('athlete.athlete_profile', name=result.athlete) }}" class="athlete-name {% if get_gender(result.athlete) %}female-text{% endif %}"><b>{{ result.athlete }}</b></a>
+                                                    {% endif %}
                                                 {% endif %}
-                                                <span class="inline-result">{{ result.result }}</span>
+                                                {% if result.result_id is defined and result.result_id %}
+                                                    <span class="inline-result result-time-view-{{ result.result_id }}">{{ result.result }}</span>
+                                                    <span class="result-time-edit-{{ result.result_id }}" style="display:none;margin-left:10px;">
+                                                        <input type="text" class="result-edit-input result-edit-time" value="{{ result.result }}" placeholder="Time" style="width:80px;">
+                                                    </span>
+                                                    <span class="result-actions-{{ result.result_id }}" style="display:inline-flex;align-items:center;gap:6px;margin-left:8px;">
+                                                        <button type="button" class="result-edit-btn" data-result-id="{{ result.result_id }}" title="Edit result name and time" style="background:none;border:none;color:#888;cursor:pointer;font-size:1em;padding:2px;">&#9998;</button>
+                                                    </span>
+                                                    <span class="result-savecancel-{{ result.result_id }}" style="display:none;margin-left:8px;">
+                                                        <button type="button" class="result-save-btn" data-result-id="{{ result.result_id }}" style="background:#4CAF50;border:none;color:white;cursor:pointer;padding:2px 8px;border-radius:3px;font-size:0.85em;">Save</button>
+                                                        <button type="button" class="result-cancel-btn" data-result-id="{{ result.result_id }}" style="background:#666;border:none;color:white;cursor:pointer;padding:2px 8px;border-radius:3px;font-size:0.85em;">Cancel</button>
+                                                    </span>
+                                                {% else %}
+                                                    <span class="inline-result">{{ result.result }}</span>
+                                                {% endif %}
                                                 {% if result.ranking_after or result.ranking_before %}
                                                     {% if result.ranking_before and result.ranking_after %}
                                                         {% if result.ranking_after < result.ranking_before %}
@@ -444,29 +489,35 @@
 
         <form method="post" id="meet-insert-form">
             {{ form.csrf_token }}
-            <div class="form-row">
-                <div class="form-group">
-                    {{ form.date.label }}
-                    {{ form.date(class="form-control", required=True) }}
-                </div>
-                <div class="form-group">
-                    {{ form.athlete.label }}
-                    {{ form.athlete(class="form-control", required=True, autocomplete="off", onblur="lookupTeam(this)") }}
-                </div>
-                <div class="form-group">
-                    {{ form.event.label }}
-                    {{ form.event(class="form-control", required=True) }}
-                </div>
-                <div class="form-group">
-                    {{ form.result.label }}
-                    {{ form.result(class="form-control", required=True) }}
-                </div>
-                <div class="form-group">
-                    {{ form.team.label }}
-                    {{ form.team(class="form-control", required=True, autocomplete="off") }}
+            <div id="meet-results-container">
+                <div class="form-row meet-result-row">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" name="date[]" class="form-control" required value="{{ meet_default_date }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Athlete</label>
+                        <input type="text" name="athlete[]" class="form-control" required autocomplete="off" onblur="lookupTeam(this)">
+                    </div>
+                    <div class="form-group">
+                        <label>Event</label>
+                        <input type="text" name="event[]" class="form-control" required autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Result</label>
+                        <input type="text" name="result[]" class="form-control" required autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Team</label>
+                        <input type="text" name="team[]" class="form-control" required autocomplete="off">
+                    </div>
+                    <button type="button" class="btn meet-remove-result" onclick="removeMeetResultRow(this)" title="Remove result row" style="display:none;">&times;</button>
                 </div>
             </div>
-            <button type="submit" class="btn">Add Result</button>
+            <div style="display:flex; gap:10px; margin-top:12px;">
+                <button type="button" class="btn" onclick="addMeetResultRow()">Add Another Result</button>
+                <button type="submit" class="btn">Add Results</button>
+            </div>
         </form>
         <br>
         
@@ -719,6 +770,22 @@
             outline: none;
             border-color: #617394;
         }
+    .relay-edit-btn:hover { color: #fff !important; }
+    .relay-del-btn:hover { color: #ff6666 !important; }
+    .relay-save-btn:hover { background: #66bb6a !important; }
+    .relay-cancel-btn:hover { background: #888 !important; }
+    .result-edit-btn:hover { color: #fff !important; }
+    .result-save-btn:hover { background: #66bb6a !important; }
+    .result-cancel-btn:hover { background: #888 !important; }
+    .result-edit-input {
+        padding: 2px 4px;
+        background: #181a1b;
+        color: #e0e0e0;
+        border: 1px solid #555;
+        border-radius: 3px;
+        font-size: 0.85em;
+        font-family: inherit;
+    }
         @media (max-width: 600px) {
             .gen-modal { width: 96%; max-height: 90vh; }
             .gen-preview-scroll { max-height: 35vh; }
@@ -935,10 +1002,47 @@
     })();
     </script>
     <script>
+        function updateMeetResultRemoveButtons() {
+            const rows = document.querySelectorAll('#meet-results-container .meet-result-row');
+            rows.forEach(function(row) {
+                const removeBtn = row.querySelector('.meet-remove-result');
+                if (removeBtn) {
+                    removeBtn.style.display = rows.length > 1 ? 'inline-flex' : 'none';
+                }
+            });
+        }
+
+        function addMeetResultRow() {
+            const container = document.getElementById('meet-results-container');
+            const lastRow = container.querySelector('.meet-result-row:last-child');
+            const newRow = lastRow.cloneNode(true);
+            const dateValue = lastRow.querySelector('input[name="date[]"]').value;
+            const eventValue = lastRow.querySelector('input[name="event[]"]').value;
+
+            newRow.querySelector('input[name="date[]"]').value = dateValue || {{ meet_default_date|tojson }};
+            newRow.querySelector('input[name="event[]"]').value = eventValue;
+            newRow.querySelector('input[name="athlete[]"]').value = '';
+            newRow.querySelector('input[name="result[]"]').value = '';
+            newRow.querySelector('input[name="team[]"]').value = '';
+
+            container.appendChild(newRow);
+            updateMeetResultRemoveButtons();
+            newRow.querySelector('input[name="athlete[]"]').focus();
+        }
+
+        function removeMeetResultRow(button) {
+            const row = button.closest('.meet-result-row');
+            if (row && document.querySelectorAll('#meet-results-container .meet-result-row').length > 1) {
+                row.remove();
+                updateMeetResultRemoveButtons();
+            }
+        }
+
         function lookupTeam(athleteInput) {
             const athleteName = athleteInput.value;
-            const form = athleteInput.closest('form');
-            const teamInput = form.querySelector('input[name="team"]');
+            const row = athleteInput.closest('.meet-result-row') || athleteInput.closest('form');
+            const teamInput = row.querySelector('input[name="team[]"], input[name="team"]');
+            if (!teamInput) return;
             fetch(`/lookup_team/${encodeURIComponent(athleteName)}`)
                 .then(response => response.json())
                 .then(data => {
@@ -947,6 +1051,242 @@
                     }
                 });
         }
+
+        document.addEventListener('DOMContentLoaded', updateMeetResultRemoveButtons);
+    </script>
+
+    <script>
+    (function() {
+        function getResultCsrfToken() {
+            var el = document.querySelector('input[name="csrf_token"]');
+            return el ? el.value : '';
+        }
+
+        function toggleResultEdit(resultId, editing) {
+            var view = document.querySelector('.result-view-' + resultId);
+            var edit = document.querySelector('.result-edit-' + resultId);
+            var timeView = document.querySelector('.result-time-view-' + resultId);
+            var timeEdit = document.querySelector('.result-time-edit-' + resultId);
+            var actions = document.querySelector('.result-actions-' + resultId);
+            var saveCancel = document.querySelector('.result-savecancel-' + resultId);
+
+            if (view) view.style.display = editing ? 'none' : 'inline';
+            if (edit) edit.style.display = editing ? 'inline' : 'none';
+            if (timeView) timeView.style.display = editing ? 'none' : 'inline-block';
+            if (timeEdit) timeEdit.style.display = editing ? 'inline' : 'none';
+            if (actions) actions.style.display = editing ? 'none' : 'inline-flex';
+            if (saveCancel) saveCancel.style.display = editing ? 'inline-flex' : 'none';
+        }
+
+        document.querySelectorAll('.result-edit-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var resultId = this.dataset.resultId;
+                var edit = document.querySelector('.result-edit-' + resultId);
+                var timeEdit = document.querySelector('.result-time-edit-' + resultId);
+                var athleteInput = edit ? edit.querySelector('.result-edit-athlete') : null;
+                var timeInput = timeEdit ? timeEdit.querySelector('.result-edit-time') : null;
+
+                if (athleteInput) athleteInput.dataset.original = athleteInput.value;
+                if (timeInput) timeInput.dataset.original = timeInput.value;
+                toggleResultEdit(resultId, true);
+                if (athleteInput) athleteInput.focus();
+            });
+        });
+
+        document.querySelectorAll('.result-cancel-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var resultId = this.dataset.resultId;
+                var edit = document.querySelector('.result-edit-' + resultId);
+                var timeEdit = document.querySelector('.result-time-edit-' + resultId);
+                var athleteInput = edit ? edit.querySelector('.result-edit-athlete') : null;
+                var timeInput = timeEdit ? timeEdit.querySelector('.result-edit-time') : null;
+
+                if (athleteInput && athleteInput.dataset.original !== undefined) {
+                    athleteInput.value = athleteInput.dataset.original;
+                }
+                if (timeInput && timeInput.dataset.original !== undefined) {
+                    timeInput.value = timeInput.dataset.original;
+                }
+                toggleResultEdit(resultId, false);
+            });
+        });
+
+        document.querySelectorAll('.result-save-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var resultId = this.dataset.resultId;
+                var edit = document.querySelector('.result-edit-' + resultId);
+                var timeEdit = document.querySelector('.result-time-edit-' + resultId);
+                var athleteInput = edit ? edit.querySelector('.result-edit-athlete') : null;
+                var timeInput = timeEdit ? timeEdit.querySelector('.result-edit-time') : null;
+                var athlete = athleteInput ? athleteInput.value.trim() : '';
+                var result = timeInput ? timeInput.value.trim() : '';
+
+                if (!athlete || !result) {
+                    alert('Athlete name and time are required.');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+
+                fetch('/update_result/' + encodeURIComponent(resultId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getResultCsrfToken()
+                    },
+                    body: JSON.stringify({ athlete: athlete, result: result })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error updating result: ' + (data.error || 'Unknown error'));
+                        btn.disabled = false;
+                        btn.textContent = 'Save';
+                    }
+                })
+                .catch(function(err) {
+                    alert('Error updating result: ' + err.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Save';
+                });
+            });
+        });
+    })();
+    </script>
+
+    <script>
+    (function() {
+        function getRelayCsrfToken() {
+            var el = document.querySelector('input[name="csrf_token"]');
+            return el ? el.value : '';
+        }
+
+        function getMeetName() {
+            var m = document.querySelector('h1');
+            if (!m) return '';
+            var t = m.textContent.trim();
+            return t.replace(/ Results$/, '');
+        }
+
+        // Relay edit: switch to edit mode
+        document.querySelectorAll('.relay-edit-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var rid = this.dataset.relayId;
+                document.querySelector('.relay-view-' + rid).style.display = 'none';
+                document.querySelector('.relay-edit-' + rid).style.display = 'inline';
+                document.querySelector('.relay-actions-' + rid).style.display = 'none';
+                document.querySelector('.relay-savecancel-' + rid).style.display = 'inline-flex';
+            });
+        });
+
+        // Relay cancel: revert to view mode
+        document.querySelectorAll('.relay-cancel-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var rid = this.dataset.relayId;
+                document.querySelector('.relay-view-' + rid).style.display = 'inline';
+                document.querySelector('.relay-edit-' + rid).style.display = 'none';
+                document.querySelector('.relay-actions-' + rid).style.display = 'inline-flex';
+                document.querySelector('.relay-savecancel-' + rid).style.display = 'none';
+            });
+        });
+
+        // Relay save: send updated data
+        document.querySelectorAll('.relay-save-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var rid = this.dataset.relayId;
+                var editBtn = document.querySelector('.relay-edit-btn[data-relay-id="' + rid + '"]');
+                var editContainer = document.querySelector('.relay-edit-' + rid);
+                var athleteInputs = editContainer.querySelectorAll('.relay-edit-athlete');
+                var splitInputs = editContainer.querySelectorAll('.relay-edit-split');
+
+                var legs = [];
+                for (var i = 0; i < athleteInputs.length; i++) {
+                    legs.push({
+                        athlete: athleteInputs[i].value.trim(),
+                        split_result: splitInputs[i].value.trim()
+                    });
+                }
+
+                var payload = {
+                    relay_id: parseInt(rid, 10),
+                    team: editBtn.dataset.team,
+                    event: editBtn.dataset.event,
+                    date: editBtn.dataset.date,
+                    team_designation: editBtn.dataset.teamDesignation || 'A',
+                    legs: legs
+                };
+
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+
+                var meetName = getMeetName();
+                fetch('/meet/' + encodeURIComponent(meetName) + '/api/update_relay', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getRelayCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.ok) {
+                        location.reload();
+                    } else {
+                        alert('Error updating relay: ' + (data.error || 'Unknown error'));
+                        btn.disabled = false;
+                        btn.textContent = 'Save';
+                    }
+                })
+                .catch(function(err) {
+                    alert('Error updating relay: ' + err.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Save';
+                });
+            });
+        });
+
+        // Relay delete
+        document.querySelectorAll('.relay-del-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var rid = this.dataset.relayId;
+                if (!confirm('Delete this relay entry permanently?')) return;
+
+                var payload = { relay_id: parseInt(rid, 10) };
+                btn.disabled = true;
+                btn.textContent = '…';
+
+                var meetName = getMeetName();
+                fetch('/meet/' + encodeURIComponent(meetName) + '/api/delete_relay', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getRelayCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.ok) {
+                        var row = btn.closest('tr');
+                        if (row) row.remove();
+                    } else {
+                        alert('Error deleting relay: ' + (data.error || 'Unknown error'));
+                        btn.disabled = false;
+                        btn.textContent = '\u2715';
+                    }
+                })
+                .catch(function(err) {
+                    alert('Error deleting relay: ' + err.message);
+                    btn.disabled = false;
+                    btn.textContent = '\u2715';
+                });
+            });
+        });
+    })();
     </script>
 </body>
 </html>

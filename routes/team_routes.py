@@ -12,13 +12,14 @@ def _is_time_event(event_name: str) -> bool:
     return 'm' in event_name or 'Mile' in event_name
 
 
-def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, best_only: bool):
+def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, best_only: bool, page: int = 1, per_page: int = 50):
     """
     Return list of leaderboard dicts for the given team/event/mode.
     Each dict has athlete, result, date, meet (and metric for sorting).
+    Returns (results, total_results).
     """
     if not selected_event:
-        return []
+        return [], 0
     cursor.execute(
         '''
         SELECT Athlete, Result, Date, Meet_Name
@@ -60,30 +61,34 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
                         'meet': meet,
                         'metric': metric,
                     }
-        return sorted(
+        sorted_results = sorted(
             best_per_athlete.values(),
             key=lambda r: r['metric'],
             reverse=not time_based,
         )
-    enriched = []
-    for athlete, result, date, meet in rows:
-        if not result:
-            continue
-        metric = (
-            parse_time(result) if time_based else parse_field_result(result)
+    else:
+        enriched = []
+        for athlete, result, date, meet in rows:
+            if not result:
+                continue
+            metric = (
+                parse_time(result) if time_based else parse_field_result(result)
+            )
+            enriched.append({
+                'athlete': athlete,
+                'result': result,
+                'date': date,
+                'meet': meet,
+                'metric': metric,
+            })
+        sorted_results = sorted(
+            enriched,
+            key=lambda r: r['metric'],
+            reverse=not time_based,
         )
-        enriched.append({
-            'athlete': athlete,
-            'result': result,
-            'date': date,
-            'meet': meet,
-            'metric': metric,
-        })
-    return sorted(
-        enriched,
-        key=lambda r: r['metric'],
-        reverse=not time_based,
-    )
+    total_results = len(sorted_results)
+    offset = (page - 1) * per_page
+    return sorted_results[offset:offset + per_page], total_results
 
 
 @team_bp.route('/teams')
@@ -136,12 +141,15 @@ def team_results(team_name):
 
         selected_event = request.args.get('event', '')
         best_only = request.args.get('best_only', 'true') == 'true'
+        page = request.args.get('page', 1, type=int)
+        per_page = 50
         if not selected_event and events:
             selected_event = events[0]
 
-        leaderboard_results = get_team_leaderboard_results(
-            cur, team_name, selected_event, best_only
+        leaderboard_results, total_results = get_team_leaderboard_results(
+            cur, team_name, selected_event, best_only, page, per_page
         )
+        total_pages = (total_results + per_page - 1) // per_page if total_results else 0
 
     team_info = Team.get_team_info(team_name)
 
@@ -152,6 +160,9 @@ def team_results(team_name):
                          selected_event=selected_event,
                          best_only=best_only,
                          leaderboard_results=leaderboard_results,
+                         page=page,
+                         per_page=per_page,
+                         total_pages=total_pages,
                          team_info=team_info)
 
 
@@ -175,12 +186,15 @@ def team_leaderboard(team_name):
 
         selected_event = request.args.get('event', '')
         best_only = request.args.get('best_only', 'true') == 'true'
+        page = request.args.get('page', 1, type=int)
+        per_page = 50
         if not selected_event and events:
             selected_event = events[0]
 
-        leaderboard_results = get_team_leaderboard_results(
-            cur, team_name, selected_event, best_only
+        leaderboard_results, total_results = get_team_leaderboard_results(
+            cur, team_name, selected_event, best_only, page, per_page
         )
+        total_pages = (total_results + per_page - 1) // per_page if total_results else 0
 
     return render_template(
         'partials/team_leaderboard_content.html',
@@ -189,6 +203,9 @@ def team_leaderboard(team_name):
         selected_event=selected_event,
         best_only=best_only,
         leaderboard_results=leaderboard_results,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
     )
 
 @team_bp.route('/team/<team_name>/update_logo', methods=['POST'])

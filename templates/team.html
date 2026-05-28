@@ -312,6 +312,32 @@
             color: #94a3b8;
         }
 
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .pagination a {
+            padding: 0.5rem 1rem;
+            background: rgba(102,126,234,0.15);
+            border: 1px solid rgba(102,126,234,0.3);
+            border-radius: 6px;
+            color: #a78bfa;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .pagination a:hover {
+            background: rgba(102,126,234,0.3);
+            border-color: rgba(102,126,234,0.5);
+            color: #c4b5fd;
+        }
+        .pagination span {
+            padding: 0.5rem 0.75rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 768px) {
             .team-hero h1 {
                 font-size: 1.75rem;
@@ -438,18 +464,12 @@
 
     <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
     <script>
-        function updateTeamLeaderboardFilters() {
+        var currentPage = {{ page }};
+
+        function loadTeamLeaderboard(params) {
             const container = document.getElementById('leaderboardContent');
             const leaderboardUrl = container && container.getAttribute('data-leaderboard-url');
             if (!leaderboardUrl) return;
-
-            const eventSelect = document.getElementById('eventSelect');
-            const bestOnlyToggle = document.getElementById('bestOnlyToggle');
-            const params = new URLSearchParams();
-            if (eventSelect && eventSelect.value) {
-                params.set('event', eventSelect.value);
-            }
-            params.set('best_only', bestOnlyToggle && bestOnlyToggle.checked ? 'true' : 'false');
 
             const url = leaderboardUrl + (params.toString() ? '?' + params.toString() : '');
             container.classList.add('loading');
@@ -463,6 +483,7 @@
                 .then(function (html) {
                     container.innerHTML = html;
                     container.classList.remove('loading');
+                    attachPaginationHandlers();
                     const baseUrl = window.location.pathname;
                     const newUrl = params.toString() ? baseUrl + '?' + params.toString() : baseUrl;
                     history.replaceState(null, '', newUrl);
@@ -472,6 +493,41 @@
                     container.innerHTML = '<div class="empty-state"><p>Could not load leaderboard. Please try again.</p></div>';
                 });
         }
+
+        function updateTeamLeaderboardFilters() {
+            currentPage = 1;
+            const eventSelect = document.getElementById('eventSelect');
+            const bestOnlyToggle = document.getElementById('bestOnlyToggle');
+            const params = new URLSearchParams();
+            if (eventSelect && eventSelect.value) {
+                params.set('event', eventSelect.value);
+            }
+            params.set('best_only', bestOnlyToggle && bestOnlyToggle.checked ? 'true' : 'false');
+            params.set('page', currentPage);
+            loadTeamLeaderboard(params);
+        }
+
+        function attachPaginationHandlers() {
+            document.querySelectorAll('.page-link').forEach(function (link) {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const page = parseInt(this.getAttribute('data-page'));
+                    if (!page) return;
+                    currentPage = page;
+                    const eventSelect = document.getElementById('eventSelect');
+                    const bestOnlyToggle = document.getElementById('bestOnlyToggle');
+                    const params = new URLSearchParams();
+                    if (eventSelect && eventSelect.value) {
+                        params.set('event', eventSelect.value);
+                    }
+                    params.set('best_only', bestOnlyToggle && bestOnlyToggle.checked ? 'true' : 'false');
+                    params.set('page', currentPage);
+                    loadTeamLeaderboard(params);
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', attachPaginationHandlers);
     </script>
 </body>
 </html>

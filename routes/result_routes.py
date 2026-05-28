@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
-from models import Result, Database, RelayTeam
+from models import Result, Database, RelayTeam, TeamScore, AthleteRanking
 from forms import ResultForm
 
 # Create blueprint
@@ -114,6 +114,7 @@ def update_result(result_id):
         data = request.json
         # Map frontend field names to database column names
         field_mapping = {
+            'athlete': 'Athlete',
             'meet': 'Meet_Name',
             'date': 'Date',
             'event': 'Event',
@@ -124,6 +125,10 @@ def update_result(result_id):
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
+            cur.execute('SELECT Meet_Name FROM Results WHERE Result_ID = ?', (result_id,))
+            existing = cur.fetchone()
+            old_meet = existing['Meet_Name'] if existing else None
+
             # Update each field that was changed
             updates = []
             values = []
@@ -132,11 +137,21 @@ def update_result(result_id):
                 if db_field:
                     updates.append(f"{db_field} = ?")
                     values.append(value)
+            if not updates:
+                return jsonify({'success': False, 'error': 'No valid fields to update'}), 400
             values.append(result_id)
             
             query = f"UPDATE Results SET {', '.join(updates)} WHERE Result_ID = ?"
             cur.execute(query, values)
+            cur.execute('SELECT Meet_Name FROM Results WHERE Result_ID = ?', (result_id,))
+            updated = cur.fetchone()
+            new_meet = updated['Meet_Name'] if updated else None
             conn.commit()
+
+        for meet_name in {old_meet, new_meet}:
+            if meet_name:
+                TeamScore.update_meet_scores(meet_name, {})
+                AthleteRanking.update_meet_rankings(meet_name, [])
             
         return jsonify({'success': True})
     except Exception as e:

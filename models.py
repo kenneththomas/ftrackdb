@@ -305,6 +305,26 @@ class Result:
             return cur.fetchall()
 
     @staticmethod
+    def get_meet_results_with_ids(meet_name):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT strftime('%Y-%m-%d', Date) as formatted_date,
+                       Athlete, Event, Result, Team, Result_ID
+                FROM Results
+                WHERE Meet_Name = ?
+                ORDER BY Event,
+                    CASE
+                        WHEN Event IN ('60m', '100m', '200m', '400m', '60mH', '100mH', '110mH',
+                        '400mH')
+                        THEN CAST(REPLACE(Result, ':', '') AS DECIMAL)
+                        ELSE Result
+                    END ASC
+            ''', (meet_name,))
+            return cur.fetchall()
+
+    @staticmethod
     def insert_result(data):
         conn = Database.get_connection()
         if not conn:
@@ -342,6 +362,60 @@ class Result:
             params.extend([limit, offset])
             cur.execute(query, params)
             return cur.fetchall()
+
+    @staticmethod
+    def get_meets_for_month(year, month, search=None):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            query = '''
+                SELECT DISTINCT Meet_Name, strftime('%Y-%m-%d', Date) as formatted_date
+                FROM Results
+                WHERE strftime('%Y', Date) = ? AND strftime('%m', Date) = ?
+            '''
+            params = [str(year), f'{month:02d}']
+            if search:
+                query += ' AND Meet_Name LIKE ?'
+                params.append(f'%{search}%')
+            query += ' ORDER BY formatted_date ASC, Meet_Name ASC'
+            cur.execute(query, params)
+            return cur.fetchall()
+
+    @staticmethod
+    def get_meets_for_date(date, search=None):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            query = '''
+                SELECT DISTINCT Meet_Name, strftime('%Y-%m-%d', Date) as formatted_date
+                FROM Results
+                WHERE strftime('%Y-%m-%d', Date) = ?
+            '''
+            params = [date]
+            if search:
+                query += ' AND Meet_Name LIKE ?'
+                params.append(f'%{search}%')
+            query += ' ORDER BY Meet_Name ASC'
+            cur.execute(query, params)
+            return cur.fetchall()
+
+    @staticmethod
+    def get_latest_meet_date(search=None):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            query = '''
+                SELECT strftime('%Y-%m-%d', Date) as formatted_date
+                FROM Results
+            '''
+            params = []
+            if search:
+                query += ' WHERE Meet_Name LIKE ?'
+                params.append(f'%{search}%')
+            query += ' ORDER BY formatted_date DESC LIMIT 1'
+            cur.execute(query, params)
+            row = cur.fetchone()
+            return row[0] if row else None
 
     @staticmethod
     def get_total_meets(search=None):
@@ -1125,6 +1199,111 @@ class RelayTeam:
                     'legs': [{'leg_number': l[0], 'athlete': l[1], 'split_event': l[2], 'split_result': l[3]} for l in legs]
                 })
             return result
+
+    @staticmethod
+    def update_relay(relay_id, data, legs):
+        """Update an existing relay team and its legs. Replaces all legs + backward-compat Results."""
+        conn = Database.get_connection()
+        if not conn:
+            raise Exception("Could not connect to database")
+        try:
+            with conn:
+                cur = conn.cursor()
+                # Get old relay info for cleaning up backward-compat Results
+                cur.execute('SELECT Date, Meet_Name, Team FROM RelayTeams WHERE Relay_ID = ?', (relay_id,))
+                old = cur.fetchone()
+                if not old:
+                    raise Exception(f"Relay {relay_id} not found")
+                old_date, old_meet, old_team = old['Date'], old['Meet_Name'], old['Team']
+
+                # Delete old backward-compat Results by matching old relay data + legs
+                cur.execute('SELECT Athlete, Split_Event FROM RelayLegs WHERE Relay_ID = ?', (relay_id,))
+                for leg_row in cur.fetchall():
+                    old_rs_event = f"{leg_row['Split_Event']} RS"
+                    cur.execute(
+                        'DELETE FROM Results WHERE Date=? AND Meet_Name=? AND Athlete=? AND Event=? AND Team=?',
+                        (old_date, old_meet, leg_row['Athlete'], old_rs_event, old_team)
+                    )
+
+                # Compute total time from splits
+                total_seconds = 0
+                for leg in legs:
+                    t = leg['split_result']
+                    if ':' in t:
+                        parts = t.split(':')
+                        total_seconds += float(parts[0]) * 60 + float(parts[1])
+                    else:
+                        total_seconds += float(t)
+                minutes = int(total_seconds // 60)
+                seconds = total_seconds - minutes * 60
+                total_result = f"{minutes}:{seconds:05.2f}"
+
+                cur.execute(
+                    'UPDATE RelayTeams SET Date=?, Meet_Name=?, Team=?, Event=?, Total_Result=?, Team_Designation=? WHERE Relay_ID=?',
+                    (data['date'], data['meet'], data['team'], data['event'], total_result, data.get('team_designation', 'A'), relay_id)
+                )
+
+                # Delete old legs
+                cur.execute('DELETE FROM RelayLegs WHERE Relay_ID = ?', (relay_id,))
+
+                for idx, leg in enumerate(legs, start=1):
+                    leg_number = leg.get('leg_number', idx)
+                    split_event = leg.get('split_event')
+                    if not split_event and data.get('event') in RelayTeam.RELAY_CONFIG:
+                        split_event = RelayTeam.RELAY_CONFIG[data['event']][idx - 1]
+                    cur.execute(
+                        'INSERT INTO RelayLegs (Relay_ID, Leg_Number, Athlete, Split_Event, Split_Result) VALUES (?, ?, ?, ?, ?)',
+                        (relay_id, leg_number, leg['athlete'], split_event, leg['split_result'])
+                    )
+                    # Backward compat: insert into Results
+                    rs_event = f"{split_event} RS" if split_event else ""
+                    cur.execute(
+                        'INSERT INTO Results (Date, Athlete, Meet_Name, Event, Result, Team) VALUES (?, ?, ?, ?, ?, ?)',
+                        (data['date'], leg['athlete'], data['meet'], rs_event, leg['split_result'], data['team'])
+                    )
+                conn.commit()
+                return relay_id
+        except Exception as e:
+            raise Exception(f"Failed to update relay: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
+
+    @staticmethod
+    def delete_relay(relay_id):
+        """Delete a relay team, its legs, and backward-compat Results rows."""
+        conn = Database.get_connection()
+        if not conn:
+            raise Exception("Could not connect to database")
+        try:
+            with conn:
+                cur = conn.cursor()
+                # Get relay info and legs first so we can clean up backward-compat Results
+                cur.execute('SELECT Date, Meet_Name, Team FROM RelayTeams WHERE Relay_ID = ?', (relay_id,))
+                relay_row = cur.fetchone()
+                if not relay_row:
+                    raise Exception(f"Relay {relay_id} not found")
+                relay_date, relay_meet, relay_team = relay_row['Date'], relay_row['Meet_Name'], relay_row['Team']
+
+                cur.execute('SELECT Athlete, Split_Event FROM RelayLegs WHERE Relay_ID = ?', (relay_id,))
+                for leg_row in cur.fetchall():
+                    rs_event = f"{leg_row['Split_Event']} RS"
+                    cur.execute(
+                        'DELETE FROM Results WHERE Date=? AND Meet_Name=? AND Athlete=? AND Event=? AND Team=?',
+                        (relay_date, relay_meet, leg_row['Athlete'], rs_event, relay_team)
+                    )
+
+                # Delete legs (ON DELETE CASCADE should handle this, but do it explicitly)
+                cur.execute('DELETE FROM RelayLegs WHERE Relay_ID = ?', (relay_id,))
+                # Delete relay team
+                cur.execute('DELETE FROM RelayTeams WHERE Relay_ID = ?', (relay_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            raise Exception(f"Failed to delete relay: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
 
     @staticmethod
     def get_all_relay_events():
