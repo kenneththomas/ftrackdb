@@ -35,7 +35,32 @@
             </form>
         </header>
 
-        {% if view_mode == 'day' %}
+        {% if view_mode == 'search' %}
+        <section class="meets-list" aria-label="Search results for {{ search }}">
+            <div class="meets-calendar-bar">
+                <a href="{{ url_for('meets') }}" class="meets-pagination-link">Back to Calendar</a>
+                <h2 class="meets-month-title">Search Results</h2>
+                <span class="meets-count">{{ total_meets }} meet{{ '' if total_meets == 1 else 's' }}</span>
+            </div>
+
+            {% if results %}
+            <div class="meets-grid meets-day-grid">
+                {% for meet in results %}
+                <a href="{{ url_for('meet.meet_results', meet_name=meet[0]) }}" class="meet-card" aria-label="View results for {{ meet[0] }}">
+                    <span class="meet-card-date">{{ meet[1] }}</span>
+                    <h2 class="meet-card-name">{{ meet[0] }}</h2>
+                    <span class="meet-card-arrow" aria-hidden="true">&rarr;</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="meets-empty" role="status">
+                <p class="meets-empty-text">No meets found matching "{{ search }}".</p>
+                <p class="meets-empty-hint">Try a different search or <a href="{{ url_for('meets') }}">clear search</a>.</p>
+            </div>
+            {% endif %}
+        </section>
+        {% elif view_mode == 'day' %}
         <section class="meets-list" aria-label="Meets on {{ selected_day.strftime('%B %d, %Y') if selected_day else '' }}">
             <div class="meets-calendar-bar">
                 <a href="{{ url_for('meets', month=month, year=year, search=search or '') }}" class="meets-pagination-link">Back to Calendar</a>

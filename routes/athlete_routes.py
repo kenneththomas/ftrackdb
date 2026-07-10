@@ -167,6 +167,7 @@ def athlete_profile(name):
     
     # Stagger scores per event (for display near PRs)
     stagger_scores = StaggerScore.get_scores_for_athlete(name)
+    peak_stagger_scores = StaggerScore.get_peak_scores_for_athlete(name)
 
     result_places = _get_result_places(conn, results)
 
@@ -240,6 +241,7 @@ def athlete_profile(name):
                          team_logos=team_logos,
                          rankings=rankings,
                          stagger_scores=stagger_scores,
+                         peak_stagger_scores=peak_stagger_scores,
                          board_posts=board_posts,
                          post_form=BoardPostForm(),
                          generate_form=BoardGenerateForm(),

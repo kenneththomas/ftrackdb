@@ -135,7 +135,18 @@ def meets():
             year=day_date.year,
         )
 
-    latest_meet_date = Result.get_latest_meet_date(search=search_term)
+    if search_term:
+        total_meets = Result.get_total_meets(search=search_term)
+        results = Result.get_recent_meets(limit=total_meets or 1, search=search_term)
+        return render_template(
+            'meets.html',
+            view_mode='search',
+            results=results,
+            search=search,
+            total_meets=total_meets,
+        )
+
+    latest_meet_date = Result.get_latest_meet_date()
     today = date.today()
     default_year = today.year
     default_month = today.month

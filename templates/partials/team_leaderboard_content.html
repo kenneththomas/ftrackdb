@@ -17,7 +17,12 @@
                     {% for row in leaderboard_results %}
                         <tr>
                             <td>{{ (page - 1) * per_page + loop.index }}</td>
-                            <td><a href="{{ url_for('athlete.athlete_profile', name=row.athlete) }}">{{ row.athlete }}</a></td>
+                            <td>
+                                <a href="{{ url_for('athlete.athlete_profile', name=row.athlete) }}">{{ row.athlete }}</a>
+                                {% if row.stagger_score is not none %}
+                                    <span class="stagger-badge" title="Stagger placement score">{{ row.stagger_score|int }}</span>
+                                {% endif %}
+                            </td>
                             <td>{{ row.result }}</td>
                             {% if not best_only %}
                                 <td>{{ row.date }}</td>

@@ -967,6 +967,30 @@ class StaggerScore:
             return {row[0]: float(row[1]) for row in cur.fetchall()}
 
     @staticmethod
+    def get_peak_scores_for_athlete(athlete):
+        """Return dict event -> highest known stagger score for an athlete."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT event, date, meet_name, delta
+                FROM StaggerHistory
+                WHERE athlete = ?
+                ORDER BY event, date, meet_name
+            ''', (athlete,))
+            history_rows = cur.fetchall()
+
+        peak_scores = {}
+        running_scores = {}
+        for event, _date, _meet_name, delta in history_rows:
+            current = running_scores.get(event, STAGGER_INITIAL)
+            new_score = _stagger_dampen(current, float(delta))
+            running_scores[event] = new_score
+            peak_scores[event] = max(peak_scores.get(event, STAGGER_INITIAL), new_score)
+
+        return peak_scores
+
+    @staticmethod
     def set_score(athlete, event, score):
         """Insert or update a single (athlete, event) score."""
         conn = Database.get_connection()

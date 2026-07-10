@@ -286,6 +286,18 @@
             text-decoration: underline;
         }
 
+        .stagger-badge {
+            display: inline-block;
+            background: #9c27b0;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.75em;
+            margin-left: 6px;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+
         .pb-table td:first-child {
             font-weight: 600;
             color: #e2e8f0;
@@ -317,6 +329,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            flex-wrap: wrap;
         }
         .pagination a {
             padding: 0.5rem 1rem;
@@ -336,6 +349,21 @@
             padding: 0.5rem 0.75rem;
             color: #94a3b8;
             font-size: 0.9rem;
+        }
+        .pagination .current-page {
+            background: rgba(102,126,234,0.32);
+            border: 1px solid rgba(102,126,234,0.55);
+            border-radius: 6px;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+        .results-count {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin: 0 0 1rem;
+        }
+        .results-pagination {
+            margin-top: 1.5rem;
         }
 
         @media (max-width: 768px) {
@@ -415,6 +443,11 @@
             </div>
             
             {% if results %}
+                {% set start_result = (results_page - 1) * results_per_page + 1 %}
+                {% set end_result = start_result + results|length - 1 %}
+                <p class="results-count">
+                    Showing {{ start_result }}-{{ end_result }} of {{ total_team_results }} results
+                </p>
                 <div class="table-responsive">
                     <table class="modern-table">
                         <thead>
@@ -441,6 +474,42 @@
                         </tbody>
                     </table>
                 </div>
+                {% if results_total_pages > 1 %}
+                    <div class="pagination results-pagination" aria-label="All results pagination">
+                        {% if results_page > 1 %}
+                            <a href="{{ url_for('team.team_results', team_name=team_name, event=selected_event, best_only='true' if best_only else 'false', page=page, results_page=results_page-1) }}">&laquo; Previous</a>
+                        {% endif %}
+
+                        {% set window_start = [1, results_page - 2]|max %}
+                        {% set window_end = [results_total_pages, results_page + 2]|min %}
+
+                        {% if window_start > 1 %}
+                            <a href="{{ url_for('team.team_results', team_name=team_name, event=selected_event, best_only='true' if best_only else 'false', page=page, results_page=1) }}">1</a>
+                            {% if window_start > 2 %}
+                                <span aria-hidden="true">&hellip;</span>
+                            {% endif %}
+                        {% endif %}
+
+                        {% for result_page_number in range(window_start, window_end + 1) %}
+                            {% if result_page_number == results_page %}
+                                <span class="current-page" aria-current="page">{{ result_page_number }}</span>
+                            {% else %}
+                                <a href="{{ url_for('team.team_results', team_name=team_name, event=selected_event, best_only='true' if best_only else 'false', page=page, results_page=result_page_number) }}">{{ result_page_number }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if window_end < results_total_pages %}
+                            {% if window_end < results_total_pages - 1 %}
+                                <span aria-hidden="true">&hellip;</span>
+                            {% endif %}
+                            <a href="{{ url_for('team.team_results', team_name=team_name, event=selected_event, best_only='true' if best_only else 'false', page=page, results_page=results_total_pages) }}">{{ results_total_pages }}</a>
+                        {% endif %}
+
+                        {% if results_page < results_total_pages %}
+                            <a href="{{ url_for('team.team_results', team_name=team_name, event=selected_event, best_only='true' if best_only else 'false', page=page, results_page=results_page+1) }}">Next &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <p>No results available for {{ team_name }}.</p>

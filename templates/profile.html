@@ -1083,6 +1083,10 @@
         background: #f44336;
     }
 
+    .stagger-badge.peak {
+        background: #7c3aed;
+    }
+
     .pr-indicator {
         display: inline-block;
         background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -1188,6 +1192,9 @@
                         {% endif %}
                         {% if stagger_scores.get(event) %}
                             <span class="stagger-badge" title="Stagger placement score (starts at 1000)">{{ stagger_scores[event]|int }}</span>
+                        {% endif %}
+                        {% if peak_stagger_scores.get(event) and peak_stagger_scores[event] > stagger_scores.get(event, 0) %}
+                            <span class="stagger-badge peak" title="Peak Stagger placement score">Peak {{ peak_stagger_scores[event]|int }}</span>
                         {% endif %}
                     </span>
                     {% if result_data.date %}
@@ -1963,6 +1970,7 @@
                     resultsContainer.style.display = '';
                     var rankings = {{ rankings | tojson }};
                     var staggerScores = {{ stagger_scores | tojson }};
+                    var peakStaggerScores = {{ peak_stagger_scores | tojson }};
                     data.bests.forEach(function(item) {
                         var div = document.createElement('div');
                         div.className = 'pr-item';
@@ -1974,6 +1982,9 @@
                         }
                         if (staggerScores[item.event] !== undefined) {
                             html += ' <span class="stagger-badge" title="Stagger placement score">' + Math.round(staggerScores[item.event]) + '</span>';
+                        }
+                        if (peakStaggerScores[item.event] !== undefined && peakStaggerScores[item.event] > (staggerScores[item.event] || 0)) {
+                            html += ' <span class="stagger-badge peak" title="Peak Stagger placement score">Peak ' + Math.round(peakStaggerScores[item.event]) + '</span>';
                         }
                         html += '</span>';
                         if (item.date) {

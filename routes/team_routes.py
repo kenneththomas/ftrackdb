@@ -15,16 +15,19 @@ def _is_time_event(event_name: str) -> bool:
 def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, best_only: bool, page: int = 1, per_page: int = 50):
     """
     Return list of leaderboard dicts for the given team/event/mode.
-    Each dict has athlete, result, date, meet (and metric for sorting).
+    Each dict has athlete, result, date, meet, stagger_score (and metric for sorting).
     Returns (results, total_results).
     """
     if not selected_event:
         return [], 0
     cursor.execute(
         '''
-        SELECT Athlete, Result, Date, Meet_Name
+        SELECT Results.Athlete, Results.Result, Results.Date, Results.Meet_Name, StaggerScores.score
         FROM Results
-        WHERE Team = ? AND Event = ?
+        LEFT JOIN StaggerScores
+            ON StaggerScores.athlete = Results.Athlete
+           AND StaggerScores.event = Results.Event
+        WHERE Results.Team = ? AND Results.Event = ?
         ''',
         (team_name, selected_event),
     )
@@ -32,7 +35,7 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
     time_based = _is_time_event(selected_event)
     if best_only:
         best_per_athlete = {}
-        for athlete, result, date, meet in rows:
+        for athlete, result, date, meet, stagger_score in rows:
             if not result:
                 continue
             metric = (
@@ -45,6 +48,7 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
                     'result': result,
                     'date': date,
                     'meet': meet,
+                    'stagger_score': stagger_score,
                     'metric': metric,
                 }
             else:
@@ -59,6 +63,7 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
                         'result': result,
                         'date': date,
                         'meet': meet,
+                        'stagger_score': stagger_score,
                         'metric': metric,
                     }
         sorted_results = sorted(
@@ -68,7 +73,7 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
         )
     else:
         enriched = []
-        for athlete, result, date, meet in rows:
+        for athlete, result, date, meet, stagger_score in rows:
             if not result:
                 continue
             metric = (
@@ -79,6 +84,7 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
                 'result': result,
                 'date': date,
                 'meet': meet,
+                'stagger_score': stagger_score,
                 'metric': metric,
             })
         sorted_results = sorted(
@@ -118,11 +124,26 @@ def team_results(team_name):
     conn = Database.get_connection()
     with conn:
         cur = conn.cursor()
-        # Get all results for this team (for the "All Results" section)
+        results_page = max(request.args.get('results_page', 1, type=int), 1)
+        results_per_page = 50
+
+        cur.execute('SELECT COUNT(*) FROM Results WHERE Team = ?', (team_name,))
+        total_team_results = cur.fetchone()[0]
+        results_total_pages = (
+            (total_team_results + results_per_page - 1) // results_per_page
+            if total_team_results
+            else 0
+        )
+        if results_total_pages and results_page > results_total_pages:
+            results_page = results_total_pages
+        results_offset = (results_page - 1) * results_per_page
+
+        # Get paginated results for this team (for the "All Results" section)
         cur.execute(
             'SELECT Date, Athlete, Meet_Name, Event, Result '
-            'FROM Results WHERE Team = ? ORDER BY Date DESC',
-            (team_name,),
+            'FROM Results WHERE Team = ? ORDER BY Date DESC '
+            'LIMIT ? OFFSET ?',
+            (team_name, results_per_page, results_offset),
         )
         team_results = cur.fetchall()
 
@@ -163,6 +184,10 @@ def team_results(team_name):
                          page=page,
                          per_page=per_page,
                          total_pages=total_pages,
+                         results_page=results_page,
+                         results_per_page=results_per_page,
+                         results_total_pages=results_total_pages,
+                         total_team_results=total_team_results,
                          team_info=team_info)
 
 
