@@ -170,28 +170,6 @@ class Database:
 
 class Result:
     @staticmethod
-    def get_recent_results(limit=25, offset=0):
-        conn = Database.get_connection()
-        with conn:
-            cur = conn.cursor()
-            cur.execute('''
-                SELECT strftime('%Y-%m-%d', Date) as formatted_date, 
-                       Athlete, Meet_Name, Event, Result, Team 
-                FROM Results 
-                ORDER BY Date DESC 
-                LIMIT ? OFFSET ?
-            ''', (limit, offset))
-            return cur.fetchall()
-
-    @staticmethod
-    def get_total_results():
-        conn = Database.get_connection()
-        with conn:
-            cur = conn.cursor()
-            cur.execute('SELECT COUNT(*) FROM Results')
-            return cur.fetchone()[0]
-
-    @staticmethod
     def get_athlete_results(name):
         conn = Database.get_connection()
         with conn:
@@ -478,15 +456,6 @@ class Result:
             return cur.fetchone()[0]
 
 class Athlete:
-    @staticmethod
-    def get_bio(name):
-        conn = Database.get_connection()
-        with conn:
-            cur = conn.cursor()
-            cur.execute('SELECT bio FROM Athletes WHERE athlete_name = ?', (name,))
-            result = cur.fetchone()
-            return result[0] if result else None
-
     @staticmethod
     def update_bio(name, bio):
         conn = Database.get_connection()
@@ -899,15 +868,6 @@ class BoardPost:
             conn.commit()
             return cur.lastrowid
 
-    @staticmethod
-    def delete_post(post_id):
-        """Delete a board post and all its replies (CASCADE in DB)."""
-        conn = Database.get_connection()
-        with conn:
-            cur = conn.cursor()
-            cur.execute('DELETE FROM BoardPosts WHERE id = ?', (post_id,))
-            conn.commit()
-
 
 # --- Stagger (ELO-style placement ranking) ---
 STAGGER_K = 24
@@ -928,19 +888,6 @@ def _stagger_dampen(rating, delta):
 
 
 class StaggerScore:
-    @staticmethod
-    def get_score(athlete, event):
-        """Return current stagger score for (athlete, event), or STAGGER_INITIAL if none."""
-        conn = Database.get_connection()
-        with conn:
-            cur = conn.cursor()
-            cur.execute(
-                'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
-                (athlete, event)
-            )
-            row = cur.fetchone()
-            return float(row[0]) if row else STAGGER_INITIAL
-
     @staticmethod
     def get_score_if_exists(athlete, event):
         """Return current stagger score for (athlete, event), or None if no score exists yet."""
@@ -989,26 +936,6 @@ class StaggerScore:
             peak_scores[event] = max(peak_scores.get(event, STAGGER_INITIAL), new_score)
 
         return peak_scores
-
-    @staticmethod
-    def set_score(athlete, event, score):
-        """Insert or update a single (athlete, event) score."""
-        conn = Database.get_connection()
-        try:
-            with conn:
-                cur = conn.cursor()
-                clamped = max(STAGGER_FLOOR, min(STAGGER_CEILING, score))
-                cur.execute('''
-                    INSERT INTO StaggerScores (athlete, event, score)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(athlete, event) DO UPDATE SET score = excluded.score
-                ''', (athlete, event, clamped))
-                conn.commit()
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     @staticmethod
     def get_meet_history(meet_name):

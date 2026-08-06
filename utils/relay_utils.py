@@ -1,5 +1,3 @@
-from models import RelayTeam
-
 def parse_time(time_str):
     if ':' in time_str:
         parts = time_str.split(':')
@@ -16,10 +14,6 @@ def format_relay_time(total_seconds):
     minutes = int(total_seconds // 60)
     seconds = total_seconds - minutes * 60
     return f"{minutes}:{seconds:05.2f}"
-
-def is_relay_event(event):
-    """Check if an event name is a relay event."""
-    return event in RelayTeam.RELAY_CONFIG or event.endswith(' Relay')
 
 def calculate_relay_results(splits, relay_type):
     """
