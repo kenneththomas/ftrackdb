@@ -1,15 +1,38 @@
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-<header class="site-nav" role="banner">
+{% set endpoint = request.endpoint or '' %}
+<header class="site-nav" data-site-nav>
     <nav class="nav-inner" aria-label="Main navigation">
-        <a href="{{ url_for('home') }}" class="nav-brand">Track Home</a>
-        <ul class="nav-links">
-            <li><a href="{{ url_for('leaderboard.leaderboard') }}" class="nav-link">Leaderboard</a></li>
-            <li><a href="{{ url_for('meets') }}" class="nav-link">Meets</a></li>
-            <li><a href="{{ url_for('team.teams') }}" class="nav-link">Teams</a></li>
-            <li><a href="{{ url_for('result.insert_result') }}" class="nav-link nav-link--primary">Insert Result</a></li>
-            <li><a href="{{ url_for('athlete.search') }}" class="nav-link">Search</a></li>
-            <li><a href="{{ url_for('football.football_home') }}" class="nav-link nav-link--football">Football</a></li>
-            <li><a href="{{ url_for('board.board_page') }}" class="nav-link">Board</a></li>
-        </ul>
+        <a href="{{ url_for('home') }}" class="nav-brand" aria-label="Wavelight home">
+            <span class="nav-brand-mark" aria-hidden="true"><span></span></span>
+            <span class="nav-brand-copy">
+                <strong>Wavelight</strong>
+                <small>Track &amp; field</small>
+            </span>
+        </a>
+
+        <button class="nav-menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav-menu">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="nav-menu-toggle-lines" aria-hidden="true"></span>
+        </button>
+
+        <div class="nav-menu" id="site-nav-menu">
+            <ul class="nav-links">
+                <li class="nav-item"><a href="{{ url_for('home') }}" class="nav-link{% if endpoint == 'home' %} is-active{% endif %}"{% if endpoint == 'home' %} aria-current="page"{% endif %}>Results</a></li>
+                <li class="nav-item"><a href="{{ url_for('leaderboard.leaderboard') }}" class="nav-link{% if endpoint.startswith('leaderboard.') %} is-active{% endif %}"{% if endpoint.startswith('leaderboard.') %} aria-current="page"{% endif %}>Leaderboard</a></li>
+                <li class="nav-item"><a href="{{ url_for('meets') }}" class="nav-link{% if endpoint == 'meets' or endpoint.startswith('meet.') %} is-active{% endif %}"{% if endpoint == 'meets' or endpoint.startswith('meet.') %} aria-current="page"{% endif %}>Meets</a></li>
+                <li class="nav-item"><a href="{{ url_for('team.teams') }}" class="nav-link{% if endpoint.startswith('team.') %} is-active{% endif %}"{% if endpoint.startswith('team.') %} aria-current="page"{% endif %}>Teams</a></li>
+                <li class="nav-item"><a href="{{ url_for('football.football_home') }}" class="nav-link nav-link--sport{% if endpoint.startswith('football.') %} is-active{% endif %}"{% if endpoint.startswith('football.') %} aria-current="page"{% endif %}>Football</a></li>
+                <li class="nav-item"><a href="{{ url_for('board.board_page') }}" class="nav-link{% if endpoint.startswith('board.') %} is-active{% endif %}"{% if endpoint.startswith('board.') %} aria-current="page"{% endif %}>Board</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="{{ url_for('athlete.search') }}" class="nav-search{% if endpoint.startswith('athlete.') %} is-active{% endif %}"{% if endpoint.startswith('athlete.') %} aria-current="page"{% endif %}>
+                    <span class="nav-search-icon" aria-hidden="true"></span><span>Search</span>
+                </a>
+                <a href="{{ url_for('result.insert_result') }}" class="nav-add{% if endpoint == 'result.insert_result' %} is-active{% endif %}"{% if endpoint == 'result.insert_result' %} aria-current="page"{% endif %}>
+                    <span aria-hidden="true">+</span> Add result
+                </a>
+            </div>
+        </div>
     </nav>
 </header>
+<script src="{{ url_for('static', filename='navbar.js') }}" defer></script>
