@@ -1,13 +1,13 @@
 def parse_time(time_str):
-    if ':' in time_str:
-        parts = time_str.split(':')
-        if len(parts) == 2:
-            minutes = float(parts[0])
-            seconds = float(parts[1])
-            return minutes * 60 + seconds
     try:
+        if ':' in time_str:
+            parts = time_str.split(':')
+            if len(parts) == 2:
+                minutes = float(parts[0])
+                seconds = float(parts[1])
+                return minutes * 60 + seconds
         return float(time_str)
-    except:
+    except (TypeError, ValueError):
         return float('inf')
 
 def format_relay_time(total_seconds):

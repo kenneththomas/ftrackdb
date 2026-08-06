@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for
-from models import Database, Team, StaggerScore, RelayTeam
+from models import Database, Team, RelayTeam
 from utils.relay_utils import calculate_relay_results, parse_time, explicit_relay_to_display_dict
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from collections import defaultdict
@@ -14,7 +14,6 @@ def is_time_event(event):
 
 def _get_old_style_relay_results(selected_event, date_filter, cur):
     """Fetch old-style relay results from Results table RS splits."""
-    from utils.relay_utils import calculate_relay_results
     split_event = selected_event.replace('4x', '') + ' RS'
     query = '''
         SELECT Date, Meet_Name, Team, Athlete, Result
@@ -488,4 +487,4 @@ def event_leaderboard_redirect(event):
     year = request.args.get('year', 'all')
     page = request.args.get('page', 1)
     sort_by = request.args.get('sort_by', 'performance')
-    return redirect(url_for('leaderboard.leaderboard', event=event, year=year, page=page, best_only='true', sort_by=sort_by)) 
+    return redirect(url_for('leaderboard.leaderboard', event=event, year=year, page=page, best_only='true', sort_by=sort_by))

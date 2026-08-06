@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 
 def connect_db(db_path):
     try:
@@ -103,4 +102,4 @@ def import_results():
         target_conn.close()
 
 if __name__ == "__main__":
-    import_results() 
+    import_results()

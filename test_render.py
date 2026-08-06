@@ -1,5 +1,5 @@
 from wavelight import app
-from models import Result, Team, Database, TeamScore, AthleteRanking, Comment
+from models import Result, Comment
 from forms import MeetResultForm, CommentForm
 
 with app.test_request_context():
@@ -43,4 +43,4 @@ with app.test_request_context():
     except Exception as e:
         print(f"Error rendering template: {e}")
         import traceback
-        traceback.print_exc() 
+        traceback.print_exc()

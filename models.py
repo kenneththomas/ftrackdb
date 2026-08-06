@@ -5,16 +5,15 @@ from flask import current_app
 class Database:
     @staticmethod
     def get_connection():
-        conn = None
+        # timeout helps prevent "database is locked" on rapid successive writes
+        conn = sqlite3.connect(current_app.config['DATABASE'], timeout=30)
         try:
-            # timeout helps prevent "database is locked" on rapid successive writes
-            conn = sqlite3.connect(current_app.config['DATABASE'], timeout=30)
             conn.row_factory = sqlite3.Row
-            # Initialize tables on connection
             Database.initialize_tables(conn)
-        except Error as e:
-            print(e)
-        return conn
+            return conn
+        except Exception:
+            conn.close()
+            raise
 
     @staticmethod
     def initialize_tables(conn):
@@ -166,7 +165,7 @@ class Database:
 
             conn.commit()
         except Error as e:
-            print(f"Error initializing tables: {e}")
+            raise RuntimeError("Error initializing database tables") from e
 
 class Result:
     @staticmethod

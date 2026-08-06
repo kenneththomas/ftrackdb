@@ -5,7 +5,7 @@ from models import Result, Team, Database, TeamScore, AthleteRanking, Comment, B
 from utils.relay_utils import parse_time, explicit_relay_to_display_dict
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from forms import MeetResultForm, CommentForm, BoardPostForm, BoardGenerateForm
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Create blueprint
 meet_bp = Blueprint('meet', __name__)

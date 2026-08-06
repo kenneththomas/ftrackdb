@@ -3,9 +3,9 @@ load_dotenv()
 
 import calendar
 from datetime import date, datetime
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify
 from flask_wtf import CSRFProtect
-from forms import ResultForm, SearchForm
+from forms import SearchForm
 from models import Result, Database, Athlete
 from utils.template_filters import markdown_to_html
 

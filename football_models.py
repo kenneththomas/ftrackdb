@@ -1,5 +1,3 @@
-import sqlite3
-from flask import current_app
 from datetime import datetime
 
 class FootballDatabase:

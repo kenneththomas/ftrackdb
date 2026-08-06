@@ -31,7 +31,7 @@ def setup_test_db():
     conn.close()
 
 def teardown_test_db():
-    import sqlite3, time
+    import time
     for _ in range(5):
         try:
             if os.path.exists(TEST_DB):

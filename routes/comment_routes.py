@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, redirect, url_for, flash, jsonify
 from models import Comment
 from forms import CommentForm
 
@@ -58,4 +58,4 @@ def get_comments_api(page_type, page_id):
     return jsonify({
         'comments': comments,
         'count': comment_count
-    }) 
+    })

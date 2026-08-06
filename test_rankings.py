@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sqlite3
 from models import Database, AthleteRanking
 from wavelight import app
 
@@ -49,4 +48,4 @@ def test_rankings_table():
         return True
 
 if __name__ == "__main__":
-    test_rankings_table() 
+    test_rankings_table()
