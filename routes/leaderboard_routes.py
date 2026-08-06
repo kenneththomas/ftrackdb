@@ -83,7 +83,7 @@ def leaderboard():
     year_filter = request.args.get('year', 'all')
     best_only = request.args.get('best_only', 'true') == 'true'
     sort_by = request.args.get('sort_by', 'performance')  # 'performance' (default) or 'stagger'
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     per_page = 50
     offset = (page - 1) * per_page
     
@@ -328,6 +328,7 @@ def leaderboard():
                         '''
                         cur.execute(count_query, count_params)
                         total_results = cur.fetchone()[0]
+                        total_pages = (total_results + per_page - 1) // per_page
                     else:
                         # Field events: higher is better. May be decimal or ft-in (e.g. 20'0").
                         fetch_params = [selected_event]
@@ -465,6 +466,21 @@ def leaderboard():
                             cur.execute(count_query, count_params)
                             total_results = cur.fetchone()[0]
                             total_pages = (total_results + per_page - 1) // per_page
+
+        # Load logos for the teams visible on the current page in one query.
+        if results:
+            if is_relay:
+                visible_teams = {result.get('team') for result in results}
+            else:
+                visible_teams = {result[2] for result in results if len(result) > 2}
+            visible_teams = {team for team in visible_teams if team and team not in {'—', 'â€”'}}
+            if visible_teams:
+                placeholders = ','.join('?' for _ in visible_teams)
+                cur.execute(
+                    f'SELECT team_name, logo_url FROM Teams WHERE team_name IN ({placeholders})',
+                    tuple(visible_teams),
+                )
+                team_logos.update({row[0]: row[1] for row in cur.fetchall() if row[1]})
         
     return render_template('leaderboard.html',
                         all_events=all_events,
@@ -479,7 +495,8 @@ def leaderboard():
                         sort_by_stagger=sort_by_stagger,
                         is_relay=is_relay,
                         team_logos=team_logos,
-                        event_name=event_name)
+                        event_name=event_name,
+                        total_results=total_results)
 
 @leaderboard_bp.route('/leaderboard/<event>')
 def event_leaderboard_redirect(event):

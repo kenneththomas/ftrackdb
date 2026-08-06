@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111618">
+    <title>{% if selected_event %}{{ event_name }} rankings{% else %}Leaderboard{% endif %} · Wavelight</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='leaderboard.css') }}">
+</head>
+<body class="leaderboard-page">
+    {% include 'navbar.html' %}
+
+    <main class="leaderboard-shell">
+        <header class="leaderboard-hero">
+            <div class="leaderboard-hero-copy">
+                <p class="leaderboard-kicker">Wavelight rankings</p>
+                {% if selected_event %}
+                    <h1>{{ event_name }}</h1>
+                    <p>Every mark, ordered. See who set the standard and where they did it.</p>
+                {% else %}
+                    <h1>Find the mark<br>that leads the field.</h1>
+                    <p>Choose an event to explore the fastest times and best performances in Wavelight history.</p>
+                {% endif %}
+            </div>
+            <div class="leaderboard-hero-mark" aria-hidden="true"><span>01</span><i></i><i></i><i></i><i></i></div>
+        </header>
+
+        <form class="leaderboard-filters" method="get" action="{{ url_for('leaderboard.leaderboard') }}" data-leaderboard-filters>
+            <div class="leaderboard-filter leaderboard-filter--event">
+                <label for="leaderboard-event">Event</label>
+                <select id="leaderboard-event" name="event">
+                    <option value="">Choose an event</option>
+                    {% for event in all_events %}
+                        <option value="{{ event }}" data-relay="{{ 'true' if event[:2] == '4x' or event in ['DMR', 'SMR'] else 'false' }}" {% if selected_event == event %}selected{% endif %}>{{ event }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="leaderboard-filter">
+                <label for="leaderboard-period">Period</label>
+                <select id="leaderboard-period" name="year">
+                    <option value="all" {% if year_filter == 'all' %}selected{% endif %}>All time</option>
+                    <option value="last_year" {% if year_filter == 'last_year' %}selected{% endif %}>Last 365 days</option>
+                </select>
+            </div>
+            <div class="leaderboard-filter">
+                <label for="leaderboard-sort">Rank by</label>
+                <select id="leaderboard-sort" name="sort_by" {% if is_relay %}disabled{% endif %}>
+                    <option value="performance" {% if sort_by == 'performance' %}selected{% endif %}>Performance</option>
+                    <option value="stagger" {% if sort_by == 'stagger' %}selected{% endif %}>Stagger score</option>
+                </select>
+                {% if is_relay %}<input type="hidden" name="sort_by" value="performance">{% endif %}
+            </div>
+            <label class="leaderboard-toggle" for="leaderboard-best-only">
+                <span><strong>Personal bests</strong><small>{% if is_relay %}One mark per team{% else %}One mark per athlete{% endif %}</small></span>
+                <input id="leaderboard-best-only" type="checkbox" name="best_only" value="true" {% if best_only %}checked{% endif %}><i aria-hidden="true"></i>
+            </label>
+            <button class="leaderboard-apply" type="submit">Apply filters</button>
+        </form>
+
+        {% if selected_event %}
+            <section class="leaderboard-results" aria-labelledby="leaderboard-results-title">
+                <div class="leaderboard-results-bar">
+                    <div><p class="leaderboard-section-label">{{ 'Relay teams' if is_relay else 'Athletes' }}</p><h2 id="leaderboard-results-title">{{ 'Stagger standings' if sort_by_stagger else 'Performance standings' }}</h2></div>
+                    <div class="leaderboard-result-count"><strong>{{ total_results|default(results|length) }}</strong><span>{{ 'teams ranked' if is_relay else ('performances' if not best_only else 'athletes ranked') }}</span></div>
+                </div>
+                {% if results %}
+                    <div class="leaderboard-table-wrap">
+                        <table class="leaderboard-table">
+                            <caption class="sr-only">{{ event_name }} leaderboard results</caption>
+                            <thead><tr><th scope="col" class="leaderboard-rank-heading">Rank</th>{% if is_relay %}<th scope="col">Team</th><th scope="col">Mark</th><th scope="col">Lineup</th><th scope="col">Competition</th>{% else %}<th scope="col">Athlete</th><th scope="col">Mark</th><th scope="col">Team</th>{% if sort_by_stagger %}<th scope="col">Stagger</th>{% endif %}<th scope="col">Competition</th>{% endif %}</tr></thead>
+                            <tbody>
+                                {% for result in results %}
+                                    {% set rank = loop.index + (page - 1) * per_page %}
+                                    <tr class="{% if rank <= 3 %}is-podium{% endif %}">
+                                        <td class="leaderboard-rank" data-label="Rank"><span class="leaderboard-rank-number leaderboard-rank-number--{{ rank if rank <= 3 else 'other' }}">{{ '%02d'|format(rank) }}</span></td>
+                                        {% if is_relay %}
+                                            <td data-label="Team"><div class="leaderboard-person"><img src="{{ team_logos.get(result.team) or url_for('static', filename='default-team.svg') }}" alt="" class="leaderboard-team-logo" loading="lazy"><a href="{{ url_for('team.team_results', team_name=result.team) }}">{{ result.team }}</a></div></td>
+                                            <td class="leaderboard-mark" data-label="Mark">{{ result.result }}</td>
+                                            <td data-label="Lineup"><div class="leaderboard-lineup">{% for athlete, split in result.splits %}<span><a href="{{ url_for('athlete.athlete_profile', name=athlete) }}">{{ athlete }}</a><small>{{ split }}</small></span>{% endfor %}</div></td>
+                                            <td data-label="Competition">{% if result.meet %}<a class="leaderboard-meet" href="{{ url_for('meet.meet_results', meet_name=result.meet) }}">{{ result.meet }}</a>{% endif %}<time class="leaderboard-date" datetime="{{ result.date }}">{{ result.date }}</time></td>
+                                        {% else %}
+                                            <td data-label="Athlete"><a class="leaderboard-athlete" href="{{ url_for('athlete.athlete_profile', name=result[0]) }}">{{ result[0] }}</a></td>
+                                            <td class="leaderboard-mark" data-label="Mark">{{ result[1] }}</td>
+                                            <td data-label="Team"><div class="leaderboard-person"><img src="{{ team_logos.get(result[2]) or url_for('static', filename='default-team.svg') }}" alt="" class="leaderboard-team-logo" loading="lazy"><a class="leaderboard-team" href="{{ url_for('team.team_results', team_name=result[2]) }}">{{ result[2] }}</a></div></td>
+                                            {% if sort_by_stagger %}<td class="leaderboard-score" data-label="Stagger">{{ '%.0f'|format(result[5]) }}</td>{% endif %}
+                                            <td data-label="Competition">{% if result[4] %}<a class="leaderboard-meet" href="{{ url_for('meet.meet_results', meet_name=result[4]) }}">{{ result[4] }}</a>{% endif %}{% if result[3] %}<time class="leaderboard-date" datetime="{{ result[3] }}">{{ result[3] }}</time>{% endif %}</td>
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if total_pages > 1 %}
+                        <nav class="leaderboard-pagination" aria-label="Leaderboard pages">
+                            {% if page > 1 %}<a href="{{ url_for('leaderboard.leaderboard', event=selected_event, year=year_filter, best_only='true' if best_only else 'false', sort_by=sort_by, page=page-1) }}" rel="prev"><span aria-hidden="true">←</span> Previous</a>{% else %}<span></span>{% endif %}<p><strong>{{ page }}</strong> / {{ total_pages }}</p>{% if page < total_pages %}<a href="{{ url_for('leaderboard.leaderboard', event=selected_event, year=year_filter, best_only='true' if best_only else 'false', sort_by=sort_by, page=page+1) }}" rel="next">Next <span aria-hidden="true">→</span></a>{% else %}<span></span>{% endif %}
+                        </nav>
+                    {% endif %}
+                {% else %}<div class="leaderboard-empty"><span aria-hidden="true">—</span><h3>No marks in this view</h3><p>Try changing the period or ranking method.</p></div>{% endif %}
+            </section>
+        {% else %}
+            <section class="leaderboard-event-browser" aria-labelledby="leaderboard-events-title">
+                <div class="leaderboard-results-bar"><div><p class="leaderboard-section-label">Start here</p><h2 id="leaderboard-events-title">Browse every event</h2></div><span class="leaderboard-event-total">{{ all_events|length }} events</span></div>
+                <div class="leaderboard-event-grid">{% for event in all_events %}<a href="{{ url_for('leaderboard.leaderboard', event=event, year='all', best_only='true', sort_by='performance') }}"><span>{{ event }}</span><i aria-hidden="true">↗</i></a>{% endfor %}</div>
+            </section>
+        {% endif %}
+    </main>
+    <script src="{{ url_for('static', filename='leaderboard.js') }}" defer></script>
+</body>
+</html>
