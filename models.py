@@ -935,8 +935,10 @@ class BoardPost:
             return cur.lastrowid
 
 
-# --- Stagger (ELO-style placement ranking) ---
-STAGGER_K = 24
+# --- Stagger (normalized multiplayer Elo placement ranking) ---
+# A single event appearance can move a score by at most this many points,
+# regardless of the number of athletes in the field.
+STAGGER_K = 128
 STAGGER_FLOOR = 200
 STAGGER_CEILING = 2000
 STAGGER_INITIAL = 1000
@@ -1334,6 +1336,8 @@ class RelayTeam:
 def compute_stagger_deltas_for_meet(meet_name, get_placements_fn):
     """
     get_placements_fn(meet_name) -> dict: (event, date) -> list of dicts with 'athlete', 'place'.
+    Each athlete's Elo result is averaged across their head-to-head matchups, so
+    larger fields do not produce larger rating swings.
     Returns (all_deltas, display_changes). all_deltas = list of (event, date, athlete, delta).
     display_changes = list of (event, date, athlete, delta, new_score) for UI.
     """
@@ -1366,35 +1370,35 @@ def compute_stagger_deltas_for_meet(meet_name, get_placements_fn):
                     row = cur.fetchone()
                     ratings[a] = float(row[0]) if row else STAGGER_INITIAL
 
-                deltas = {a: 0.0 for a in athletes}
+                matchup_deltas = {a: 0.0 for a in athletes}
                 n = len(unique_records)
                 for i in range(n):
-                    for j in range(n):
-                        if i == j:
-                            continue
+                    for j in range(i + 1, n):
                         place_i = unique_records[i]['place']
                         place_j = unique_records[j]['place']
                         ai = unique_records[i]['athlete']
                         aj = unique_records[j]['athlete']
                         ri = ratings[ai]
                         rj = ratings[aj]
+                        expected_i = _stagger_expected(ri, rj)
+                        expected_j = 1.0 - expected_i
                         if place_i < place_j:
-                            e_i = _stagger_expected(ri, rj)
-                            e_j = 1.0 - e_i
-                            deltas[ai] += STAGGER_K * (1.0 - e_i)
-                            deltas[aj] += STAGGER_K * (0.0 - e_j)
+                            actual_i, actual_j = 1.0, 0.0
                         elif place_i > place_j:
-                            e_j = _stagger_expected(rj, ri)
-                            e_i = 1.0 - e_j
-                            deltas[aj] += STAGGER_K * (1.0 - e_j)
-                            deltas[ai] += STAGGER_K * (0.0 - e_i)
+                            actual_i, actual_j = 0.0, 1.0
                         else:
-                            e_i = _stagger_expected(ri, rj)
-                            e_j = 1.0 - e_i
-                            deltas[ai] += STAGGER_K * (0.5 - e_i)
-                            deltas[aj] += STAGGER_K * (0.5 - e_j)
+                            actual_i = actual_j = 0.5
 
-                for athlete, delta in deltas.items():
+                        matchup_deltas[ai] += actual_i - expected_i
+                        matchup_deltas[aj] += actual_j - expected_j
+
+                opponent_count = n - 1
+                for athlete, matchup_delta in matchup_deltas.items():
+                    delta = (
+                        STAGGER_K * matchup_delta / opponent_count
+                        if opponent_count
+                        else 0.0
+                    )
                     all_deltas.append((event, date, athlete, delta))
                     new_score = _stagger_dampen(ratings[athlete], delta)
                     display_changes.append((event, date, athlete, delta, new_score))
