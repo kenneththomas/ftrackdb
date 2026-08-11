@@ -328,9 +328,7 @@
     height: 34px;
     place-items: center;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    background: #f1f4f3;
+    background: transparent;
 }
 
 .team-logo {
@@ -572,7 +570,6 @@
         flex-basis: 30px;
         width: 30px;
         height: 30px;
-        border-radius: 7px;
     }
 
     .team-logo {
