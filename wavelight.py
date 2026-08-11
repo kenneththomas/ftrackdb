@@ -5,7 +5,6 @@ import calendar
 from datetime import date, datetime
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 from flask_wtf import CSRFProtect
-from forms import SearchForm
 from models import Result, Database, Athlete
 from utils.template_filters import markdown_to_html
 
@@ -43,12 +42,11 @@ app.jinja_env.filters['markdown_to_html'] = markdown_to_html
 
 @app.route('/')
 def home():
-    form = SearchForm()
-    page = request.args.get('page', 1, type=int)
+    page = max(request.args.get('page', 1, type=int), 1)
     per_page = 25  # Number of results per page
-    
-    # Event filter options
-    filter_events = ['100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m']
+    search = request.args.get('search', '', type=str).strip()
+    selected_event = request.args.get('event', '', type=str).strip()
+    selected_team = request.args.get('team', '', type=str).strip()
     
     # Get team logos for all teams
     conn = Database.get_connection()
@@ -57,17 +55,45 @@ def home():
         cur.execute('SELECT team_name, logo_url FROM Teams')
         team_logos = dict(cur.fetchall())
     
-    results = Result.get_recent_winners(limit=per_page, offset=(page-1)*per_page)
-    total_results = Result.get_total_winners()
+    filter_events, filter_teams = Result.get_winner_filter_options()
+    total_results = Result.get_total_winners(
+        search=search,
+        event=selected_event,
+        team=selected_team,
+    )
     total_pages = (total_results + per_page - 1) // per_page
+    if total_pages and page > total_pages:
+        return redirect(url_for(
+            'home',
+            page=total_pages,
+            search=search or None,
+            event=selected_event or None,
+            team=selected_team or None,
+        ))
+
+    results = Result.get_recent_winners(
+        limit=per_page,
+        offset=(page - 1) * per_page,
+        search=search,
+        event=selected_event,
+        team=selected_team,
+    )
+    first_result = ((page - 1) * per_page) + 1 if total_results else 0
+    last_result = min(page * per_page, total_results)
     
     return render_template('index.html', 
                          results=results, 
-                         form=form, 
                          team_logos=team_logos,
                          filter_events=filter_events,
+                         filter_teams=filter_teams,
+                         search=search,
+                         selected_event=selected_event,
+                         selected_team=selected_team,
                          page=page,
-                         total_pages=total_pages)
+                         total_pages=total_pages,
+                         total_results=total_results,
+                         first_result=first_result,
+                         last_result=last_result)
 
 @app.context_processor
 def inject_get_gender():

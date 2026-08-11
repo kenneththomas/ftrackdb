@@ -409,11 +409,30 @@ class Result:
             return cur.fetchone()[0]
 
     @staticmethod
-    def get_recent_winners(limit=25, offset=0):
+    def _winner_filter_clause(search=None, event=None, team=None):
+        clauses = ['rn = 1']
+        params = []
+
+        if search:
+            clauses.append('(Athlete LIKE ? OR Meet_Name LIKE ?)')
+            search_pattern = f'%{search}%'
+            params.extend([search_pattern, search_pattern])
+        if event:
+            clauses.append('Event = ?')
+            params.append(event)
+        if team:
+            clauses.append('Team = ?')
+            params.append(team)
+
+        return ' AND '.join(clauses), params
+
+    @staticmethod
+    def get_recent_winners(limit=25, offset=0, search=None, event=None, team=None):
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            cur.execute('''
+            where_clause, params = Result._winner_filter_clause(search, event, team)
+            cur.execute(f'''
                 WITH RankedResults AS (
                     SELECT 
                         strftime('%Y-%m-%d', Date) as formatted_date,
@@ -435,24 +454,72 @@ class Result:
                 )
                 SELECT formatted_date, Athlete, Meet_Name, Event, Result, Team
                 FROM RankedResults
-                WHERE rn = 1
+                WHERE {where_clause}
                 ORDER BY formatted_date DESC, Meet_Name, Event
                 LIMIT ? OFFSET ?
-            ''', (limit, offset))
+            ''', (*params, limit, offset))
             return cur.fetchall()
 
     @staticmethod
-    def get_total_winners():
+    def get_total_winners(search=None, event=None, team=None):
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            where_clause, params = Result._winner_filter_clause(search, event, team)
+            cur.execute(f'''
+                WITH RankedResults AS (
+                    SELECT
+                        Athlete,
+                        Meet_Name,
+                        Event,
+                        Team,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY Meet_Name, Event
+                            ORDER BY
+                                CASE
+                                    WHEN Event IN ('60m', '100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m', '60mH', '100mH', '110mH', '400mH')
+                                    THEN CAST(REPLACE(Result, ':', '') AS DECIMAL)
+                                    ELSE Result
+                                END ASC
+                        ) as rn
+                    FROM Results
+                )
+                SELECT COUNT(*)
+                FROM RankedResults
+                WHERE {where_clause}
+            ''', params)
+            return cur.fetchone()[0]
+
+    @staticmethod
+    def get_winner_filter_options():
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
             cur.execute('''
-                SELECT COUNT(*) FROM (
-                    SELECT DISTINCT Meet_Name, Event
+                WITH RankedResults AS (
+                    SELECT
+                        Event,
+                        Team,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY Meet_Name, Event
+                            ORDER BY
+                                CASE
+                                    WHEN Event IN ('60m', '100m', '200m', '400m', '800m', '1500m', 'Mile', '3000m', '5000m', '10000m', '60mH', '100mH', '110mH', '400mH')
+                                    THEN CAST(REPLACE(Result, ':', '') AS DECIMAL)
+                                    ELSE Result
+                                END ASC
+                        ) as rn
                     FROM Results
                 )
+                SELECT Event, Team
+                FROM RankedResults
+                WHERE rn = 1
             ''')
-            return cur.fetchone()[0]
+            rows = cur.fetchall()
+
+        events = sorted({row[0] for row in rows if row[0]}, key=str.casefold)
+        teams = sorted({row[1] for row in rows if row[1]}, key=str.casefold)
+        return events, teams
 
 class Athlete:
     @staticmethod

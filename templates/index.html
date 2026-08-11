@@ -3,55 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Track and Field Results</title>
+    <title>Recent Event Winners | Wavelight</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='index.css') }}">
 </head>
 <body class="index-page">
     {% include 'navbar.html' %}
-    <div class="index-container">
-        <header class="index-profile-header" role="banner">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h1>Latest Results</h1>
-                <form method="POST" action="{{ url_for('athlete.search') }}" class="index-form-inline" role="search">
-                    {{ form.csrf_token }}
-                    {{ form.athlete(class="form-control mr-2", placeholder="Search athlete...", **{"aria-label": "Search for athlete"}) }}
-                    <button type="submit" class="btn btn-primary" aria-label="Submit search">Search</button>
-                </form>
+    <main class="index-container">
+        <header class="index-profile-header">
+            <p class="index-eyebrow">Track &amp; field results</p>
+            <div class="index-heading-row">
+                <div>
+                    <h1>Recent Event Winners</h1>
+                    <p class="index-subtitle">The latest winning performance from every meet and event.</p>
+                </div>
+                <p class="index-total"><strong>{{ total_results }}</strong> {{ 'result' if total_results == 1 else 'results' }}</p>
             </div>
         </header>
         
-        <section class="index-filter-section" role="search" aria-label="Filter results">
-            <div class="row">
-                <div class="col-md-4">
-                    <label for="filterInput" class="sr-only">Filter results</label>
-                    <input type="text" id="filterInput" class="form-control" placeholder="Filter results..." aria-label="Filter results by athlete or meet">
+        <form method="GET" action="{{ url_for('home') }}" class="index-filter-section" role="search" aria-label="Filter event winners">
+            <div class="index-filter-grid">
+                <div class="index-filter-field index-filter-field--search">
+                    <label for="resultsSearch">Athlete or meet</label>
+                    <input type="search" id="resultsSearch" name="search" class="index-filter-control" value="{{ search }}" placeholder="Search athlete or meet" autocomplete="off">
                 </div>
-                <div class="col-md-4">
-                    <label for="eventFilter" class="sr-only">Filter by event</label>
-                    <select id="eventFilter" class="form-control" aria-label="Filter by event">
-                        <option value="">All Events</option>
+                <div class="index-filter-field">
+                    <label for="eventFilter">Event</label>
+                    <select id="eventFilter" name="event" class="index-filter-control">
+                        <option value="">All events</option>
                         {% for event in filter_events %}
-                        <option value="{{ event }}">{{ event }}</option>
+                        <option value="{{ event }}"{% if event == selected_event %} selected{% endif %}>{{ event }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="teamFilter" class="sr-only">Filter by team</label>
-                    <select id="teamFilter" class="form-control" aria-label="Filter by team">
-                        <option value="">All Teams</option>
-                        {% for team in team_logos.keys() %}
-                        <option value="{{ team }}">{{ team }}</option>
+                <div class="index-filter-field">
+                    <label for="teamFilter">Team</label>
+                    <select id="teamFilter" name="team" class="index-filter-control">
+                        <option value="">All teams</option>
+                        {% for team in filter_teams %}
+                        <option value="{{ team }}"{% if team == selected_team %} selected{% endif %}>{{ team }}</option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="index-filter-actions">
+                    <button type="submit" class="index-filter-submit">Show results</button>
+                    {% if search or selected_event or selected_team %}
+                    <a href="{{ url_for('home') }}" class="index-filter-clear">Clear</a>
+                    {% endif %}
                 </div>
             </div>
-        </section>
+        </form>
         
-        <section class="results" aria-label="Track and field results">
-            <div class="table-responsive">
-                <table class="index-results-table" aria-label="Track and field results">
+        <section class="results" aria-labelledby="results-summary">
+            <div class="index-results-meta">
+                <p id="results-summary">
+                    {% if total_results %}
+                        Showing {{ first_result }}–{{ last_result }} of {{ total_results }} event winners
+                    {% else %}
+                        No event winners match these filters
+                    {% endif %}
+                </p>
+                {% if search or selected_event or selected_team %}
+                <p class="index-active-filter">Filtered results</p>
+                {% endif %}
+            </div>
+            <div class="index-table-shell">
+                <table class="index-results-table">
+                    <caption class="sr-only">Recent track and field event winners</caption>
+                    <colgroup>
+                        <col class="index-col-date">
+                        <col class="index-col-athlete">
+                        <col class="index-col-meet">
+                        <col class="index-col-event">
+                        <col class="index-col-result">
+                        <col class="index-col-team">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th scope="col">Date</th>
@@ -64,32 +91,36 @@
                     </thead>
                     <tbody>
                         {% for result in results %}
-                        <tr data-athlete="{{ result[1] }}" data-meet="{{ result[2] }}" data-event="{{ result[3] }}" data-team="{{ result[5] }}">
-                            <td data-label="Date">{{ result[0] }}</td>
-                            <td data-label="Athlete">
+                        <tr>
+                            <td class="index-date-cell" data-label="Date"><time datetime="{{ result[0] }}">{{ result[0] }}</time></td>
+                            <td class="index-athlete-cell" data-label="Athlete">
                                 <a href="{{ url_for('athlete.athlete_profile', name=result[1]) }}" 
-                                   class="{% if get_gender(result[1]) %}female-text{% endif %}"
-                                   aria-label="View {{ result[1] }}'s profile">
+                                   class="index-primary-link{% if get_gender(result[1]) %} female-text{% endif %}">
                                     {{ result[1] }}
                                 </a>
                             </td>
-                            <td data-label="Meet">
-                                <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}" 
-                                   aria-label="View results for {{ result[2] }} meet">
+                            <td class="index-meet-cell" data-label="Meet">
+                                <a href="{{ url_for('meet.meet_results', meet_name=result[2]) }}">
                                     {{ result[2] }}
                                 </a>
                             </td>
-                            <td data-label="Event">{{ result[3] }}</td>
-                            <td data-label="Result">{{ result[4] }}</td>
+                            <td class="index-event-cell" data-label="Event">{{ result[3] }}</td>
+                            <td class="index-result-cell" data-label="Result">{{ result[4] }}</td>
                             <td class="team-cell" data-label="Team">
-                                <img src="{{ team_logos.get(result[5]) or url_for('static', filename='default-team.svg') }}" 
-                                     alt="{{ result[5] }} logo" 
-                                     class="team-logo"
-                                     loading="lazy">
-                                <a href="{{ url_for('team.team_results', team_name=result[5]) }}" 
-                                   aria-label="View {{ result[5] }} team results">
-                                    {{ result[5] }}
-                                </a>
+                                <div class="team-value">
+                                    <span class="team-logo-wrap" aria-hidden="true">
+                                        <img src="{{ team_logos.get(result[5]) or url_for('static', filename='default-team.svg') }}" alt="" class="team-logo" loading="lazy">
+                                    </span>
+                                    <a href="{{ url_for('team.team_results', team_name=result[5]) }}">{{ result[5] }}</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr class="index-empty-row">
+                            <td colspan="6">
+                                <strong>No matching event winners</strong>
+                                <span>Try a broader search or remove one of the filters.</span>
+                                <a href="{{ url_for('home') }}">Clear all filters</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -97,41 +128,29 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
+            {% if total_pages > 1 %}
             <nav class="index-pagination" role="navigation" aria-label="Results pagination">
                 {% if page > 1 %}
-                    <a href="{{ url_for('home', page=page-1) }}" 
-                       aria-label="Go to previous page">&laquo; Previous</a>
+                    <a href="{{ url_for('home', page=page-1, search=search or None, event=selected_event or None, team=selected_team or None) }}" rel="prev">&larr; Previous</a>
                 {% endif %}
                 
                 {% set start_page = [1, page - 2]|max %}
                 {% set end_page = [total_pages, page + 2]|min %}
                 
                 {% for p in range(start_page, end_page + 1) %}
-                    <a href="{{ url_for('home', page=p) }}" 
-                       class="{{ 'active' if p == page else '' }}"
-                       aria-label="Go to page {{ p }}"
-                       {% if p == page %}aria-current="page"{% endif %}>
-                        {{ p }}
-                    </a>
+                    {% if p == page %}
+                        <span class="active" aria-current="page">{{ p }}</span>
+                    {% else %}
+                        <a href="{{ url_for('home', page=p, search=search or None, event=selected_event or None, team=selected_team or None) }}" aria-label="Go to page {{ p }}">{{ p }}</a>
+                    {% endif %}
                 {% endfor %}
                 
                 {% if page < total_pages %}
-                    <a href="{{ url_for('home', page=page+1) }}" 
-                       aria-label="Go to next page">Next &raquo;</a>
+                    <a href="{{ url_for('home', page=page+1, search=search or None, event=selected_event or None, team=selected_team or None) }}" rel="next">Next &rarr;</a>
                 {% endif %}
             </nav>
+            {% endif %}
         </section>
-    </div>
-    
-    <!-- Loading indicator -->
-    <div id="loadingIndicator" class="loading" aria-hidden="true">
-        <div class="spinner-border text-primary">
-            <span class="sr-only">Loading...</span>
-        </div>
-    </div>
-    
-    <script src="{{ url_for('static', filename='scriptz.js') }}"></script>
-    <script src="{{ url_for('static', filename='index-filter.js') }}"></script>
+    </main>
 </body>
 </html>
