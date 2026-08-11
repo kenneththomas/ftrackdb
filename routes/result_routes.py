@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
-from models import Result, Database, RelayTeam, TeamScore, AthleteRanking
+from models import Result, Database, RelayTeam, TeamScore, AthleteRanking, StaggerScore
 from forms import ResultForm
 
 # Create blueprint
@@ -101,8 +101,18 @@ def delete_athlete_result(result_id):
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
+            cur.execute('SELECT Meet_Name FROM Results WHERE Result_ID = ?', (result_id,))
+            existing = cur.fetchone()
+            meet_name = existing['Meet_Name'] if existing else None
             cur.execute('DELETE FROM Results WHERE Result_ID = ?', (result_id,))
+            if meet_name:
+                cur.execute('''
+                    UPDATE Meets SET start_date =
+                        (SELECT MIN(Date) FROM Results WHERE Meet_Name = ?)
+                    WHERE meet_name = ?
+                ''', (meet_name, meet_name))
             conn.commit()
+        StaggerScore.invalidate()
         return jsonify({'success': True})
     except Exception as e:
         print(f"Error deleting result {result_id}: {str(e)}")  # Debug logging
@@ -146,12 +156,25 @@ def update_result(result_id):
             cur.execute('SELECT Meet_Name FROM Results WHERE Result_ID = ?', (result_id,))
             updated = cur.fetchone()
             new_meet = updated['Meet_Name'] if updated else None
+            if new_meet:
+                cur.execute('''
+                    INSERT OR IGNORE INTO Meets (meet_name, start_date)
+                    SELECT Meet_Name, MIN(Date) FROM Results WHERE Meet_Name = ?
+                ''', (new_meet,))
+            for affected_meet in {old_meet, new_meet}:
+                if affected_meet:
+                    cur.execute('''
+                        UPDATE Meets SET start_date =
+                            (SELECT MIN(Date) FROM Results WHERE Meet_Name = ?)
+                        WHERE meet_name = ?
+                    ''', (affected_meet, affected_meet))
             conn.commit()
 
         for meet_name in {old_meet, new_meet}:
             if meet_name:
                 TeamScore.update_meet_scores(meet_name, {})
                 AthleteRanking.update_meet_rankings(meet_name, [])
+        StaggerScore.invalidate()
             
         return jsonify({'success': True})
     except Exception as e:

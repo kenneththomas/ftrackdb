@@ -1,16 +1,16 @@
 from flask import Blueprint, render_template, request, redirect, url_for
-from models import Database, Team, RelayTeam
+from models import Database, Team, RelayTeam, StaggerScore
 from utils.relay_utils import calculate_relay_results, parse_time, explicit_relay_to_display_dict
 from utils.field_utils import parse_field_result, all_results_are_field_format
 from collections import defaultdict
 from datetime import datetime, timedelta
+from utils.leaderboard import is_time_event as canonical_is_time_event
 
 # Create blueprint
 leaderboard_bp = Blueprint('leaderboard', __name__)
 
 def is_time_event(event):
-    """Check if an event is time-based (lower is better)"""
-    return 'm' in event or 'Mile' in event
+    return canonical_is_time_event(event)
 
 def _get_old_style_relay_results(selected_event, date_filter, cur):
     """Fetch old-style relay results from Results table RS splits."""
@@ -78,6 +78,7 @@ def _get_explicit_relay_results(selected_event, date_filter, cur):
 
 @leaderboard_bp.route('/leaderboard')
 def leaderboard():
+    StaggerScore.ensure_current()
     # Get filter parameters
     selected_event = request.args.get('event', '')
     year_filter = request.args.get('year', 'all')

@@ -328,10 +328,6 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0;">Team Scores</h2>
                 <div style="display: flex; gap: 10px;">
-                    <form method="post" action="{{ url_for('meet.calculate_rankings', meet_name=meet_name) }}" style="margin: 0;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn" style="background: #4CAF50;">Calculate Rankings</button>
-                    </form>
                     <form method="post" action="{{ url_for('meet.calculate_meet_scores', meet_name=meet_name) }}" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn" style="background: #617394;">Recalculate Scores</button>
@@ -353,12 +349,13 @@
         {% endif %}
 
         {% if events %}
+        <p style="color: #888; margin: -15px 0 20px;">365-day performance rankings update automatically from each athlete's best valid mark.</p>
         <div class="stagger-section" style="margin-bottom: 30px; padding: 15px; background: #2a2d30; border-radius: 5px;">
             <form method="post" action="{{ url_for('meet.stagger_rank_meet', meet_name=meet_name) }}" style="margin: 0; display: inline-block;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn" style="background: #9c27b0;">Stagger Rank This Meet</button>
+                <button type="submit" class="btn" style="background: #9c27b0;">Apply Stagger Rating</button>
             </form>
-            <span style="color: #888; font-size: 0.9em; margin-left: 12px;">Placement-based ELO ranking per event. Re-ranking overwrites previous.</span>
+            <span style="color: #888; font-size: 0.9em; margin-left: 12px;">Placement rating per event. Rated meets are replayed chronologically after result changes.</span>
         </div>
         {% endif %}
 

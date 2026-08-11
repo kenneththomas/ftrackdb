@@ -1,15 +1,15 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import Database, Team
+from models import Database, Team, StaggerScore
 from utils.relay_utils import parse_time
 from utils.field_utils import parse_field_result
+from utils.leaderboard import is_time_event
 
 # Create blueprint
 team_bp = Blueprint('team', __name__)
 
 
 def _is_time_event(event_name: str) -> bool:
-    """Return True if this looks like a time-based track event."""
-    return 'm' in event_name or 'Mile' in event_name
+    return is_time_event(event_name)
 
 
 def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, best_only: bool, page: int = 1, per_page: int = 50):
@@ -20,6 +20,7 @@ def get_team_leaderboard_results(cursor, team_name: str, selected_event: str, be
     """
     if not selected_event:
         return [], 0
+    StaggerScore.ensure_current()
     cursor.execute(
         '''
         SELECT Results.Athlete, Results.Result, Results.Date, Results.Meet_Name, StaggerScores.score

@@ -250,12 +250,6 @@ def athlete_profile(name):
                          generate_action_url=url_for('board.athlete_board_generate', name=name),
                          section_title='Discussion')
 
-@athlete_bp.route('/athlete/<name>/calculate_rankings', methods=['POST'])
-def calculate_athlete_rankings(name):
-    """Calculate and return current rankings for an athlete"""
-    rankings = AthleteRanking.calculate_athlete_rankings(name)
-    return jsonify({'success': True, 'rankings': rankings})
-
 @athlete_bp.route('/get_athlete_bests_since/<name>')
 def get_athlete_bests_since(name):
     """Get best results for each event since a given date"""

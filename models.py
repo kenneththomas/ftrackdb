@@ -2,6 +2,14 @@ import sqlite3
 from sqlite3 import Error
 from flask import current_app
 
+from utils.rankings import (
+    RANKING_ALGORITHM_VERSION,
+    canonical_event,
+    placements_from_rows,
+    rank_performances,
+    ranking_window_start,
+)
+
 class Database:
     @staticmethod
     def get_connection():
@@ -31,6 +39,21 @@ class Database:
                     Result TEXT,
                     Team TEXT
                 )
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Meets (
+                    meet_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    meet_name TEXT NOT NULL UNIQUE,
+                    start_date TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cur.execute('''
+                INSERT OR IGNORE INTO Meets (meet_name, start_date)
+                SELECT Meet_Name, MIN(Date) FROM Results
+                WHERE Meet_Name IS NOT NULL AND TRIM(Meet_Name) != ''
+                GROUP BY Meet_Name
+                ORDER BY MIN(Date), Meet_Name COLLATE NOCASE
             ''')
             # Note: If the table already exists you may need to run an ALTER TABLE command
             # to add the new column "is_female". For a new database, include it here.
@@ -78,6 +101,15 @@ class Database:
                     PRIMARY KEY (meet_name, event, date, athlete)
                 )
             ''')
+            cur.execute("PRAGMA table_info(AthleteRankings)")
+            ranking_columns = {row[1] for row in cur.fetchall()}
+            for column, definition in (
+                ('mark_before', 'TEXT'),
+                ('mark_after', 'TEXT'),
+                ('algorithm_version', 'INTEGER NOT NULL DEFAULT 2'),
+            ):
+                if column not in ranking_columns:
+                    cur.execute(f"ALTER TABLE AthleteRankings ADD COLUMN {column} {definition}")
             
             # Create Comments table if it doesn't exist
             cur.execute('''
@@ -136,6 +168,31 @@ class Database:
                     PRIMARY KEY (meet_name, event, date, athlete)
                 )
             ''')
+            cur.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'StaggerRatedMeets'")
+            stagger_rated_meets_existed = cur.fetchone() is not None
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS StaggerRatedMeets (
+                    meet_name TEXT PRIMARY KEY,
+                    activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    algorithm_version INTEGER NOT NULL DEFAULT 2
+                )
+            ''')
+            # Preserve which meets were rated before deterministic replay existed.
+            if not stagger_rated_meets_existed:
+                cur.execute('''
+                    INSERT OR IGNORE INTO StaggerRatedMeets (meet_name)
+                    SELECT DISTINCT meet_name FROM StaggerHistory
+                ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS RankingState (
+                    state_key TEXT PRIMARY KEY,
+                    state_value INTEGER NOT NULL DEFAULT 0
+                )
+            ''')
+            cur.execute(
+                "INSERT OR IGNORE INTO RankingState (state_key, state_value) VALUES ('stagger_dirty', ?)",
+                (0 if stagger_rated_meets_existed else 1,),
+            )
 
             # Create RelayTeams table for explicit relay entries
             cur.execute('''
@@ -315,7 +372,16 @@ class Result:
                     (data['date'], data['athlete'], data['meet'], 
                      data['event'], data['result'], data['team'])
                 )
+                cur.execute('''
+                    INSERT INTO Meets (meet_name, start_date) VALUES (?, ?)
+                    ON CONFLICT(meet_name) DO UPDATE SET start_date =
+                        CASE
+                            WHEN Meets.start_date IS NULL OR excluded.start_date < Meets.start_date
+                            THEN excluded.start_date ELSE Meets.start_date
+                        END
+                ''', (data['meet'], data['date']))
                 conn.commit()
+            StaggerScore.invalidate()
         except Exception as e:
             raise Exception(f"Failed to insert result: {str(e)}")
         finally:
@@ -612,7 +678,7 @@ class TeamScore:
 class AthleteRanking:
     @staticmethod
     def get_meet_rankings(meet_name):
-        """Get cached rankings for a specific meet"""
+        """Return the latest automatically generated snapshots for a meet."""
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
@@ -622,194 +688,120 @@ class AthleteRanking:
                 WHERE meet_name = ?
                 ORDER BY event, date, athlete
             ''', (meet_name,))
-            return cur.fetchall()
+            rows = cur.fetchall()
+        conn.close()
+        return rows
 
     @staticmethod
     def update_meet_rankings(meet_name, rankings_data):
-        """Update cached rankings for a meet"""
+        """Atomically replace a meet's derived ranking snapshots."""
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            # Delete existing rankings for this meet
             cur.execute('DELETE FROM AthleteRankings WHERE meet_name = ?', (meet_name,))
-            # Insert new rankings
             for ranking in rankings_data:
                 cur.execute('''
-                    INSERT INTO AthleteRankings (meet_name, event, date, athlete, ranking_before, ranking_after)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (meet_name, ranking['event'], ranking['date'], ranking['athlete'], 
-                     ranking['ranking_before'], ranking['ranking_after']))
+                    INSERT INTO AthleteRankings
+                        (meet_name, event, date, athlete, ranking_before, ranking_after,
+                         mark_before, mark_after, algorithm_version, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ''', (
+                    meet_name, ranking['event'], ranking['date'], ranking['athlete'],
+                    ranking.get('ranking_before'), ranking.get('ranking_after'),
+                    ranking.get('mark_before'), ranking.get('mark_after'),
+                    RANKING_ALGORITHM_VERSION,
+                ))
             conn.commit()
+        conn.close()
 
     @staticmethod
-    def calculate_rankings_for_date(event, date, include_current=False):
-        """Calculate rankings for an event as of a specific date"""
-        from datetime import datetime, timedelta
-        
-        # Get date 1 year before the meet date
-        meet_date = datetime.strptime(date, '%Y-%m-%d')
-        one_year_ago = (meet_date - timedelta(days=365)).strftime('%Y-%m-%d')
-        target_date = date if include_current else (meet_date - timedelta(days=1)).strftime('%Y-%m-%d')
-        
+    def _rank_event_at_meet(cur, event, date, meet_name, include_meet):
+        """Rank an event at a deterministic (date, meet name) boundary."""
+        event = canonical_event(event)
+        start_date = ranking_window_start(date)
+        cur.execute('SELECT meet_id FROM Meets WHERE meet_name = ?', (meet_name,))
+        meet_row = cur.fetchone()
+        if not meet_row:
+            raise ValueError(f'Unknown meet: {meet_name}')
+        meet_id = meet_row[0]
+        comparison = '<=' if include_meet else '<'
+        cur.execute(f'''
+            SELECT results.Athlete AS athlete, results.Result AS result
+            FROM Results AS results
+            JOIN Meets AS meets ON meets.meet_name = results.Meet_Name
+            WHERE TRIM(results.Event) = ? COLLATE NOCASE
+              AND results.Date >= ? AND results.Date <= ?
+              AND (results.Date < ? OR (results.Date = ? AND meets.meet_id {comparison} ?))
+        ''', (event, start_date, date, date, date, meet_id))
+        return rank_performances(cur.fetchall(), event)
+
+    @staticmethod
+    def refresh_meet_rankings(meet_name):
+        """Rebuild all performance-ranking snapshots for a meet.
+
+        Same-day meets are ordered by name until the database gains stable meet
+        IDs. Multiple attempts/rounds by an athlete collapse to their best mark.
+        """
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            # For time events (lower is better)
-            if 'm' in event or 'Mile' in event:
+            cur.execute('''
+                SELECT DISTINCT TRIM(Event), Date
+                FROM Results
+                WHERE Meet_Name = ? AND Event NOT LIKE '% RS' AND Event NOT LIKE '% Relay'
+                ORDER BY Date, TRIM(Event)
+            ''', (meet_name,))
+            event_dates = cur.fetchall()
+            snapshots = []
+            for event, date in event_dates:
+                before = AthleteRanking._rank_event_at_meet(cur, event, date, meet_name, False)
+                after = AthleteRanking._rank_event_at_meet(cur, event, date, meet_name, True)
                 cur.execute('''
-                    WITH RankedResults AS (
-                        SELECT 
-                            Athlete,
-                            Result,
-                            ROW_NUMBER() OVER (ORDER BY Result ASC) as rank
-                        FROM Results 
-                        WHERE Event = ? 
-                        AND Date <= ?
-                        AND Date >= ?
-                        GROUP BY Athlete
-                        HAVING Result = MIN(Result)
-                    )
-                    SELECT Athlete, rank 
-                    FROM RankedResults
-                    ORDER BY rank
-                ''', (event, target_date, one_year_ago))
-            # For field events (higher is better). Ft-in (e.g. 20'0") must be ranked in Python.
-            else:
-                cur.execute('''
-                    SELECT Athlete, Result FROM Results
-                    WHERE Event = ? AND Date <= ? AND Date >= ?
-                ''', (event, target_date, one_year_ago))
-                rows = cur.fetchall()
-                result_strs = [r[1] for r in rows]
-                from utils.field_utils import all_results_are_field_format, parse_field_result
-                from collections import defaultdict
-                if result_strs and all_results_are_field_format(result_strs):
-                    by_athlete = defaultdict(list)
-                    for athlete, result in rows:
-                        by_athlete[athlete].append(result)
-                    best_per_athlete = [(athlete, max(results, key=parse_field_result)) for athlete, results in by_athlete.items()]
-                    best_per_athlete.sort(key=lambda x: parse_field_result(x[1]), reverse=True)
-                    return {athlete: rank for rank, (athlete, _) in enumerate(best_per_athlete, start=1)}
-                cur.execute('''
-                    WITH RankedResults AS (
-                        SELECT 
-                            Athlete,
-                            Result,
-                            ROW_NUMBER() OVER (ORDER BY Result DESC) as rank
-                        FROM Results 
-                        WHERE Event = ? 
-                        AND Date <= ?
-                        AND Date >= ?
-                        GROUP BY Athlete
-                        HAVING Result = MAX(Result)
-                    )
-                    SELECT Athlete, rank 
-                    FROM RankedResults
-                    ORDER BY rank
-                ''', (event, target_date, one_year_ago))
-                return dict(cur.fetchall())
-            
-            return dict(cur.fetchall())
+                    SELECT DISTINCT Athlete FROM Results
+                    WHERE Meet_Name = ? AND Date = ? AND TRIM(Event) = ? COLLATE NOCASE
+                ''', (meet_name, date, event))
+                for row in cur.fetchall():
+                    athlete = row[0]
+                    before_data = before.get(athlete, {})
+                    after_data = after.get(athlete, {})
+                    snapshots.append({
+                        'event': event, 'date': date, 'athlete': athlete,
+                        'ranking_before': before_data.get('rank'),
+                        'ranking_after': after_data.get('rank'),
+                        'mark_before': before_data.get('mark'),
+                        'mark_after': after_data.get('mark'),
+                    })
+        conn.close()
+        AthleteRanking.update_meet_rankings(meet_name, snapshots)
+        return snapshots
 
     @staticmethod
     def calculate_athlete_rankings(athlete_name):
-        """Calculate current rankings for an athlete across all their events"""
+        """Calculate current 365-day rankings through the shared numeric engine."""
         from datetime import datetime, timedelta
-        
-        # Get date 1 year ago from today
-        one_year_ago = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-        
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
-            
-            # Get all events the athlete has competed in
             cur.execute('''
-                SELECT DISTINCT Event 
-                FROM Results 
+                SELECT DISTINCT TRIM(Event) FROM Results
                 WHERE Athlete = ?
+                  AND Event NOT LIKE '% RS' AND Event NOT LIKE '% Relay'
                 ORDER BY Event
             ''', (athlete_name,))
             events = [row[0] for row in cur.fetchall()]
-            
             rankings = {}
             for event in events:
-                # For time events (lower is better)
-                if 'm' in event or 'Mile' in event:
-                    # Convert time strings to numeric values for proper sorting
-                    cur.execute('''
-                        WITH BestResults AS (
-                            SELECT 
-                                Athlete,
-                                Result,
-                                CASE 
-                                    WHEN Result LIKE '%:%' THEN
-                                        CAST(SUBSTR(Result, 1, INSTR(Result, ':') - 1) AS REAL) * 60 +
-                                        CAST(SUBSTR(Result, INSTR(Result, ':') + 1) AS REAL)
-                                    ELSE
-                                        CAST(Result AS REAL)
-                                END as numeric_result
-                            FROM Results 
-                            WHERE Event = ? 
-                            AND Date >= ?
-                        ),
-                        AthletePRs AS (
-                            SELECT 
-                                Athlete,
-                                MIN(numeric_result) as best_result,
-                                MIN(Result) as best_result_str
-                            FROM BestResults
-                            GROUP BY Athlete
-                        ),
-                        RankedResults AS (
-                            SELECT 
-                                Athlete,
-                                best_result_str as Result,
-                                ROW_NUMBER() OVER (ORDER BY best_result ASC) as rank
-                            FROM AthletePRs
-                        )
-                        SELECT rank 
-                        FROM RankedResults
-                        WHERE Athlete = ?
-                    ''', (event, one_year_ago, athlete_name))
-                # For field events (higher is better)
-                else:
-                    cur.execute('''
-                        WITH BestResults AS (
-                            SELECT 
-                                Athlete,
-                                Result,
-                                CAST(Result AS REAL) as numeric_result
-                            FROM Results 
-                            WHERE Event = ? 
-                            AND Date >= ?
-                            AND Result GLOB '[0-9]*.[0-9]*'
-                        ),
-                        AthletePRs AS (
-                            SELECT 
-                                Athlete,
-                                MAX(numeric_result) as best_result,
-                                MAX(Result) as best_result_str
-                            FROM BestResults
-                            GROUP BY Athlete
-                        ),
-                        RankedResults AS (
-                            SELECT 
-                                Athlete,
-                                best_result_str as Result,
-                                ROW_NUMBER() OVER (ORDER BY best_result DESC) as rank
-                            FROM AthletePRs
-                        )
-                        SELECT rank 
-                        FROM RankedResults
-                        WHERE Athlete = ?
-                    ''', (event, one_year_ago, athlete_name))
-                
-                result = cur.fetchone()
-                if result:
-                    rankings[event] = result[0]
-            
-            return rankings
+                cur.execute('''
+                    SELECT Athlete AS athlete, Result AS result FROM Results
+                    WHERE TRIM(Event) = ? COLLATE NOCASE AND Date >= ? AND Date <= ?
+                ''', (event, start_date, today))
+                athlete_data = rank_performances(cur.fetchall(), event).get(athlete_name)
+                if athlete_data:
+                    rankings[event] = athlete_data['rank']
+        conn.close()
+        return rankings
 
 class Comment:
     @staticmethod
@@ -955,10 +947,121 @@ def _stagger_dampen(rating, delta):
     return max(STAGGER_FLOOR, min(STAGGER_CEILING, new_r))
 
 
+def _stagger_deltas_for_placements(placements_by_key, ratings):
+    """Compute one meet from an in-memory rating state, then advance it."""
+    deltas = []
+    for (event, date), records in sorted(placements_by_key.items()):
+        n = len(records)
+        if not n:
+            continue
+        matchup_deltas = {record['athlete']: 0.0 for record in records}
+        for i in range(n):
+            for j in range(i + 1, n):
+                left, right = records[i], records[j]
+                left_key = (left['athlete'], event)
+                right_key = (right['athlete'], event)
+                left_rating = ratings.get(left_key, STAGGER_INITIAL)
+                right_rating = ratings.get(right_key, STAGGER_INITIAL)
+                expected_left = _stagger_expected(left_rating, right_rating)
+                if left['place'] < right['place']:
+                    actual_left = 1.0
+                elif left['place'] > right['place']:
+                    actual_left = 0.0
+                else:
+                    actual_left = 0.5
+                matchup_deltas[left['athlete']] += actual_left - expected_left
+                matchup_deltas[right['athlete']] += (1.0 - actual_left) - (1.0 - expected_left)
+
+        opponent_count = n - 1
+        for athlete, matchup_delta in matchup_deltas.items():
+            delta = STAGGER_K * matchup_delta / opponent_count if opponent_count else 0.0
+            key = (athlete, event)
+            ratings[key] = _stagger_dampen(ratings.get(key, STAGGER_INITIAL), delta)
+            deltas.append((event, date, athlete, delta))
+    return deltas
+
+
 class StaggerScore:
+    @staticmethod
+    def invalidate():
+        """Mark Stagger derived data dirty after any result mutation."""
+        conn = Database.get_connection()
+        with conn:
+            conn.execute("UPDATE RankingState SET state_value = 1 WHERE state_key = 'stagger_dirty'")
+        conn.close()
+
+    @staticmethod
+    def ensure_current():
+        conn = Database.get_connection()
+        with conn:
+            row = conn.execute(
+                "SELECT state_value FROM RankingState WHERE state_key = 'stagger_dirty'"
+            ).fetchone()
+        conn.close()
+        if row and row[0]:
+            StaggerScore.rebuild_all()
+
+    @staticmethod
+    def rate_meet(meet_name):
+        """Activate a meet and atomically replay every rated meet chronologically."""
+        conn = Database.get_connection()
+        with conn:
+            conn.execute('''
+                INSERT INTO StaggerRatedMeets (meet_name, algorithm_version)
+                VALUES (?, ?)
+                ON CONFLICT(meet_name) DO UPDATE SET algorithm_version = excluded.algorithm_version
+            ''', (meet_name, RANKING_ALGORITHM_VERSION))
+            conn.execute("UPDATE RankingState SET state_value = 1 WHERE state_key = 'stagger_dirty'")
+        conn.close()
+        StaggerScore.rebuild_all()
+
+    @staticmethod
+    def rebuild_all():
+        """Rebuild scores/history from source results in stable chronological order."""
+        conn = Database.get_connection()
+        with conn:
+            cur = conn.cursor()
+            # Lock before reading source results so a concurrent edit cannot
+            # produce a history assembled from two different database states.
+            cur.execute('BEGIN IMMEDIATE')
+            cur.execute('''
+                SELECT rated.meet_name, MIN(results.Date) AS meet_date, meets.meet_id
+                FROM StaggerRatedMeets AS rated
+                LEFT JOIN Results AS results ON results.Meet_Name = rated.meet_name
+                LEFT JOIN Meets AS meets ON meets.meet_name = rated.meet_name
+                GROUP BY rated.meet_name
+                ORDER BY COALESCE(meet_date, '9999-12-31'), meets.meet_id, rated.meet_name COLLATE NOCASE
+            ''')
+            rated_meets = [row[0] for row in cur.fetchall()]
+            ratings = {}
+            history = []
+            for meet_name in rated_meets:
+                cur.execute('''
+                    SELECT Date, Athlete, Event, Result
+                    FROM Results WHERE Meet_Name = ?
+                    ORDER BY Date, Event, Result_ID
+                ''', (meet_name,))
+                placements = placements_from_rows(cur.fetchall())
+                for event, date, athlete, delta in _stagger_deltas_for_placements(placements, ratings):
+                    history.append((meet_name, event, date, athlete, delta))
+
+            cur.execute('DELETE FROM StaggerScores')
+            cur.execute('DELETE FROM StaggerHistory')
+            cur.executemany(
+                'INSERT INTO StaggerScores (athlete, event, score) VALUES (?, ?, ?)',
+                [(athlete, event, score) for (athlete, event), score in ratings.items()],
+            )
+            cur.executemany('''
+                INSERT INTO StaggerHistory (meet_name, event, date, athlete, delta)
+                VALUES (?, ?, ?, ?, ?)
+            ''', history)
+            cur.execute("UPDATE RankingState SET state_value = 0 WHERE state_key = 'stagger_dirty'")
+        conn.close()
+
     @staticmethod
     def get_score_if_exists(athlete, event):
         """Return current stagger score for (athlete, event), or None if no score exists yet."""
+        StaggerScore.ensure_current()
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
@@ -967,11 +1070,13 @@ class StaggerScore:
                 (athlete, event)
             )
             row = cur.fetchone()
-            return float(row[0]) if row else None
+        conn.close()
+        return float(row[0]) if row else None
 
     @staticmethod
     def get_scores_for_athlete(athlete):
         """Return dict event -> score for an athlete."""
+        StaggerScore.ensure_current()
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
@@ -979,11 +1084,14 @@ class StaggerScore:
                 'SELECT event, score FROM StaggerScores WHERE athlete = ?',
                 (athlete,)
             )
-            return {row[0]: float(row[1]) for row in cur.fetchall()}
+            scores = {row[0]: float(row[1]) for row in cur.fetchall()}
+        conn.close()
+        return scores
 
     @staticmethod
     def get_peak_scores_for_athlete(athlete):
         """Return dict event -> highest known stagger score for an athlete."""
+        StaggerScore.ensure_current()
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
@@ -994,6 +1102,7 @@ class StaggerScore:
                 ORDER BY event, date, meet_name
             ''', (athlete,))
             history_rows = cur.fetchall()
+        conn.close()
 
         peak_scores = {}
         running_scores = {}
@@ -1008,6 +1117,7 @@ class StaggerScore:
     @staticmethod
     def get_meet_history(meet_name):
         """Return list of (event, date, athlete, delta) for a meet."""
+        StaggerScore.ensure_current()
         conn = Database.get_connection()
         with conn:
             cur = conn.cursor()
@@ -1017,76 +1127,24 @@ class StaggerScore:
                 WHERE meet_name = ?
                 ORDER BY event, date, athlete
             ''', (meet_name,))
-            return cur.fetchall()
+            rows = cur.fetchall()
+        conn.close()
+        return rows
 
     @staticmethod
     def revert_meet(meet_name):
-        """Subtract stored deltas from StaggerScores and delete StaggerHistory for this meet."""
+        """Deactivate a meet and replay the remaining rated meets."""
         conn = Database.get_connection()
-        try:
-            with conn:
-                cur = conn.cursor()
-                # Acquire write lock early to avoid partial updates
-                cur.execute('BEGIN IMMEDIATE')
-                cur.execute(
-                    'SELECT event, athlete, delta FROM StaggerHistory WHERE meet_name = ?',
-                    (meet_name,)
-                )
-                rows = cur.fetchall()
-                for event, athlete, delta in rows:
-                    cur.execute(
-                        'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
-                        (athlete, event)
-                    )
-                    row = cur.fetchone()
-                    current = float(row[0]) if row else STAGGER_INITIAL
-                    new_score = max(STAGGER_FLOOR, min(STAGGER_CEILING, current - float(delta)))
-                    cur.execute('''
-                        INSERT INTO StaggerScores (athlete, event, score)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(athlete, event) DO UPDATE SET score = excluded.score
-                    ''', (athlete, event, new_score))
-                cur.execute('DELETE FROM StaggerHistory WHERE meet_name = ?', (meet_name,))
-                conn.commit()
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        with conn:
+            conn.execute('DELETE FROM StaggerRatedMeets WHERE meet_name = ?', (meet_name,))
+            conn.execute("UPDATE RankingState SET state_value = 1 WHERE state_key = 'stagger_dirty'")
+        conn.close()
+        StaggerScore.rebuild_all()
 
     @staticmethod
     def apply_meet_deltas(meet_name, deltas):
-        """deltas = list of (event, date, athlete, delta). Update StaggerScores and insert StaggerHistory."""
-        conn = Database.get_connection()
-        try:
-            with conn:
-                cur = conn.cursor()
-                # Acquire write lock early to avoid partial updates
-                cur.execute('BEGIN IMMEDIATE')
-                for event, date, athlete, delta in deltas:
-                    cur.execute(
-                        'SELECT score FROM StaggerScores WHERE athlete = ? AND event = ?',
-                        (athlete, event)
-                    )
-                    row = cur.fetchone()
-                    current = float(row[0]) if row else STAGGER_INITIAL
-                    new_score = _stagger_dampen(current, float(delta))
-                    cur.execute('''
-                        INSERT INTO StaggerScores (athlete, event, score)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(athlete, event) DO UPDATE SET score = excluded.score
-                    ''', (athlete, event, new_score))
-                    # Use INSERT OR REPLACE for safety (PK prevents duplicates anyway)
-                    cur.execute('''
-                        INSERT OR REPLACE INTO StaggerHistory (meet_name, event, date, athlete, delta)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (meet_name, event, date, athlete, delta))
-                conn.commit()
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        """Compatibility shim: activate and deterministically rebuild the meet."""
+        StaggerScore.rate_meet(meet_name)
 
 
 class RelayTeam:
