@@ -221,6 +221,23 @@ class Database:
             ''')
 
             conn.commit()
+        except sqlite3.OperationalError as e:
+            # A deployed copy of the database can be intentionally read-only.
+            # Its existing tables are still safe to use for result browsing; only
+            # continue when the complete schema is already present.
+            if "readonly" not in str(e).lower():
+                raise RuntimeError("Error initializing database tables") from e
+
+            required_tables = {
+                "Results", "Meets", "Athletes", "Teams", "TeamScores",
+                "AthleteRankings", "Comments", "BoardPosts", "StaggerScores",
+                "StaggerHistory", "StaggerRatedMeets", "RankingState",
+                "RelayTeams", "RelayLegs",
+            }
+            cur.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+            existing_tables = {row[0] for row in cur.fetchall()}
+            if not required_tables.issubset(existing_tables):
+                raise RuntimeError("Error initializing database tables") from e
         except Error as e:
             raise RuntimeError("Error initializing database tables") from e
 

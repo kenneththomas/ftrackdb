@@ -238,9 +238,6 @@
 .index-col-team { width: 25%; }
 
 .index-results-table th {
-    position: sticky;
-    top: 68px;
-    z-index: 2;
     padding: 13px 16px;
     border: 0;
     border-bottom: 1px solid var(--index-border);
