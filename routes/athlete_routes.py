@@ -92,13 +92,6 @@ def athlete_profile(name):
         ''', (name,))
         annual_prs = dict(cur.fetchall())
     
-    # sort prs by preferred order (handle empty prs)
-    if prs:
-        sorted_prs = {}
-        for event in preforder:
-            if event in prs:
-                sorted_prs[event] = prs[event]
-        prs = sorted_prs
     if annual_prs:
         annual_prs = {event: annual_prs[event] for event in preforder if event in annual_prs}
     
@@ -164,6 +157,19 @@ def athlete_profile(name):
     
     # Get current rankings for the athlete
     rankings = AthleteRanking.calculate_athlete_rankings(name)
+
+    # Lead with the athlete's strongest ranked events. Events without a current
+    # ranking follow in the established track-and-field order.
+    preferred_position = {event: index for index, event in enumerate(preforder)}
+    prs = dict(sorted(
+        prs.items(),
+        key=lambda item: (
+            rankings.get(item[0]) is None,
+            rankings.get(item[0], float('inf')),
+            preferred_position.get(item[0], len(preforder)),
+            item[0],
+        )
+    ))
     
     # Stagger scores per event (for display near PRs)
     stagger_scores = StaggerScore.get_scores_for_athlete(name)
@@ -227,7 +233,7 @@ def athlete_profile(name):
     board_posts = BoardPost.get_threaded_posts(page_type='athlete', page_id=name)
     openrouter_available = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
     
-    return render_template('profile.html', 
+    return render_template('profile_new.html',
                          name=name, 
                          results=results_with_pr_flag, 
                          prs=prs,

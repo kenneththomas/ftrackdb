@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ name }} · Athlete Profile</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}">
+</head>
+<body class="athlete-profile-body">
+    {% include 'navbar.html' %}
+    {% set ranked_events = rankings|dictsort(by='value') %}
+    {% set specialty = ranked_events|first if ranked_events else none %}
+    <main class="profile-page" id="athlete-profile">
+        <div class="profile-shell">
+            <a class="profile-back" href="{{ url_for('athlete.search') }}"><span aria-hidden="true">←</span> Athlete search</a>
+            <header class="profile-hero">
+                <div class="profile-hero-copy">
+                    <p class="profile-kicker">Athlete profile</p>
+                    <h1 class="{% if is_female %}female-text{% endif %}">{{ name }}</h1>
+                    <div class="profile-identity">
+                        {% if team_logo %}<img src="{{ team_logo }}" alt="" class="profile-team-logo">{% endif %}
+                        <div><a href="{{ url_for('team.team_results', team_name=team) }}">{{ team }}</a><span>{{ athlete_class }} class · <span id="athlete-gender-display">{{ "Female" if is_female else "Male" }}</span></span></div>
+                    </div>
+                </div>
+                <div class="profile-hero-actions">
+                    <button type="button" id="showQuickInsert" class="profile-primary-action"><span aria-hidden="true">+</span> Add result</button>
+                    <div class="profile-manage">
+                        <button type="button" id="manage-menu-toggle" class="profile-secondary-action" aria-expanded="false" aria-controls="manage-menu">Manage <span aria-hidden="true">⌄</span></button>
+                        <div id="manage-menu" class="profile-manage-menu hidden">
+                            <button type="button" id="edit-bio-action">Edit bio</button>
+                            <button type="button" id="edit-results-action">Edit performances</button>
+                            <button type="button" id="calculate-rankings">Recalculate rankings</button>
+                            <button type="button" id="toggle-gender">Mark as {% if is_female %}Male{% else %}Female{% endif %}</button>
+                        </div>
+                    </div>
+                </div>
+                <dl class="profile-headline-stats">
+                    <div><dt>Specialty</dt><dd>{% if specialty %}<span>{{ specialty[0] }}</span><small>#{{ specialty[1] }} ranked</small>{% else %}<span>—</span><small>Not ranked yet</small>{% endif %}</dd></div>
+                    <div><dt>Events</dt><dd><span>{{ prs|length }}</span><small>With a recorded best</small></dd></div>
+                    <div><dt>Performances</dt><dd><span>{{ results|length }}</span><small>Individual results</small></dd></div>
+                    <div><dt>Latest</dt><dd><span>{% if results %}{{ results[0][0] }}{% else %}—{% endif %}</span><small>{% if results %}{{ results[0][1] }}{% else %}No results yet{% endif %}</small></dd></div>
+                </dl>
+                <div class="profile-hero-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            </header>
+            <nav class="profile-tabs" aria-label="Athlete profile sections" role="tablist">
+                <button type="button" class="profile-tab is-active" role="tab" aria-selected="true" aria-controls="panel-overview" data-profile-tab="overview">Overview</button>
+                <button type="button" class="profile-tab" role="tab" aria-selected="false" aria-controls="panel-performances" data-profile-tab="performances">Performances <span>{{ results|length }}</span></button>
+                <button type="button" class="profile-tab" role="tab" aria-selected="false" aria-controls="panel-relays" data-profile-tab="relays">Relays <span>{{ relay_results|length }}</span></button>
+                <button type="button" class="profile-tab" role="tab" aria-selected="false" aria-controls="panel-discussion" data-profile-tab="discussion">Discussion</button>
+            </nav>
+            <section id="panel-overview" class="profile-panel" role="tabpanel" data-profile-panel="overview">
+                <div class="profile-section-heading"><div><p class="profile-section-label">Event profile</p><h2>Personal records</h2></div><p>Ranked events appear first, revealing where {{ name }} is most competitive.</p></div>
+                {% if prs %}
+                <div class="event-card-grid">
+                    {% for event, result_data in prs.items() %}
+                    <article class="event-card{% if rankings.get(event) %} is-ranked{% endif %}">
+                        <div class="event-card-top"><span class="event-name">{{ event }}</span>{% if rankings.get(event) %}<span class="event-rank">#{{ rankings[event] }}</span>{% else %}<span class="event-rank is-unranked">Unranked</span>{% endif %}</div>
+                        <p class="event-mark">{{ result_data.result }}</p>
+                        <p class="event-context">{% if result_data.meet %}<a href="{{ url_for('meet.meet_results', meet_name=result_data.meet) }}">{{ result_data.meet }}</a>{% endif %}{% if result_data.date %}<span>{{ result_data.date }}</span>{% endif %}</p>
+                        <dl class="event-card-metrics"><div><dt>Season best</dt><dd>{{ annual_prs.get(event, '—') }}</dd></div><div><dt>Stagger</dt><dd>{{ stagger_scores[event]|int if stagger_scores.get(event) is not none else '—' }}</dd></div><div><dt>Peak</dt><dd>{{ peak_stagger_scores[event]|int if peak_stagger_scores.get(event) is not none else '—' }}</dd></div></dl>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% else %}<div class="profile-empty"><strong>No personal records yet.</strong><span>Add a result to start this athlete’s profile.</span></div>{% endif %}
+                <section class="profile-recent" aria-labelledby="recent-heading">
+                    <div class="profile-section-heading compact"><div><p class="profile-section-label">Latest competitions</p><h2 id="recent-heading">Recent form</h2></div><button type="button" class="profile-text-action" data-open-panel="performances">View all performances <span aria-hidden="true">→</span></button></div>
+                    {% if results %}<div class="recent-list">{% for result in results[:5] %}<article class="recent-result"><time datetime="{{ result[0] }}">{{ result[0] }}</time><div><strong>{{ result[2] }}</strong><a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a></div><div class="recent-place"><small>Place</small><strong>{{ result[8] if result|length > 8 and result[8] else '—' }}</strong></div><div class="recent-mark"><strong>{{ result[3] }}</strong><span>{% if result|length > 6 and result[6] %}<b>PR</b>{% endif %}{% if result|length > 7 and result[7] is not none %}<em class="{{ 'up' if result[7] >= 0 else 'down' }}">{{ '+' if result[7] >= 0 else '' }}{{ '%.1f'|format(result[7]) }}</em>{% endif %}</span></div></article>{% endfor %}</div>{% endif %}
+                </section>
+                <section class="profile-about" aria-labelledby="about-heading">
+                    <div class="profile-section-heading compact"><div><p class="profile-section-label">Athlete notes</p><h2 id="about-heading">About {{ name }}</h2></div></div>
+                    <div id="bio-display" class="profile-bio{% if not bio %} is-empty{% endif %}">{{ (bio or "No bio has been added yet.") | markdown_to_html }}</div>
+                    <div id="bio-edit" class="profile-bio-editor hidden"><label for="bio-textarea">Athlete bio</label><textarea id="bio-textarea" rows="10">{{ bio or "" }}</textarea><div><button type="button" id="save-bio" class="profile-primary-action">Save bio</button><button type="button" id="cancel-bio" class="profile-secondary-action">Cancel</button></div></div>
+                </section>
+            </section>
+            <section id="panel-performances" class="profile-panel hidden" role="tabpanel" data-profile-panel="performances">
+                <div class="profile-section-heading"><div><p class="profile-section-label">Complete history</p><h2>Performances</h2></div><p>Filter the athlete’s individual results by season, event, team, or achievement.</p></div>
+                <div class="performance-toolbar">
+                    <label class="performance-search"><span>Search</span><input type="search" id="filterInput" placeholder="Meet, event, team…"></label>
+                    <label><span>Season</span><select id="seasonQuickFilter"><option value="">All seasons</option></select></label>
+                    <label><span>Event</span><select id="eventQuickFilter"><option value="">All events</option></select></label>
+                    <label><span>Team</span><select id="teamQuickFilter"><option value="">All teams</option></select></label>
+                    <div class="performance-quick-filters" aria-label="Performance filters"><button type="button" class="quick-filter-btn" data-filter="pr" aria-pressed="false">Personal bests</button><button type="button" class="quick-filter-btn" data-filter="top8" aria-pressed="false">Top 8</button><button type="button" class="quick-filter-btn" data-filter="stagger" aria-pressed="false">Scored</button><button type="button" id="clearResultFilters" class="quick-filter-btn is-clear">Reset</button></div>
+                    <details class="custom-range"><summary>Custom “best since” date</summary><div><input type="date" id="best-since-date"><button type="button" id="apply-best-since">Apply</button><button type="button" id="clear-best-since">Clear</button></div></details>
+                </div>
+                <div id="best-since-results" class="event-card-grid best-since-grid hidden"></div>
+                <div class="performance-table-wrap">
+                    <table class="performance-table" aria-label="Athlete performance history">
+                        <thead><tr><th>Date</th><th>Meet</th><th>Event</th><th>Place</th><th>Mark</th><th>Team</th><th class="actions-header">Actions</th></tr></thead>
+                        <tbody>
+                        {% set years = namespace(current='') %}
+                        {% for result in results %}
+                            {% set row_year = (result[0]|string)[:4] if result[0] else 'Unknown' %}{% set is_pr = result[6] if result|length > 6 else False %}{% set stagger_delta = result[7] if result|length > 7 else none %}{% set place = result[8] if result|length > 8 else none %}
+                            {% if row_year != years.current %}<tr class="year-divider-row" data-year-divider="{{ row_year }}"><td colspan="7">{{ row_year }} season</td></tr>{% set years.current = row_year %}{% endif %}
+                            <tr class="result-row" data-result-id="{{ result[5] }}" data-event="{{ result[2] }}" data-team="{{ result[4] }}" data-year="{{ row_year }}" data-place="{{ place or '' }}" data-is-pr="{{ 'true' if is_pr else 'false' }}" data-has-stagger="{{ 'true' if stagger_delta is not none else 'false' }}">
+                                <td class="editable" data-field="date" data-label="Date">{{ result[0] }}</td><td class="editable performance-meet" data-field="meet" data-label="Meet"><a href="{{ url_for('meet.meet_results', meet_name=result[1]) }}">{{ result[1] }}</a></td><td class="editable" data-field="event" data-label="Event"><strong>{{ result[2] }}</strong></td><td data-field="place" data-label="Place">{{ place or '—' }}</td>
+                                <td class="editable result-cell" data-field="result" data-label="Mark"><span class="result-content"><strong>{{ result[3] }}</strong></span><span class="result-badges">{% if is_pr %}<b class="pr-indicator">PR</b>{% endif %}{% if stagger_delta is not none %}<em class="stagger-change {{ 'up' if stagger_delta >= 0 else 'down' }}">{{ '+' if stagger_delta >= 0 else '' }}{{ '%.1f'|format(stagger_delta) }}</em>{% endif %}</span></td>
+                                <td class="editable team-cell" data-field="team" data-label="Team"><img src="{{ team_logos.get(result[4]) or url_for('static', filename='default-team.svg') }}" alt=""><a href="{{ url_for('team.team_results', team_name=result[4]) }}">{{ result[4] }}</a></td>
+                                <td class="actions-cell" data-field="actions" data-label="Actions"><button class="edit-btn" title="Edit result">Edit</button><button class="save-btn hidden" title="Save changes">Save</button><button class="cancel-btn hidden" title="Cancel edit">Cancel</button><button class="delete-btn" data-result-id="{{ result[5] }}" title="Delete result">Delete</button></td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    <div id="performance-empty" class="profile-empty hidden"><strong>No matching performances.</strong><span>Try clearing one or more filters.</span></div>
+                </div>
+            </section>
+            <section id="panel-relays" class="profile-panel hidden" role="tabpanel" data-profile-panel="relays">
+                <div class="profile-section-heading"><div><p class="profile-section-label">Team performances</p><h2>Relay history</h2></div><p>Relay appearances, recorded splits, and teammates.</p></div>
+                {% if relay_results %}<div class="relay-grid">{% for result in relay_results %}<article class="relay-card"><div class="relay-card-heading"><div><span>{{ result.event }}{% if result.team_designation %} · {{ result.team_designation }} team{% endif %}</span><strong>{{ result.result }}</strong></div><time>{{ result.date }}</time></div><a class="relay-meet" href="{{ url_for('meet.meet_results', meet_name=result.meet) }}">{{ result.meet }}</a><div class="relay-team"><a href="{{ url_for('team.team_results', team_name=result.team) }}">{{ result.team }}</a><div>{% if result.legs is defined %}{% for leg in result.legs %}<span><a href="{{ url_for('athlete.athlete_profile', name=leg.athlete|trim) }}">{{ leg.athlete|trim }}</a><small>{{ leg.split_event }} {{ leg.split_result }}</small></span>{% endfor %}{% elif result.athletes is defined %}{% for athlete in result.athletes %}<span><a href="{{ url_for('athlete.athlete_profile', name=athlete|trim) }}">{{ athlete|trim }}</a></span>{% endfor %}{% endif %}</div></div></article>{% endfor %}</div>{% else %}<div class="profile-empty"><strong>No relay appearances recorded.</strong><span>Relays involving this athlete will appear here.</span></div>{% endif %}
+            </section>
+            <section id="panel-discussion" class="profile-panel hidden" role="tabpanel" data-profile-panel="discussion"><div class="profile-section-heading"><div><p class="profile-section-label">Community</p><h2>Discussion</h2></div><p>Notes and conversation about this athlete.</p></div>{% set section_title = none %}{% include 'board_section.html' %}</section>
+        </div>
+    </main>
+    <div class="profile-modal hidden" id="quickInsertSection" aria-hidden="true"><div class="profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="quick-insert-heading"><div class="profile-modal-heading"><div><p class="profile-section-label">New performance</p><h2 id="quick-insert-heading">Add result</h2></div><button type="button" class="quick-insert-close" aria-label="Close">×</button></div><form id="quick-insert-form" class="quick-result-form"><input type="hidden" name="athlete[]" value="{{ name }}"><input type="hidden" name="team[]" value="{{ team }}"><label><span>Date</span><input type="date" name="date[]" required></label><label><span>Meet</span><input type="text" name="meet[]" required></label><label><span>Event</span><input type="text" name="event[]" required></label><label><span>Mark</span><input type="text" name="result[]" required></label><button type="submit" class="profile-primary-action">Add result</button></form></div></div>
+    <script>window.athleteProfileData={name:{{ name|tojson }},rankings:{{ rankings|tojson }},staggerScores:{{ stagger_scores|tojson }},peakStaggerScores:{{ peak_stagger_scores|tojson }}};</script>
+    <script src="{{ url_for('static', filename='profile.js') }}" defer></script>
+</body>
+</html>

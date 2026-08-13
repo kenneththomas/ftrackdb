@@ -243,7 +243,7 @@ class Result:
             
             # Get PRs with dates - simple approach with numeric parsing in Python
             cur.execute("""
-                SELECT Event, Result, Date
+                SELECT Event, Result, Date, Meet_Name
                 FROM Results
                 WHERE Athlete = ?
                 ORDER BY Event, Date
@@ -257,7 +257,7 @@ class Result:
                 event = row[0]
                 if event not in event_rows:
                     event_rows[event] = []
-                event_rows[event].append((row[1], row[2]))  # (result, date)
+                event_rows[event].append((row[1], row[2], row[3]))  # (result, date, meet)
             
             for event, event_results in event_rows.items():
                 if not event_results:
@@ -265,7 +265,8 @@ class Result:
                 best_result = None
                 best_numeric = None
                 best_date = None
-                for result_str, date in event_results:
+                best_meet = None
+                for result_str, date, meet in event_results:
                     if not result_str:
                         continue
                     try:
@@ -281,26 +282,30 @@ class Result:
                             best_result = result_str
                             best_numeric = numeric
                             best_date = date
+                            best_meet = meet
                         elif 'm' in event or 'H' in event or 'XC' in event or 'Road' in event or 'Marathon' in event:
                             # For running events, lower is better
                             if numeric < best_numeric:
                                 best_result = result_str
                                 best_numeric = numeric
                                 best_date = date
+                                best_meet = meet
                         else:
                             # For field events, higher is better
                             if numeric > best_numeric:
                                 best_result = result_str
                                 best_numeric = numeric
                                 best_date = date
+                                best_meet = meet
                     except (ValueError, IndexError):
                         # If parsing fails, use the first result as fallback
                         if best_result is None:
                             best_result = result_str
                             best_date = date
+                            best_meet = meet
                 
                 if best_result is not None:
-                    prs[event] = {'result': best_result, 'date': best_date}
+                    prs[event] = {'result': best_result, 'date': best_date, 'meet': best_meet}
             
             # Get athlete info
             cur.execute('''
